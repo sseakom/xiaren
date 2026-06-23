@@ -131,32 +131,16 @@ export function throttle<T extends (...args: any[]) => void>(
   };
 }
 
-/**
- * 跳转 B 站小程序或复制链接
- * 跨端：H5 端退化为复制链接
- */
+/** 复制 B 站视频 bvid */
 export function openBilibili(bvid: string): void {
   if (!bvid) {
     Taro.showToast({ title: '无效的视频ID', icon: 'none' });
     return;
   }
-  // @ts-ignore - 微信小程序专属 API
-  if (typeof (Taro as any).navigateToMiniProgram === 'function') {
-    (Taro as any).navigateToMiniProgram({
-      appId: 'wx13c3eb8b0b11f2bb',
-      path: 'pages/video/video?bvid=' + bvid,
-      fail: () => copyBilibiliUrl(bvid),
-    });
-  } else {
-    copyBilibiliUrl(bvid);
-  }
-}
-
-function copyBilibiliUrl(bvid: string) {
-  const url = `https://www.bilibili.com/video/${bvid}`;
   Taro.setClipboardData({
-    data: url,
-    success: () =>
-      Taro.showToast({ title: '链接已复制，请打开B站查看', icon: 'none' }),
+    data: bvid,
+    success: () => {
+      Taro.showToast({ title: 'bvid 已复制', icon: 'none' });
+    },
   });
 }

@@ -241,8 +241,8 @@ const DetailPage: React.FC = () => {
           </View>
 
           <View className={styles.actionBtn} onClick={onOpenBili}>
-            <Text className={styles.actionIcon}>▶</Text>
-            <Text className={styles.actionText}>B站观看</Text>
+            <Text className={styles.actionIcon}>🔗</Text>
+            <Text className={styles.actionText}>复制BVID</Text>
           </View>
         </View>
 
