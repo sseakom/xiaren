@@ -7,19 +7,6 @@ export interface ScoreChartProps {
   distribution: ScoreDistribution;
 }
 
-const COLORS = [
-  '#E74C3C',
-  '#FF6B35',
-  '#F39C12',
-  '#27AE60',
-  '#3498DB',
-  '#9B59B6',
-  '#1ABC9C',
-  '#E67E22',
-  '#2ECC71',
-  '#95A5A6',
-];
-
 const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
   const data = useMemo(() => {
     if (!distribution || Object.keys(distribution).length === 0) {
@@ -28,15 +15,34 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
     const scores = Object.keys(distribution).sort(
       (a, b) => parseFloat(b) - parseFloat(a),
     );
-    const levels = scores.map((s, idx) => ({
+    const levels: Array<{
+      label: string;
+      count: number;
+      color: string;
+      idx: number;
+      percent: number;
+      ratio: number;
+    }> = scores.map((s, idx) => ({
       label: s,
       count: distribution[s] || 0,
-      color: COLORS[idx % COLORS.length],
+      // 5→10 分高对比，1→5 分低对比，色阶渐变
+      color:
+        parseFloat(s) >= 8
+          ? '#FF6B35'
+          : parseFloat(s) >= 6
+            ? '#F39C12'
+            : parseFloat(s) >= 4
+              ? '#95A5A6'
+              : '#BDC3C7',
+      idx,
+      percent: 0,
+      ratio: 0,
     }));
     const total = levels.reduce((s, l) => s + l.count, 0);
     const maxCount = Math.max(...levels.map((l) => l.count), 1);
     levels.forEach((l) => {
-      l.percent = Math.max((l.count / maxCount) * 100, 2);
+      l.percent = Math.max((l.count / maxCount) * 100, l.count > 0 ? 4 : 0);
+      l.ratio = total > 0 ? Math.round((l.count / total) * 100) : 0;
     });
     return { levels, total };
   }, [distribution]);
@@ -45,7 +51,11 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
     <View className={styles.scoreChart}>
       <View className={styles.chartTitle}>评分分布</View>
       {data.levels.length === 0 ? (
-        <View className={styles.empty}>暂无评分数据</View>
+        <View className={styles.empty}>
+          <Text className={styles.emptyIcon}>📊</Text>
+          <Text className={styles.emptyText}>暂无评分数据</Text>
+          <Text className={styles.emptyHint}>做第一个评分的人吧～</Text>
+        </View>
       ) : (
         <View className={styles.chartBody}>
           {data.levels.map((l) => (
@@ -60,7 +70,10 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
                   }}
                 />
               </View>
-              <Text className={styles.chartCount}>{l.count}</Text>
+              <View className={styles.chartMeta}>
+                <Text className={styles.chartCount}>{l.count}</Text>
+                <Text className={styles.chartRatio}>{l.ratio}%</Text>
+              </View>
             </View>
           ))}
         </View>

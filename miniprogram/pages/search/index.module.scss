@@ -140,3 +140,75 @@
   display: flex;
   gap: $spacing-md;
 }
+
+/* ===== 标签 + meta，与首页 AnimCard footer 保持一致 ===== */
+.animtag {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6rpx;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.animTag {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: $color-primary-bg;
+  padding: 2rpx 10rpx;
+  border-radius: $radius-round;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.animMeta {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  min-width: 0;
+  overflow: hidden;
+  margin-top: auto;
+}
+
+.metaAuthor {
+  color: $color-text-secondary;
+  max-width: 180rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.metaDot {
+  color: $color-text-tertiary;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.metaPlay {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.metaScore {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.metaScoreIcon {
+  font-size: $font-size-xs;
+  line-height: 1;
+}

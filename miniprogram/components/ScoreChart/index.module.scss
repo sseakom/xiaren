@@ -1,20 +1,32 @@
 @use '@/styles/variables.scss' as *;
 
 .scoreChart {
-  margin-top: $spacing-md;
+  margin-top: $spacing-xs;
 }
 
 .chartTitle {
+  display: flex;
+  align-items: center;
   font-size: $font-size-md;
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
   margin-bottom: $spacing-sm;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 6rpx;
+    height: 24rpx;
+    background: $color-primary;
+    border-radius: $radius-xs;
+    margin-right: 8rpx;
+  }
 }
 
 .chartBody {
   display: flex;
   flex-direction: column;
-  gap: $spacing-xs;
+  gap: 10rpx;
 }
 
 .chartRow {
@@ -26,42 +38,79 @@
 .chartLabel {
   font-size: $font-size-sm;
   color: $color-text-secondary;
-  width: 60rpx;
+  width: 56rpx;
   flex-shrink: 0;
+  text-align: right;
+  font-weight: $font-weight-medium;
 }
 
 .chartBarBg {
   flex: 1;
-  height: 16rpx;
+  height: 14rpx;
   background: $color-bg-hover;
-  border-radius: $radius-xs;
+  border-radius: $radius-round;
   overflow: hidden;
+  position: relative;
 }
 
 .chartBar {
   height: 100%;
-  border-radius: $radius-xs;
-  transition: width $transition-base;
+  border-radius: $radius-round;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8rpx rgba(255, 107, 53, 0.3);
+}
+
+.chartMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+  width: 96rpx;
+  flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .chartCount {
   font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.chartRatio {
+  font-size: $font-size-xs;
   color: $color-text-tertiary;
-  width: 60rpx;
-  text-align: right;
-  flex-shrink: 0;
 }
 
 .empty {
   text-align: center;
-  padding: $spacing-md;
+  padding: $spacing-lg 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.emptyIcon {
+  font-size: 56rpx;
+  display: block;
+  line-height: 1;
+}
+
+.emptyText {
   font-size: $font-size-sm;
   color: $color-text-tertiary;
+}
+
+.emptyHint {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  opacity: 0.6;
 }
 
 .chartFooter {
   margin-top: $spacing-sm;
   text-align: right;
-  font-size: $font-size-sm;
+  font-size: $font-size-xs;
   color: $color-text-tertiary;
+  padding-top: $spacing-xs;
+  border-top: 1rpx dashed $color-divider;
 }

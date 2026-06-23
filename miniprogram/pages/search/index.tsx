@@ -9,7 +9,6 @@ import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
-import StatItem from '@/components/StatItem';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
@@ -207,16 +206,32 @@ const SearchPage: React.FC = () => {
                     onClick={goDetail}
                     footer={
                       <>
-                        <Text className={styles.animCreator}>{item.up_name}</Text>
-                        <View className={styles.animStats}>
-                          <StatItem
-                            value={formatNumber(item.play_count || 0)}
-                            label="播放"
-                          />
-                          <StatItem
-                            value={formatNumber(item.like_count || 0)}
-                            label="点赞"
-                          />
+                        {item.tags?.length ? (
+                          <View className={styles.animtag}>
+                            {item.tags.map((tag: string) => (
+                              <Text key={tag} className={styles.animTag}>
+                                {tag}
+                              </Text>
+                            ))}
+                          </View>
+                        ) : null}
+                        <View className={styles.animMeta}>
+                          <Text className={styles.metaAuthor} numberOfLines={1}>
+                            {item.up_name}
+                          </Text>
+                          <Text className={styles.metaDot}>·</Text>
+                          <Text className={styles.metaPlay}>
+                            {formatNumber(item.play_count || 0)} 播放
+                          </Text>
+                          {item.score != null ? (
+                            <>
+                              <Text className={styles.metaDot}>·</Text>
+                              <Text className={styles.metaScore}>
+                                <Text className={styles.metaScoreIcon}>★</Text>
+                                {item.score.toFixed(1)}
+                              </Text>
+                            </>
+                          ) : null}
                         </View>
                       </>
                     }

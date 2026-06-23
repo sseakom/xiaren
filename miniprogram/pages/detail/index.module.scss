@@ -86,37 +86,69 @@
   background: $color-bg-card;
   padding: $spacing-md;
   margin-bottom: $spacing-sm;
+  box-shadow: $shadow-card;
 }
 
 .scoreHeader {
   display: flex;
   align-items: center;
   gap: $spacing-md;
-  padding-bottom: $spacing-sm;
-  border-bottom: 1rpx solid $color-divider;
+}
+
+.scoreMain {
+  display: flex;
+  align-items: baseline;
+  flex-shrink: 0;
 }
 
 .scoreBig {
-  font-size: 64rpx;
+  font-size: 72rpx;
   font-weight: $font-weight-bold;
   color: $color-primary;
   line-height: 1;
+  font-family: 'DIN Alternate', 'Helvetica Neue', sans-serif;
 }
 
 .scoreUnit {
   font-size: $font-size-md;
   color: $color-text-tertiary;
   margin-left: 4rpx;
+  font-weight: $font-weight-medium;
 }
 
-.scoreStats {
+.scoreRight {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4rpx;
+  gap: 6rpx;
+  min-width: 0;
 }
 
-.scoreText {
-  font-size: $font-size-md;
+.scoreLevel {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.scoreLevelTag {
+  display: inline-block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  background: $color-primary-bg;
+  padding: 4rpx 14rpx;
+  border-radius: $radius-xs;
+  line-height: 1.2;
+}
+
+.scoreLevelDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  @include text-ellipsis;
+}
+
+.scoreMeta {
+  font-size: $font-size-sm;
   color: $color-text-primary;
   font-weight: $font-weight-medium;
 }
@@ -126,9 +158,23 @@
   color: $color-text-tertiary;
 }
 
+.scoreDivider {
+  height: 1rpx;
+  background: $color-divider;
+  margin: $spacing-md 0;
+}
+
 .myRatingSection {
   background: $color-bg-card;
   padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+  box-shadow: $shadow-card;
+}
+
+.myRatingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: $spacing-sm;
 }
 
@@ -136,15 +182,42 @@
   font-size: $font-size-md;
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
-  display: block;
-  margin-bottom: $spacing-sm;
+}
+
+.myRatingBadge {
+  display: inline-flex;
+  align-items: baseline;
+  background: $color-primary-bg;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-button;
+  gap: 2rpx;
+}
+
+.myRatingBadgeIcon {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  margin-right: 2rpx;
+}
+
+.myRatingBadgeValue {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  line-height: 1.2;
+}
+
+.myRatingBadgeUnit {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  opacity: 0.7;
 }
 
 .myRatingBody {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: $spacing-xs;
+  gap: $spacing-sm;
+  padding: $spacing-sm 0 $spacing-xs;
 }
 
 .myRatingHint {
