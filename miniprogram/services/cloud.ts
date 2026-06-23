@@ -11,8 +11,10 @@ function genCallId() {
 }
 
 /**
- * 云开发封装
- * 提供 db 与 callFunction 的统一入口
+ * 云开发封装 —— 仅提供 callFunction 入口
+ *
+ * 原则：**所有 DB 读写全部走云函数，云函数内部操作数据库**。
+ * 业务侧如需数据，统一通过 CloudService.callFunction('xxx', payload) 走云函数。
  */
 class CloudServiceImpl {
   private initialized = false;
@@ -29,39 +31,6 @@ class CloudServiceImpl {
       console.log('[Cloud] initialized, env:', CLOUD_ENV);
     } catch (err) {
       console.error('[Cloud] init failed', err);
-    }
-  }
-
-  /** 数据库实例 */
-  get db() {
-    return Taro.cloud.database();
-  }
-
-  /** 数据库命令符 */
-  get _() {
-    return this.db.command;
-  }
-
-  /**
-   * 带超时的 Promise 包装：避免微信 SDK 内部操作（如 db.get/set）卡死时
-   * 整个 await 链 30s 不返回
-   */
-  async withTimeout<T>(
-    promise: Promise<T>,
-    label: string,
-    timeoutMs = 8000,
-  ): Promise<T> {
-    let timer: any;
-    const timeout = new Promise<T>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`[Cloud] ${label} timeout after ${timeoutMs}ms`)),
-        timeoutMs,
-      );
-    });
-    try {
-      return (await Promise.race([promise, timeout])) as T;
-    } finally {
-      clearTimeout(timer);
     }
   }
 

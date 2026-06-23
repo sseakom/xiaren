@@ -6,7 +6,8 @@ const OPENID_CACHE_KEY = 'user_openid_cache';
 
 /**
  * 全局用户信息管理
- * 替代原 app.js 中的 globalData
+ *  - 所有 DB 读 / 写 走云函数 userService（action: getInfo / upsert / updateProfile / loadStats）
+ *  - 替代原 app.js 中的 globalData
  */
 class UserServiceImpl {
   openid = '';
@@ -31,7 +32,7 @@ class UserServiceImpl {
    * 静默登录：缓存优先 + checkSession 校验
    * 1. 取本地缓存的 openid
    * 2. 调 wx.checkSession 校验微信会话是否还有效
-   * 3. 有效则直接用缓存 openid 拉用户档案（不再走云函数）
+   * 3. 有效则直接复用 openid 拉用户档案（走云函数 userService.getInfo）
    * 4. 无效或无缓存才走 wxLogin 换新
    */
   async silentLogin(): Promise<void> {
@@ -117,38 +118,24 @@ class UserServiceImpl {
     this.emit();
   }
 
-  private async fetchOpenid() {
-    if (this.openid) return;
-    try {
-      const res = await CloudService.callFunction('login');
-      const result = (res.result || {}) as { openid?: string };
-      this.openid = result.openid || '';
-      this.hasLogin = !!this.openid;
-      console.log('[User] openid:', this.openid);
-      if (this.openid) await this.fetchUserInfo();
-    } catch (err) {
-      console.error('[User] login 调用失败', err);
-    }
-  }
-
+  /**
+   * 调云函数 userService.action='getInfo' 读取用户档案
+   * 失败时降级：先尝试 upsert 一条空档案，再读一次；再失败兜底返回空 User，不阻塞登录流
+   */
   private async fetchUserInfo() {
+    if (!this.openid) return;
     try {
-      // Taro 类型 get() 有 void / Promise 两套重载，传入空对象以命中 Promise 重载
-      // doc().get() 在微信云开发中：用户存在 → { data: User }，用户不存在 → { data: null }
-      // 用 withTimeout 防止 SDK 卡死（默认 8s 兜底）
-      const res = (await CloudService.withTimeout(
-        CloudService.db.collection('users').doc(this.openid).get({} as any) as any,
-        'users.doc.get',
-        8000,
-      )) as { data: User | User[] | null };
-      const list = Array.isArray(res.data) ? res.data : res.data ? [res.data] : [];
-      if (list.length > 0) {
-        this.userInfo = list[0];
+      const res = (await CloudService.callFunction('userService', {
+        action: 'getInfo',
+      })) as any;
+      const result = res?.result as { success?: boolean; data?: User; error?: string };
+      if (result?.success && result.data) {
+        this.userInfo = result.data;
         this.userInfoReady = true;
         this.emit();
         return;
       }
-      // 用户不存在 → 创建（upsert 模式：doc().set() 已存在不会报错）
+      // getInfo 没成功 → 主动 upsert 一条空档案（不抛错）
       await this.upsertUser({ nickName: '', avatarUrl: '' });
     } catch (err) {
       console.error('[User] fetchUserInfo failed', err);
@@ -167,49 +154,40 @@ class UserServiceImpl {
   }
 
   /**
-   * 用 upsert 模式创建/更新用户：doc().set() + 已存在不报错
-   * 避免 add() 撞主键的问题（E11000 duplicate key）
+   * 用云函数 userService.action='upsert' 创建/更新用户档案
+   * 避免客户端 add() 撞主键的问题（E11000 duplicate key）
    */
   private async upsertUser(profile: { nickName: string; avatarUrl: string }) {
-    const now = new Date();
+    if (!this.openid) return;
     try {
-      await CloudService.withTimeout(
-        CloudService.db.collection('users').doc(this.openid).set({
-          data: {
-            _id: this.openid,
-            nickName: profile.nickName,
-            avatarUrl: profile.avatarUrl,
-            created_at: now,
-            updated_at: now,
-          },
-        } as any) as any,
-        'users.doc.set',
-        8000,
-      );
-      this.userInfo = {
-        _id: this.openid,
-        ...profile,
-        created_at: now,
-        updated_at: now,
-      };
-      this.userInfoReady = true;
-      this.emit();
-    } catch (err: any) {
-      // 即便 upsert 失败也不抛出，避免阻塞登录流
+      const res = (await CloudService.callFunction('userService', {
+        action: 'upsert',
+        profile,
+      })) as any;
+      const result = res?.result as { success?: boolean; data?: User; error?: string };
+      if (result?.success && result.data) {
+        this.userInfo = result.data;
+        this.userInfoReady = true;
+        this.emit();
+      }
+    } catch (err) {
       console.error('[User] upsertUser failed', err);
     }
   }
 
+  /** 局部更新用户档案（昵称 / 头像） */
   async updateProfile(profile: { nickName: string; avatarUrl: string }) {
-    if (!this.openid) await this.fetchOpenid();
+    if (!this.openid) return;
     try {
-      await CloudService.db.collection('users').doc(this.openid).update({
-        data: {
-          nickName: profile.nickName,
-          avatarUrl: profile.avatarUrl,
-          updated_at: new Date(),
-        },
-      });
+      const res = (await CloudService.callFunction('userService', {
+        action: 'updateProfile',
+        profile,
+      })) as any;
+      const result = res?.result as { success?: boolean; error?: string };
+      if (!result?.success) {
+        console.error('[User] updateProfile failed', result?.error);
+        return;
+      }
       if (this.userInfo) {
         this.userInfo = { ...this.userInfo, ...profile };
       }
@@ -218,26 +196,28 @@ class UserServiceImpl {
     }
   }
 
-  /** 加载统计（评分数/收藏数） */
+  /** 加载统计（评分数/收藏数）—— 走云函数 userService.action='loadStats' */
   async loadStats(): Promise<UserStats> {
     if (!this.openid) {
       return { ratingCount: 0, collectCount: 0 };
     }
     try {
-      const [ratingRes, collectRes] = await Promise.all([
-        CloudService.db.collection('ratings').where({ user_id: this.openid }).count(),
-        CloudService.db.collection('collections')
-          .where({ user_id: this.openid, type: 'collect' })
-          .count(),
-      ]);
-      return {
-        ratingCount: ratingRes.total || 0,
-        collectCount: collectRes.total || 0,
-      };
+      const res = (await CloudService.callFunction('userService', {
+        action: 'loadStats',
+      })) as any;
+      const result = res?.result as
+        | { success?: boolean; ratingCount?: number; collectCount?: number; error?: string }
+        | undefined;
+      if (result?.success) {
+        return {
+          ratingCount: result.ratingCount || 0,
+          collectCount: result.collectCount || 0,
+        };
+      }
     } catch (err) {
       console.error('[User] loadStats failed', err);
-      return { ratingCount: 0, collectCount: 0 };
     }
+    return { ratingCount: 0, collectCount: 0 };
   }
 
   /** 等待 userInfo 就绪 */

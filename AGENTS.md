@@ -20,9 +20,10 @@ Taro 4 + React 18 + TypeScript 的**微信小程序**（appid `wx29eab22ac6c0cfe
 | 入口文件 | `miniprogram/app.tsx` | 启动时 `CloudService.init()` + `UserService.bootstrap()` |
 | 全局配置 | `miniprogram/app.config.ts` | 页面注册在这里加 |
 | 路径别名 | `tsconfig.json` | `@/*` → `miniprogram/*` |
-| 云开发封装 | `miniprogram/services/cloud.ts` | 所有 DB / 云函数都从这里走 |
-| 业务服务 | `miniprogram/services/business.ts` | 动画/评分/收藏 的增删改查 |
-| 用户服务 | `miniprogram/services/user.ts` | 登录、缓存、统计 |
+| 云开发封装 | `miniprogram/services/cloud.ts` | **只暴露 `callFunction`**，DB 入口已关闭 |
+| 业务服务 | `miniprogram/services/business.ts` | 动画/评分/收藏 的增删改查，全部走云函数 |
+| 用户服务 | `miniprogram/services/user.ts` | 登录、缓存、统计，全部走云函数 `userService` |
+| 云函数入口 | `cloudfunctions/*/index.js` | 9 个：`listAnimations` / `getAnimationById` / `search` / `rating` / `collection` / `calcScore` / `userService` / `login` / `phoneLogin` |
 | 类型定义 | `miniprogram/types/index.ts` | 业务实体 TS 类型 |
 | 工具函数 | `miniprogram/utils/{fuzzy,util}.ts` | 模糊匹配 + 格式化 |
 | 全局样式 | `miniprogram/styles/variables.scss` | 颜色/间距/字号变量 |
@@ -41,7 +42,8 @@ config/          ← 改构建配置
 **严禁**：
 - ❌ 复活 `src/` 目录（已经迁移到 `miniprogram/`）
 - ❌ 把前端代码放到 `cloudfunctions/`，或反过来
-- ❌ 在 `pages/` 里直接 `Taro.cloud.database()`（必须走 `CloudService`）
+- ❌ 客户端直接调 `CloudService.db` / `Taro.cloud.database()`（**必须走云函数**；`CloudService.db` 已被移除）
+- ❌ 在 `pages/` 里直接 `Taro.cloud.callFunction` 读 / 写业务数据（必须走 `services/business.ts` 或 `user.ts`）
 
 ---
 
@@ -61,18 +63,39 @@ config/          ← 改构建配置
 
 ## 4. 关键模式（必须遵守）
 
-### 4.1 数据库操作
+### 4.1 数据库操作 —— **全部走云函数，云函数操作数据库**
+
+**核心原则**：客户端**禁止**任何形式的直接 DB 访问。所有读 / 写 / count / 聚合全部走 `CloudService.callFunction('xxx', payload)`，由对应云函数在服务端调 `wx-server-sdk` 操作数据库。
 
 ```ts
-// ✅ 正确：走封装
-const res = await CloudService.withTimeout(
-  CloudService.db.collection('animations').doc(id).get({} as any),
-  'animations.getById',
-);
+// ✅ 正确：业务侧通过云函数读单条
+const res = await CloudService.callFunction('getAnimationById', { id });
 
-// ❌ 错误：直接用 Taro
-const res = await Taro.cloud.database().collection('animations').get();
+// ✅ 正确：业务侧通过云函数提交评分
+const res = await CloudService.callFunction('rating', {
+  action: 'submit',
+  animation_id,
+  score,
+});
+
+// ❌ 错误：客户端直接调 DB（已从 CloudService 类型层移除 db / _ / withTimeout）
+const res = await CloudService.db.collection('animations').doc(id).get();
+const res = await CloudService.withTimeout(
+  CloudService.db.collection('users').doc(openid).get({} as any),
+  'users.get',
+);
 ```
+
+**为什么**：
+- DB 凭证不下发，云函数是唯一的"出口"，可统一鉴权 / 限流 / 审计
+- 业务规则（如"提交评分后自动触发 calcScore"）放在云函数里，客户端无法绕过
+- 避免客户端误用 `.add()` 撞主键（必须用 `doc(openid).set()` upsert）
+
+**新加业务字段 / 操作的流程**：
+1. 在 `cloudfunctions/<name>/index.js` 写好云函数
+2. 在 `miniprogram/services/business.ts` 或 `user.ts` 的 `XxxService` 里封装 `CloudService.callFunction`
+3. page 只调 `XxxService` 的方法
+4. `cloudfunctions/<name>/package.json` 必须在微信开发者工具右键 → 上传并部署
 
 ### 4.2 业务封装在 services，page 只调 API
 
@@ -288,8 +311,9 @@ yarn build:weapp  # TS 检查
 
 ### 10.3 超时排查
 
-如果某操作卡住，**8 秒后会**自动抛 `timeout` 错误（来自 `withTimeout`）。
-看 `console.error` 里的 `[Cloud] <label> timeout after 8000ms`。
+云函数默认 30s 超时（`CloudService.callFunction` 的 `DEFAULT_TIMEOUT_MS`）。
+如果某操作卡住，**30 秒后会**抛 `[Cloud] callFunction "xxx" failed after 30000ms (callId): timeout` 错误。
+可以在 `callFunction` 调用时传 `{ timeoutMs: 60000 }` 临时拉长。
 
 ### 10.4 模拟器 vs 真机
 
