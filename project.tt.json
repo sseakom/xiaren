@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
-  "projectname": "taro_template",
-  "description": "taro_template",
+  "projectname": "shrimp-universe",
+  "description": "shrimp-universe",
   "appid": "touristappid",
   "setting": {
     "urlCheck": true,

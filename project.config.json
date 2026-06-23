@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "dist/",
   "cloudfunctionRoot": "cloudfunctions/",
-  "projectname": "shrimpUniverse",
+  "projectname": "shrimp-universe",
   "description": "虾仁宇宙",
   "appid": "wx29eab22ac6c0cfe7",
   "setting": {

@@ -1,8 +1,8 @@
 {
-  "name": "taro_template",
+  "name": "shrimp-universe",
   "version": "1.0.0",
   "private": true,
-  "description": "taro_template",
+  "description": "shrimp-universe",
   "templateInfo": {
     "name": "react",
     "typescript": true,
