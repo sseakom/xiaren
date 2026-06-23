@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, Input, ScrollView } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
 import { Animation } from '@/types';
-import { CloudService } from '@/services/cloud';
 import { AnimationService } from '@/services/business';
 import { formatNumber } from '@/utils/util';
 import { goDetail } from '@/utils/nav';
@@ -68,22 +67,14 @@ const SearchPage: React.FC = () => {
       try {
         if (p === 0) setLoading(true);
         setLoadingMore(p > 0);
-        let list: Animation[] = [];
-        try {
-          const res = await CloudService.callFunction('search', { keyword: q, page: p, pageSize: PAGE_SIZE });
-          const result = res.result as { data?: Animation[]; total?: number } | undefined;
-          list = result?.data || [];
-          setTotal(result?.total || list.length);
-        } catch (err) {
-          console.warn('[Search] 云函数降级为本地搜索', err);
-          list = (await AnimationService.search(q, p, PAGE_SIZE)) as Animation[];
-          setTotal(list.length);
-        }
+        // 走 AnimationService.search（内部 callFunction 'search' + 超时/日志）
+        const list = (await AnimationService.search(q, p, PAGE_SIZE)) as Animation[];
+        setTotal(list.length);
         setResults((prev) => (p === 0 || isNew ? list : [...prev, ...list]));
         setHasMore(list.length >= PAGE_SIZE);
         setPage(p + 1);
-      } catch (err2) {
-        console.error('[Search] 搜索失败', err2);
+      } catch (err) {
+        console.error('[Search] 搜索失败', err);
         Taro.showToast({ title: '搜索失败', icon: 'none' });
       } finally {
         setLoading(false);
@@ -232,11 +223,7 @@ const SearchPage: React.FC = () => {
                   />
                 ))}
 
-                <LoadMoreFooter
-                  hasMore={hasMore}
-                  loading={loadingMore}
-                  prompt="点击加载更多"
-                />
+                <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
               </ScrollView>
             ) : (
               !loading && (

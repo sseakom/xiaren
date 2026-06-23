@@ -12,7 +12,6 @@ import { UserService } from '@/services/user';
 import {
   formatNumber,
   formatTime,
-  formatDuration,
   openBilibili,
 } from '@/utils/util';
 import StarRating from '@/components/StarRating';
@@ -37,23 +36,18 @@ const DetailPage: React.FC = () => {
     if (!id) return;
     setLoading(true);
     try {
-      // 1) 动画信息
-      const a = await AnimationService.getById(id);
-      setAnim({ ...a, durationText: formatDuration(a.duration) } as Animation);
-
-      // 2) 我的评分
-      const ms = await RatingService.getMyRating(id);
+      // 4 个独立云函数，并行拉取：getById / getMyRating / getStatus / calcScore
+      const [a, ms, status, sc] = await Promise.all([
+        AnimationService.getById(id),
+        RatingService.getMyRating(id),
+        CollectionService.getStatus(id),
+        ScoreService.calc(id),
+      ]);
+      setAnim(a as Animation);
       setMyScore(ms);
       setHasRated(ms > 0);
-
-      // 3) 收藏状态
-      const { isCollected: ic, isWatched: iw } =
-        await CollectionService.getStatus(id);
-      setIsCollected(ic);
-      setIsWatched(iw);
-
-      // 4) 评分分布
-      const sc = await ScoreService.calc(id);
+      setIsCollected(status.isCollected);
+      setIsWatched(status.isWatched);
       setWR(sc.WR);
       setR(sc.R);
       setDistribution(sc.distribution || {});

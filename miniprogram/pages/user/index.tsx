@@ -98,13 +98,14 @@ const UserPage: React.FC = () => {
     if (!avatarUrl) return;
     try {
       Taro.showLoading({ title: '更新中…', mask: true });
-      // 临时路径上传到云存储，得到永久 https URL
-      const fileID = await Taro.cloud.uploadFile({ cloudPath: `avatar/${UserService.openid}_${Date.now()}.jpg`, filePath: avatarUrl });
+      // 走 UserService.uploadAvatar，封装到 service 层
+      const fileID = await UserService.uploadAvatar(avatarUrl);
       await UserService.updateProfile({
         nickName: user?.nickName || '微信用户',
-        avatarUrl: fileID.fileID,
+        avatarUrl: fileID,
       });
-      await load();
+      // 只同步本地 userInfo，不再全量 load()
+      setUser(UserService.userInfo);
       Taro.hideLoading();
       Taro.showToast({ title: '头像已更新', icon: 'success' });
     } catch (err) {
@@ -123,7 +124,7 @@ const UserPage: React.FC = () => {
         nickName,
         avatarUrl: user?.avatarUrl || '',
       });
-      await load();
+      setUser(UserService.userInfo);
     } catch (err) {
       console.error('[User] 昵称更新失败', err);
     }

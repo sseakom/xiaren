@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useReachBottom, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro';
 import { Collection } from '@/types';
-import { CollectionService, AnimationService } from '@/services/business';
+import { CollectionService } from '@/services/business';
 import { formatTime } from '@/utils/util';
 import { goHome } from '@/utils/nav';
 import EmptyState from '@/components/EmptyState';
@@ -22,9 +22,9 @@ const MyCollectionsPage: React.FC = () => {
   // 列表项附带派生字段 timeText，单独扩展类型以避免 setState 类型不匹配
   type CollectionItem = Collection & { timeText?: string };
   const [list, setList] = useState<CollectionItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
 
   useShareAppMessage(() => ({
@@ -38,29 +38,19 @@ const MyCollectionsPage: React.FC = () => {
       try {
         if (p === 0) setLoading(true);
         setLoadingMore(p > 0);
-        const all = await CollectionService.listByUser(t, (p + 1) * PAGE_SIZE);
-        const start = p * PAGE_SIZE;
-        const slice = all.slice(start, start + PAGE_SIZE);
-
-        // 关联动画信息
-        const enriched: CollectionItem[] = await Promise.all(
-          slice.map(async (c: Collection): Promise<CollectionItem> => {
-            const base: CollectionItem = { ...c, timeText: formatTime(c.created_at) };
-            try {
-              const a = await AnimationService.getById(c.animation_id);
-              return {
-                ...base,
-                title: a.title,
-                up_name: a.up_name,
-                cover: a.cover,
-              };
-            } catch {
-              return base;
-            }
-          }),
+        // include_anim=true：云函数一次性返回 title/up_name/cover，去掉 N+1
+        const { list: data, total: cnt } = await CollectionService.listByUser(
+          t,
+          p,
+          PAGE_SIZE,
+          true,
         );
+        const enriched: CollectionItem[] = data.map((c) => ({
+          ...c,
+          timeText: formatTime(c.created_at),
+        }));
         setList((prev) => (p === 0 || refresh ? enriched : [...prev, ...enriched]));
-        setHasMore(slice.length >= PAGE_SIZE);
+        setTotal(cnt);
         setPage(p + 1);
       } catch (err) {
         console.error('[MyCollections] 加载失败', err);
@@ -76,7 +66,7 @@ const MyCollectionsPage: React.FC = () => {
   useEffect(() => {
     setList([]);
     setPage(0);
-    setHasMore(true);
+    setTotal(0);
     load(0, type);
     // 设置导航栏标题
     Taro.setNavigationBarTitle({
@@ -91,7 +81,8 @@ const MyCollectionsPage: React.FC = () => {
   });
 
   useReachBottom(() => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || loading) return;
+    if (list.length >= total) return;
     setLoadingMore(true);
     load(page, type);
   });
@@ -141,7 +132,10 @@ const MyCollectionsPage: React.FC = () => {
                 </View>
               </View>
             ))}
-            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
+            <LoadMoreFooter
+              hasMore={list.length < total}
+              loading={loadingMore}
+            />
           </ScrollView>
         ) : (
           !loading && (

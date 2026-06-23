@@ -2,9 +2,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useReachBottom, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro';
 import { Rating } from '@/types';
-import { RatingService, AnimationService } from '@/services/business';
+import { RatingService } from '@/services/business';
 import { formatTime } from '@/utils/util';
-import { goHome } from '@/utils/nav';
+import { goDetail, goHome } from '@/utils/nav';
 import EmptyState from '@/components/EmptyState';
 import Skeleton from '@/components/Skeleton';
 import StarRating from '@/components/StarRating';
@@ -14,10 +14,10 @@ import styles from './index.module.scss';
 const PAGE_SIZE = 20;
 
 const MyRatingsPage: React.FC = () => {
-  const [list, setList] = useState<(Rating & { animTitle?: string; animCover?: string })[]>([]);
+  const [list, setList] = useState<Rating[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
 
   useShareAppMessage(() => ({
@@ -29,24 +29,14 @@ const MyRatingsPage: React.FC = () => {
     try {
       if (p === 0) setLoading(true);
       setLoadingMore(p > 0);
-      const res = await RatingService.listByUser((p + 1) * PAGE_SIZE);
-      // 分页切片
-      const start = p * PAGE_SIZE;
-      const slice = res.slice(start, start + PAGE_SIZE);
-
-      // 关联动画信息
-      const enriched = await Promise.all(
-        slice.map(async (r) => {
-          try {
-            const a = await AnimationService.getById(r.animation_id);
-            return { ...r, animTitle: a.title, animCover: a.cover };
-          } catch {
-            return r;
-          }
-        }),
+      // include_anim=true：云函数一次性回传 animTitle/animCover，去掉 N+1
+      const { list: data, total: cnt } = await RatingService.listByUser(
+        p,
+        PAGE_SIZE,
+        true,
       );
-      setList((prev) => (p === 0 || refresh ? enriched : [...prev, ...enriched]));
-      setHasMore(slice.length >= PAGE_SIZE);
+      setList((prev) => (p === 0 || refresh ? data : [...prev, ...data]));
+      setTotal(cnt);
       setPage(p + 1);
     } catch (err) {
       console.error('[MyRatings] 加载失败', err);
@@ -68,13 +58,11 @@ const MyRatingsPage: React.FC = () => {
   });
 
   useReachBottom(() => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || loading) return;
+    if (list.length >= total) return;
     setLoadingMore(true);
     load(page);
   });
-
-  const goDetail = (id: string) =>
-    Taro.navigateTo({ url: `/pages/detail/index?id=${id}` });
 
   return (
     <View className={styles.pageMyRatings}>
@@ -105,7 +93,10 @@ const MyRatingsPage: React.FC = () => {
                 </View>
               </View>
             ))}
-            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
+            <LoadMoreFooter
+              hasMore={list.length < total}
+              loading={loadingMore}
+            />
           </ScrollView>
         ) : (
           !loading && (

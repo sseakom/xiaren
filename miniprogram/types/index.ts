@@ -18,6 +18,8 @@ export interface Animation {
   durationText?: string;
   /** 标签（逗号分隔的字符串，如 "沙雕,修仙,爆笑"） */
   tag?: string;
+  /** 预 split 后的标签数组（页面渲染时直接 map，避免反复 split） */
+  tags?: string[];
 }
 
 /** 评分实体 - 对应 ratings 集合 */
@@ -29,6 +31,9 @@ export interface Rating {
   created_at: string | Date;
   updated_at: string | Date;
   timeText?: string;
+  // 联表展示（云函数 include_anim=true 时回传）
+  animTitle?: string;
+  animCover?: string;
 }
 
 /** 收藏实体 - 对应 collections 集合 */

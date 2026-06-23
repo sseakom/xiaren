@@ -78,4 +78,4 @@ const AnimCard: React.FC<AnimCardProps> = ({
   );
 };
 
-export default AnimCard;
+export default React.memo(AnimCard);

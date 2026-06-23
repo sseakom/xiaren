@@ -43,7 +43,12 @@ const IndexPage: React.FC = () => {
         const res = await AnimationService.list(p, PAGE_SIZE, sortBy);
         const data = (res.list || []) as Animation[];
         const total = res.total || 0;
-        setList((prev) => (p === 0 || isRefresh ? data : [...prev, ...data]));
+        // 预 split tags，避免渲染时反复调用 split
+        const enriched = data.map((a) => ({
+          ...a,
+          tags: a.tag ? a.tag.split(',').filter(Boolean) : [],
+        }));
+        setList((prev) => (p === 0 || isRefresh ? enriched : [...prev, ...enriched]));
         // 用 total 判定：已加载数 < total 说明还有更多
         setHasMore((p + 1) * PAGE_SIZE < total);
         setPage(p + 1);
@@ -63,11 +68,19 @@ const IndexPage: React.FC = () => {
   }, [load]);
 
   useDidShow(() => {
-    // 从其他页面返回时，如果排序未变则刷新一次
+    // 只在从详情/搜索/收藏等非 tabbar 页面返回时刷新一次，
+    // 避免 tabbar 互切（首页 ↔ 我的）触发重复请求
+    const pages = Taro.getCurrentPages();
+    const prev = pages[pages.length - 2] as any;
+    const fromTabbar =
+      !prev ||
+      prev.route === '/pages/index/index' ||
+      prev.route === '/pages/search/index' ||
+      prev.route === '/pages/user/index';
+    if (fromTabbar) return;
     if (list.length > 0 && !loading) {
       load(0, true);
     }
-    // ⚠️ useDidShow 不重置排序，避免误触
   });
 
   usePullDownRefresh(async () => {
@@ -141,9 +154,9 @@ const IndexPage: React.FC = () => {
                 rank={idx}
                 footer={
                   <>
-                    {item.tag ? (
+                    {item.tags?.length ? (
                       <View className={styles.animtag}>
-                        {item.tag.split(',').map((tag: string) => (
+                        {item.tags.map((tag: string) => (
                           <Text key={tag} className={styles.animTag}>
                             {tag}
                           </Text>

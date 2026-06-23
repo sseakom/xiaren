@@ -115,15 +115,24 @@ export const RatingService = {
     return { newRating: !!result.newRating };
   },
 
-  /** 获取用户全部评分 */
-  async listByUser(limit = 50): Promise<Rating[]> {
-    if (!UserService.openid) return [];
+  /** 获取用户全部评分（带分页 + 关联动画信息） */
+  async listByUser(
+    page = 0,
+    pageSize = 20,
+    includeAnim = false,
+  ): Promise<{ list: Rating[]; total: number }> {
+    if (!UserService.openid) return { list: [], total: 0 };
     const res = (await CloudService.callFunction('rating', {
       action: 'listMy',
-      limit,
+      limit: pageSize,
+      offset: page * pageSize,
+      include_anim: includeAnim,
     })) as any;
-    const result = res?.result as { success?: boolean; data?: Rating[] } | undefined;
-    return result?.success ? result.data || [] : [];
+    const result = res?.result as
+      | { success?: boolean; data?: Rating[]; total?: number }
+      | undefined;
+    if (!result?.success) return { list: [], total: 0 };
+    return { list: result.data || [], total: result.total || 0 };
   },
 };
 
@@ -181,17 +190,25 @@ export const CollectionService = {
     };
   },
 
-  async listByUser(type: 'collect' | 'watched', limit = 50): Promise<Collection[]> {
-    if (!UserService.openid) return [];
+  async listByUser(
+    type: 'collect' | 'watched',
+    page = 0,
+    pageSize = 20,
+    includeAnim = false,
+  ): Promise<{ list: Collection[]; total: number }> {
+    if (!UserService.openid) return { list: [], total: 0 };
     const res = (await CloudService.callFunction('collection', {
       action: 'listMy',
       type,
-      limit,
+      limit: pageSize,
+      offset: page * pageSize,
+      include_anim: includeAnim,
     })) as any;
     const result = res?.result as
-      | { success?: boolean; data?: Collection[] }
+      | { success?: boolean; data?: Collection[]; total?: number }
       | undefined;
-    return result?.success ? result.data || [] : [];
+    if (!result?.success) return { list: [], total: 0 };
+    return { list: result.data || [], total: result.total || 0 };
   },
 };
 

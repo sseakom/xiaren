@@ -191,9 +191,28 @@ class UserServiceImpl {
       if (this.userInfo) {
         this.userInfo = { ...this.userInfo, ...profile };
       }
+      this.emit();
     } catch (err) {
       console.error('[User] updateProfile failed', err);
     }
+  }
+
+  /**
+   * 上传微信临时头像到云存储，返回永久 fileID
+   * 入参：chooseAvatar 回调里的 avatarUrl（微信返回的临时路径）
+   */
+  async uploadAvatar(tempFilePath: string): Promise<string> {
+    if (!this.openid || !tempFilePath) {
+      throw new Error('缺少 openid 或头像临时路径');
+    }
+    const res = await Taro.cloud.uploadFile({
+      cloudPath: `avatar/${this.openid}_${Date.now()}.jpg`,
+      filePath: tempFilePath,
+    });
+    if (!res?.fileID) {
+      throw new Error('云存储 uploadFile 未返回 fileID');
+    }
+    return res.fileID;
   }
 
   /** 加载统计（评分数/收藏数）—— 走云函数 userService.action='loadStats' */
