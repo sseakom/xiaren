@@ -137,8 +137,9 @@ export function openBilibili(bvid: string): void {
     Taro.showToast({ title: '无效的视频ID', icon: 'none' });
     return;
   }
+  const url = `https://www.bilibili.com/video/${bvid}`;
   Taro.setClipboardData({
-    data: bvid,
+    data: url,
     success: () => {
       Taro.showToast({ title: 'bvid 已复制', icon: 'none' });
     },
