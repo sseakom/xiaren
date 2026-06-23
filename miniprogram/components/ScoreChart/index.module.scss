@@ -1,7 +1,39 @@
 @use '@/styles/variables.scss' as *;
 
 .scoreChart {
-  margin-top: $spacing-xs;
+  margin-top: $spacing-md;
+}
+
+.scoreChart.compact {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+
+  .chartBody {
+    gap: 6rpx;
+  }
+
+  .chartLabel {
+    width: 64rpx;
+  }
+
+  .chartBarBg {
+    height: 10rpx;
+  }
+
+  .chartCount {
+    display: none;
+  }
+
+  .chartRatio {
+    min-width: 40rpx;
+  }
+
+  .empty {
+    padding: $spacing-sm 0;
+  }
 }
 
 .chartTitle {

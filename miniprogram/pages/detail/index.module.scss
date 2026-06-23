@@ -87,12 +87,23 @@
   padding: $spacing-md;
   margin-bottom: $spacing-sm;
   box-shadow: $shadow-card;
+  border-radius: $radius-md;
 }
 
-.scoreHeader {
+.scoreLayout {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: $spacing-md;
+}
+
+.scoreColLeft {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6rpx;
+  min-width: 0;
+  align-items: center;
 }
 
 .scoreMain {
@@ -102,7 +113,7 @@
 }
 
 .scoreBig {
-  font-size: 72rpx;
+  font-size: 64rpx;
   font-weight: $font-weight-bold;
   color: $color-primary;
   line-height: 1;
@@ -116,18 +127,12 @@
   font-weight: $font-weight-medium;
 }
 
-.scoreRight {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-  min-width: 0;
-}
-
 .scoreLevel {
   display: flex;
   align-items: center;
   gap: 6rpx;
+  flex-wrap: wrap;
+  margin-top: 4rpx;
 }
 
 .scoreLevelTag {
@@ -139,16 +144,19 @@
   padding: 4rpx 14rpx;
   border-radius: $radius-xs;
   line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .scoreLevelDesc {
-  font-size: $font-size-sm;
+  font-size: $font-size-xs;
   color: $color-text-secondary;
   @include text-ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .scoreMeta {
-  font-size: $font-size-sm;
+  font-size: $font-size-xs;
   color: $color-text-primary;
   font-weight: $font-weight-medium;
 }
@@ -159,9 +167,18 @@
 }
 
 .scoreDivider {
-  height: 1rpx;
+  width: 1rpx;
   background: $color-divider;
-  margin: $spacing-md 0;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.scoreColRight {
+  flex: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .myRatingSection {
@@ -169,19 +186,27 @@
   padding: $spacing-md;
   margin-bottom: $spacing-sm;
   box-shadow: $shadow-card;
+  border-radius: $radius-md;
 }
 
-.myRatingHeader {
+.myRatingRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: $spacing-sm;
+  gap: $spacing-md;
+  padding: $spacing-sm 0;
 }
 
 .myRatingTitle {
   font-size: $font-size-md;
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
+  flex-shrink: 0;
+}
+
+.myRatingStars {
+  flex: 1;
+  display: flex;
+  justify-content: center;
 }
 
 .myRatingBadge {
@@ -191,6 +216,7 @@
   padding: 4rpx 12rpx;
   border-radius: $radius-button;
   gap: 2rpx;
+  flex-shrink: 0;
 }
 
 .myRatingBadgeIcon {
@@ -212,17 +238,10 @@
   opacity: 0.7;
 }
 
-.myRatingBody {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $spacing-sm;
-  padding: $spacing-sm 0 $spacing-xs;
-}
-
 .myRatingHint {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+  flex-shrink: 0;
 }
 
 .actionRow {

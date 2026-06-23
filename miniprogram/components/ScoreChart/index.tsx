@@ -5,9 +5,11 @@ import styles from './index.module.scss';
 
 export interface ScoreChartProps {
   distribution: ScoreDistribution;
+  /** 紧凑模式：去掉标题 + 减小行距 + 弱化元信息，适配左右两列布局 */
+  compact?: boolean;
 }
 
-const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
+const ScoreChart: React.FC<ScoreChartProps> = ({ distribution, compact = false }) => {
   const data = useMemo(() => {
     if (!distribution || Object.keys(distribution).length === 0) {
       return { levels: [], total: 0 };
@@ -48,13 +50,17 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
   }, [distribution]);
 
   return (
-    <View className={styles.scoreChart}>
-      <View className={styles.chartTitle}>评分分布</View>
+    <View
+      className={`${styles.scoreChart} ${compact ? styles.compact : ''}`}
+    >
+      {!compact ? <View className={styles.chartTitle}>评分分布</View> : null}
       {data.levels.length === 0 ? (
         <View className={styles.empty}>
           <Text className={styles.emptyIcon}>📊</Text>
           <Text className={styles.emptyText}>暂无评分数据</Text>
-          <Text className={styles.emptyHint}>做第一个评分的人吧～</Text>
+          {!compact ? (
+            <Text className={styles.emptyHint}>做第一个评分的人吧～</Text>
+          ) : null}
         </View>
       ) : (
         <View className={styles.chartBody}>
@@ -78,7 +84,7 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution }) => {
           ))}
         </View>
       )}
-      {data.total > 0 ? (
+      {data.total > 0 && !compact ? (
         <View className={styles.chartFooter}>
           <Text>共 {data.total} 人评分</Text>
         </View>

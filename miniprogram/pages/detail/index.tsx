@@ -174,35 +174,52 @@ const DetailPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 评分区 */}
+        {/* 评分 + 评分分布（左右两列） */}
         <View className={styles.scoreSection}>
-          <View className={styles.scoreHeader}>
-            <View>
-              <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
-              <Text className={styles.scoreUnit}>/10</Text>
-            </View>
-            <View className={styles.scoreStats}>
-              <Text className={styles.scoreText}>贝叶斯综合评分</Text>
+          <View className={styles.scoreLayout}>
+            {/* 左：WR 综合分 */}
+            <View className={styles.scoreColLeft}>
+              <View className={styles.scoreMain}>
+                <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
+                <Text className={styles.scoreUnit}>/10</Text>
+              </View>
               <Text className={styles.scorePeople}>{R} 人参与</Text>
             </View>
-          </View>
 
-          <ScoreChart distribution={distribution} />
+            {/* 中：竖线分隔 */}
+            <View className={styles.scoreDivider} />
+
+            {/* 右：评分分布 */}
+            <View className={styles.scoreColRight}>
+              <ScoreChart distribution={distribution} compact />
+            </View>
+          </View>
         </View>
 
-        {/* 我的评分 */}
+        {/* 我的评分（横排） */}
         <View className={styles.myRatingSection}>
-          <Text className={styles.myRatingTitle}>我的评分</Text>
-          <View className={styles.myRatingBody}>
-            <StarRating
-              value={myScore}
-              disabled={false}
-              onChange={onRate}
-              showScore={false}
-            />
-            <Text className={styles.myRatingHint}>
-              {hasRated ? '点击星星修改评分' : '点击星星开始评分'}
-            </Text>
+          <View className={styles.myRatingRow}>
+            <Text className={styles.myRatingTitle}>我的评分</Text>
+            <View className={styles.myRatingStars}>
+              <StarRating
+                value={myScore}
+                disabled={false}
+                onChange={onRate}
+                showScore={false}
+                size={36}
+              />
+            </View>
+            {hasRated ? (
+              <View className={styles.myRatingBadge}>
+                <Text className={styles.myRatingBadgeIcon}>★</Text>
+                <Text className={styles.myRatingBadgeValue}>
+                  {myScore.toFixed(1)}
+                </Text>
+                <Text className={styles.myRatingBadgeUnit}>/ 5</Text>
+              </View>
+            ) : (
+              <Text className={styles.myRatingHint}>点击星星评分</Text>
+            )}
           </View>
         </View>
 
