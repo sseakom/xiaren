@@ -1,5 +1,6 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli';
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
+import path from 'path';
 import devConfig from './dev';
 import prodConfig from './prod';
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
@@ -38,7 +39,19 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
       },
     },
     cache: {
-      enable: false, // Webpack 持久化缓存配置，建议开启。默认配置请参考：https://docs.taro.zone/docs/config-detail#cache
+      // Webpack 5 持久化缓存：默认 false，开启后二次编译能显著提速
+      // 缓存目录：node_modules/.cache/webpack/（已被 .gitignore 覆盖）
+      // 模式：dev 和 prod 都走 filesystem
+      enable: true,
+      // Taro 默认 buildDependencies.config 指向 config/index（ts/js 都能解析到）
+      // 这里加 dev/prod，保证 config 下任一文件改动时缓存失效
+      buildDependencies: {
+        config: [
+          path.resolve(__dirname, 'index.ts'),
+          path.resolve(__dirname, 'dev.ts'),
+          path.resolve(__dirname, 'prod.ts'),
+        ],
+      },
     },
     mini: {
       postcss: {
@@ -62,6 +75,17 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
           args[0] = { ...(args[0] || {}), ignoreOrder: true };
           return args;
         });
+        // 修复 Taro 4 硬编码的 buildDependencies.files = [src/app.config]
+        // 源码根已迁到 miniprogram/，Taro 默认路径找不到会告警 + cache 命中失败
+        // 用 toConfig 取出最终 config，直接覆盖 files，再 merge 回去
+        // （绕开 chain.merge 默认的递归合并行为）
+        const finalConfig = chain.toConfig();
+        if ((finalConfig.cache as any)?.buildDependencies?.files) {
+          (finalConfig.cache as any).buildDependencies.files = [
+            path.resolve(__dirname, '..', 'miniprogram', 'app.config.ts'),
+          ];
+        }
+        chain.merge({ cache: (finalConfig.cache as any) });
       },
     },
     h5: {

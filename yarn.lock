@@ -9358,9 +9358,9 @@ html-minifier@4.0.0, html-minifier@^4.0.0:
     relateurl "^0.2.7"
     uglify-js "^3.5.1"
 
-html-tags@^3.2.0:
+html-tag@^3.2.0:
   version "3.3.1"
-  resolved "https://npm.amh-group.com/html-tags/-/html-tags-3.3.1.tgz#a04026a18c882e4bba8a01a3d39cfe465d40b5ce"
+  resolved "https://npm.amh-group.com/html-tag/-/html-tag-3.3.1.tgz#a04026a18c882e4bba8a01a3d39cfe465d40b5ce"
   integrity sha512-ztqyC3kLto0e9WbNp0aeP+M3kTt+nbaIveGmUxAtZa+8iFgKLUOD4YKM5j+f3QD89bra7UeumolZHKuOXnTmeQ==
 
 html-webpack-plugin@^5.6.0:
@@ -14623,7 +14623,7 @@ stylelint@^14.4.0:
     global-modules "^2.0.0"
     globby "^11.1.0"
     globjoin "^0.1.4"
-    html-tags "^3.2.0"
+    html-tag "^3.2.0"
     ignore "^5.2.1"
     import-lazy "^4.0.0"
     imurmurhash "^0.1.4"
@@ -14645,7 +14645,7 @@ stylelint@^14.4.0:
     strip-ansi "^6.0.1"
     style-search "^0.1.0"
     supports-hyperlinks "^2.3.0"
-    svg-tags "^1.0.0"
+    svg-tag "^1.0.0"
     table "^6.8.1"
     v8-compile-cache "^2.3.0"
     write-file-atomic "^4.0.2"
@@ -14730,9 +14730,9 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://npm.amh-group.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
-svg-tags@^1.0.0:
+svg-tag@^1.0.0:
   version "1.0.0"
-  resolved "https://npm.amh-group.com/svg-tags/-/svg-tags-1.0.0.tgz#58f71cee3bd519b59d4b2a843b6c7de64ac04764"
+  resolved "https://npm.amh-group.com/svg-tag/-/svg-tag-1.0.0.tgz#58f71cee3bd519b59d4b2a843b6c7de64ac04764"
   integrity sha512-ovssysQTa+luh7A5Weu3Rta6FJlFBBbInjOh722LIt6klpU2/HtdUbszju/G4devcvk8PGt7FCLv5wftu3THUA==
 
 svgo@^2.7.0:

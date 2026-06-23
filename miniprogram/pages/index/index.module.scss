@@ -31,6 +31,61 @@
   color: $color-text-tertiary;
 }
 
+/* ===== 排序 Tab 栏 ===== */
+.sortBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: $color-bg-card;
+  padding: $spacing-sm $spacing-md;
+  gap: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sortTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: $font-size-md - 2rpx;
+  color: $color-text-secondary;
+  padding: 8rpx 0;
+  position: relative;
+  transition: color $transition-fast;
+  white-space: nowrap;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 32rpx;
+    height: 4rpx;
+    background: $color-primary;
+    border-radius: 2rpx;
+    transition: transform $transition-base;
+  }
+}
+
+.sortTabActive {
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+
+  &::after {
+    transform: translateX(-50%) scaleX(1);
+  }
+}
+
+.sortArrow {
+  font-size: $font-size-xs;
+  line-height: 1;
+}
+
 .animList {
   flex: 1;
   padding: $spacing-sm;
@@ -104,11 +159,11 @@
 
 .animInfo {
   flex: 1;
+  min-width: 0;
   padding: $spacing-sm $spacing-sm + 4rpx;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
+  gap: 6rpx;
 }
 
 .animTitle {
@@ -116,7 +171,6 @@
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
   line-height: $line-height-normal;
-  margin-bottom: 8rpx;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -124,35 +178,78 @@
 }
 
 .animMeta {
-  margin-bottom: 8rpx;
-}
-
-.animCreator {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   font-size: $font-size-xs;
   color: $color-text-tertiary;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.metaAuthor {
+  color: $color-text-secondary;
+  max-width: 180rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.metaDot {
+  color: $color-text-tertiary;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.metaPlay {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.metaScore {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.metaScoreIcon {
+  font-size: $font-size-xs;
+  line-height: 1;
+}
+
+/* ===== 标签 ===== */
+.animtag {
+  display: flex;
+  flex-wrap: nowrap;        // 单行，超出横向滚动
+  gap: 6rpx;
+  width: 100%;
+  overflow-x: auto;         // 横向滚动
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;     // Firefox
+  &::-webkit-scrollbar {
+    display: none;           // Chrome / Safari 隐藏滚动条
+  }
+}
+
+.animTag {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: $color-primary-bg;
+  padding: 2rpx 10rpx;
+  border-radius: $radius-round;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;           // tag 不允许被压缩
 }
 
 .animStats {
-  display: flex;
-  gap: $spacing-md;
-}
-
-.statItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rpx;
-}
-
-.statValue {
-  font-size: $font-size-md - 2rpx;
-  font-weight: $font-weight-medium;
-  color: $color-text-primary;
-}
-
-.statLabel {
-  font-size: $font-size-xs;
-  color: $color-text-tertiary;
+  // 已合并到 .animMeta，保留空类避免被 CSS Modules 报错
 }
 
 .loadMore,

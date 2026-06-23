@@ -101,7 +101,7 @@ sha-diao-taro/
 
 | 集合 | 主键 | 用途 | 关键字段 |
 |---|---|---|---|
-| `animations` | `_id` | 动画信息 | `title` `bvid` `up_name` `cover` `duration` `play_count` `tags[]` `publish_time` |
+| `animations` | `_id` | 动画信息 | `title` `bvid` `up_name` `cover` `duration` `play_count` `tag[]` `publish_time` |
 | `ratings` | `_id` | 用户评分 | `user_id` `animation_id` `score` (0~5) `created_at` `updated_at` |
 | `collections` | `_id` | 收藏/看过 | `user_id` `animation_id` `type` (`collect`/`watched`) `created_at` |
 | `users` | `_id`(=openid) | 用户档案 | `openid` `nickName` `avatarUrl` `phoneNumber` `created_at` |
@@ -137,7 +137,7 @@ C = 全局平均分（取自 config 集合的 global_avg_score）
 
 1. **DB 端**：用宽松 RegExp（`tok1|tok2|...`）拉候选集（上限 200 条）
 2. **JS 端**：用 `fuzzyMatch` 再过滤一遍，去掉"碰巧命中但实际不相关"的噪声
-3. **JS 端排序**：`fuzzyScore` 评分（`title` × 2 优先 > `up_name` > `tags`）
+3. **JS 端排序**：`fuzzyScore` 评分（`title` × 2 优先 > `up_name` > `tag`）
 
 评分梯度：
 

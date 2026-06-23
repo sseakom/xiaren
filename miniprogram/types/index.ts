@@ -10,11 +10,14 @@ export interface Animation {
   cover: string;
   duration: number; // 秒
   play_count: number;
-  danmaku_count: number;
   like_count: number;
+  /** 贝叶斯综合评分（0-10） */
+  score?: number;
   publish_time: string | Date;
   update_time: string | Date;
   durationText?: string;
+  /** 标签（逗号分隔的字符串，如 "沙雕,修仙,爆笑"） */
+  tag?: string;
 }
 
 /** 评分实体 - 对应 ratings 集合 */

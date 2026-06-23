@@ -6,16 +6,39 @@ import { fuzzyMatch, fuzzyRank } from '@/utils/fuzzy';
 /**
  * 动画业务服务
  */
+/** 列表排序方式 */
+export type ListSort = 'publish_time' | 'play_count' | 'duration_asc' | 'duration_desc';
+
 export const AnimationService = {
-  /** 分页获取动画列表（按发布时间倒序） */
-  async list(page = 0, pageSize = 20) {
+  /**
+   * 分页获取动画列表
+   * @param page 页码（从 0 开始）
+   * @param pageSize 每页条数
+   * @param sortBy 排序方式：发布时间倒序（默认） / 播放量倒序 / 时长升序 / 时长降序
+   *
+   * 实现说明：一次拉全量（云开发单次 max 1000 条，本项目 < 500），
+   * 客户端内存排序 + 分页。好处是不动云函数、切换排序零延迟。
+   */
+  async list(page = 0, pageSize = 20, sortBy: ListSort = 'publish_time') {
     const res = await CloudService.db
       .collection('animations')
-      .orderBy('publish_time', 'desc')
-      .skip(page * pageSize)
-      .limit(pageSize)
+      .limit(1000)
       .get();
-    return res.data;
+    const data = (res.data || []) as any[];
+    const sorted = [...data].sort((a, b) => {
+      switch (sortBy) {
+        case 'play_count':
+          return (b.play_count || 0) - (a.play_count || 0);
+        case 'duration_asc':
+          return (a.duration || 0) - (b.duration || 0);
+        case 'duration_desc':
+          return (b.duration || 0) - (a.duration || 0);
+        case 'publish_time':
+        default:
+          return new Date(b.publish_time).getTime() - new Date(a.publish_time).getTime();
+      }
+    });
+    return sorted.slice(page * pageSize, (page + 1) * pageSize);
   },
 
   /** 获取单个动画详情 */

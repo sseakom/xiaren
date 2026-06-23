@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, Input, ScrollView, Image } from '@tarojs/components';
-import Taro, { useReachBottom, useShareAppMessage } from '@tarojs/taro';
+import Taro, { useReachBottom, useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Animation } from '@/types';
 import { CloudService } from '@/services/cloud';
 import { AnimationService } from '@/services/business';
@@ -24,11 +24,24 @@ const SearchPage: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [autoFocus, setAutoFocus] = useState(true);
+  const inputRef = useRef<any>(null);
 
   useShareAppMessage(() => ({
     title: '来虾仁宇宙搜点好玩的',
     path: '/pages/search/index',
   }));
+
+  // 页面每次显示时（包括从其他页面返回）都重新聚焦
+  // 单纯靠 focus 属性只在首次挂载生效，useDidShow 解决"返回搜索页不聚焦"
+  useDidShow(() => {
+    setAutoFocus(false);
+    Taro.nextTick(() => {
+      setAutoFocus(true);
+      // 双保险：直接调原生 focus
+      if (inputRef.current?.focus) inputRef.current.focus();
+    });
+  });
 
   useEffect(() => {
     const h = Taro.getStorageSync(STORAGE_KEY) || [];
@@ -133,12 +146,13 @@ const SearchPage: React.FC = () => {
         <View className={styles.searchInputWrap}>
           <Text className={styles.searchIcon}>🔍</Text>
           <Input
+            ref={inputRef}
             className={styles.searchInput}
             placeholder="搜索动画名称、UP主..."
             value={keyword}
             onInput={(e) => setKeyword(e.detail.value)}
             onConfirm={onSearch}
-            focus
+            focus={autoFocus}
             confirmType="search"
           />
           {keyword ? (
@@ -162,7 +176,7 @@ const SearchPage: React.FC = () => {
                   清除
                 </Text>
               </View>
-              <View className={styles.historyTags}>
+              <View className={styles.historytag}>
                 {history.map((h) => (
                   <Text
                     key={h}
@@ -178,7 +192,7 @@ const SearchPage: React.FC = () => {
 
           <View className={styles.searchHot}>
             <Text className={styles.hotTitle}>🔥 热门搜索</Text>
-            <View className={styles.hotTags}>
+            <View className={styles.hottag}>
               {HOT_KEYWORDS.map((kw) => (
                 <Text
                   key={kw}

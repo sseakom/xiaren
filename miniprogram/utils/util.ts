@@ -35,12 +35,53 @@ export function formatTime(date: string | Date | undefined | null): string {
   return '刚刚';
 }
 
-/** 格式化时长（秒 → mm:ss 或 hh:mm:ss） */
-export function formatDuration(seconds: number | string | undefined | null): string {
-  if (seconds) {
-     return seconds.toString()
+/** 格式化时长
+ *  支持两种输入：
+ *  - 数字：原始秒数（如 125 → "02:05"，3725 → "1:02:05"）
+ *  - 字符串：已是 mm:ss / hh:mm:ss 格式（如 "1670:39" → "27:50:39"）
+ *  - 其他非法输入：返回 "--:--"
+ *
+ *  - < 1 小时：mm:ss（如 23:45、5:03）
+ *  - >= 1 小时：hh:mm:ss（如 1:23:45、10:00:00）
+ */
+export function formatDuration(input: number | string | undefined | null): string {
+  if (input == null) return '--:--';
+
+  let total: number;
+
+  if (typeof input === 'number') {
+    total = input;
+  } else {
+    // 字符串：可能是 "1670:39" (mm:ss) / "1:23:45" (hh:mm:ss) / "285" (纯数字)
+    const str = String(input).trim();
+    if (!str) return '--:--';
+    if (/^\d+(\.\d+)?$/.test(str)) {
+      // 纯数字字符串 → 当成秒数
+      total = Number(str);
+    } else if (/^\d+(:\d+){1,2}$/.test(str)) {
+      // mm:ss 或 hh:mm:ss
+      const parts = str.split(':').map(Number);
+      if (parts.length === 2) {
+        const [m, s] = parts;
+        total = m * 60 + s;
+      } else {
+        const [h, m, s] = parts;
+        total = h * 3600 + m * 60 + s;
+      }
+    } else {
+      return '--:--';
+    }
   }
-  return '--:--';
+
+  if (isNaN(total) || total < 0) return '--:--';
+
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = Math.floor(total % 60);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
 /** 评分转文字描述（10 分制） */

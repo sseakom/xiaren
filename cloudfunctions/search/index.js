@@ -93,7 +93,7 @@ exports.main = async (event, context) => {
       .where(_.or([
         { title: db.RegExp({ regexp: pattern, options: 'i' }) },
         { up_name: db.RegExp({ regexp: pattern, options: 'i' }) },
-        { tags: db.RegExp({ regexp: pattern, options: 'i' }) },
+        { tag: db.RegExp({ regexp: pattern, options: 'i' }) },
       ]))
       .orderBy('publish_time', 'desc')
       .limit(200)
@@ -103,17 +103,17 @@ exports.main = async (event, context) => {
 
     // 2. JS 端过滤（去掉"碰巧命中 pattern 但并不真模糊匹配"的噪声）
     const matched = list.filter(
-      (it) => fuzzyMatch(it.title, kw) || fuzzyMatch(it.up_name, kw) || (Array.isArray(it.tags) && it.tags.some((tg) => fuzzyMatch(tg, kw)))
+      (it) => fuzzyMatch(it.title, kw) || fuzzyMatch(it.up_name, kw) || (Array.isArray(it.tag) && it.tag.some((tg) => fuzzyMatch(tg, kw)))
     );
 
-    // 3. JS 端排序：title 优先，其次 up_name，最后 tags
+    // 3. JS 端排序：title 优先，其次 up_name，最后 tag
     const scored = matched.map((it) => {
       const titleScore = fuzzyScore(it.title || '', kw);
       const upScore = fuzzyScore(it.up_name || '', kw);
-      const tagScore = Array.isArray(it.tags)
-        ? Math.max(...it.tags.map((tg) => fuzzyScore(String(tg), kw)))
+      const tagcore = Array.isArray(it.tag)
+        ? Math.max(...it.tag.map((tg) => fuzzyScore(String(tg), kw)))
         : 0;
-      return { it, score: Math.max(titleScore * 2, upScore, tagScore) };
+      return { it, score: Math.max(titleScore * 2, upScore, tagcore) };
     }).filter((x) => x.score > 0);
 
     scored.sort((a, b) => b.score - a.score);

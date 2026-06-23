@@ -180,12 +180,6 @@ const DetailPage: React.FC = () => {
               </Text>
               <Text className={styles.statLabel}>点赞</Text>
             </View>
-            <View className={styles.statItem}>
-              <Text className={styles.statValue}>
-                {formatNumber(anim.danmaku_count || 0)}
-              </Text>
-              <Text className={styles.statLabel}>弹幕</Text>
-            </View>
           </View>
         </View>
 
