@@ -18,6 +18,7 @@ import {
 import StarRating from '@/components/StarRating';
 import ScoreChart from '@/components/ScoreChart';
 import Skeleton from '@/components/Skeleton';
+import StatItem from '@/components/StatItem';
 import styles from './index.module.scss';
 
 const DetailPage: React.FC = () => {
@@ -168,18 +169,14 @@ const DetailPage: React.FC = () => {
           </View>
 
           <View className={styles.statsRow}>
-            <View className={styles.statItem}>
-              <Text className={styles.statValue}>
-                {formatNumber(anim.play_count || 0)}
-              </Text>
-              <Text className={styles.statLabel}>播放</Text>
-            </View>
-            <View className={styles.statItem}>
-              <Text className={styles.statValue}>
-                {formatNumber(anim.like_count || 0)}
-              </Text>
-              <Text className={styles.statLabel}>点赞</Text>
-            </View>
+            <StatItem
+              value={formatNumber(anim.play_count || 0)}
+              label="播放"
+            />
+            <StatItem
+              value={formatNumber(anim.like_count || 0)}
+              label="点赞"
+            />
           </View>
         </View>
 

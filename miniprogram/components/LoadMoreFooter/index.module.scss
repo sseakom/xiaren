@@ -1,0 +1,16 @@
+@use '@/styles/variables.scss' as *;
+
+.loadMore,
+.loadEnd {
+  text-align: center;
+  padding: $spacing-lg;
+  font-size: $font-size-sm;
+}
+
+.loadMore {
+  color: $color-text-secondary;
+}
+
+.loadEnd {
+  color: $color-text-tertiary;
+}

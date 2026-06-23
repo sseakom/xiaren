@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image } from '@tarojs/components';
+import { View, Text } from '@tarojs/components';
 import Taro, { useReachBottom, usePullDownRefresh, useDidShow, useShareAppMessage } from '@tarojs/taro';
 import { Animation } from '@/types';
 import { AnimationService, ListSort } from '@/services/business';
-import { formatNumber, formatDuration } from '@/utils/util';
+import { formatNumber } from '@/utils/util';
+import { goDetail, goSearch } from '@/utils/nav';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CustomTabbar from '@/components/CustomTabbar';
+import AnimCard from '@/components/AnimCard';
+import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
@@ -40,11 +43,7 @@ const IndexPage: React.FC = () => {
         const res = await AnimationService.list(p, PAGE_SIZE, sortBy);
         const data = (res.list || []) as Animation[];
         const total = res.total || 0;
-        const enriched = data.map((a) => ({
-          ...a,
-          durationText: formatDuration(a.duration),
-        }));
-        setList((prev) => (p === 0 || isRefresh ? enriched : [...prev, ...enriched]));
+        setList((prev) => (p === 0 || isRefresh ? data : [...prev, ...data]));
         // 用 total 判定：已加载数 < total 说明还有更多
         setHasMore((p + 1) * PAGE_SIZE < total);
         setPage(p + 1);
@@ -93,11 +92,6 @@ const IndexPage: React.FC = () => {
     }
   };
 
-  const goSearch = () => Taro.navigateTo({ url: '/pages/search/index' });
-
-  const goDetail = (id: string) =>
-    Taro.navigateTo({ url: `/pages/detail/index?id=${id}` });
-
   // 时长 tab 是否激活（asc 或 desc 都算激活）
   const isDurationActive = sortBy === 'duration_asc' || sortBy === 'duration_desc';
   const durationArrow = sortBy === 'duration_asc' ? '↑' : sortBy === 'duration_desc' ? '↓' : '';
@@ -140,73 +134,50 @@ const IndexPage: React.FC = () => {
         {list.length > 0 ? (
           <View className={styles.animList}>
             {list.map((item, idx) => (
-              <View
+              <AnimCard
                 key={item._id}
-                className={styles.animCard}
-                onClick={() => goDetail(item._id)}
-              >
-                <View className={styles.animCoverWrap}>
-                  <Image
-                    className={styles.animCover}
-                    src={item.cover}
-                    mode="aspectFill"
-                    lazyLoad
-                  />
-                  {item.duration ? (
-                    <View className={styles.animDuration}>
-                      {item.durationText}
+                item={item}
+                onClick={goDetail}
+                rank={idx}
+                footer={
+                  <>
+                    {item.tag ? (
+                      <View className={styles.animtag}>
+                        {item.tag.split(',').map((tag: string) => (
+                          <Text key={tag} className={styles.animTag}>
+                            {tag}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    <View className={styles.animMeta}>
+                      <Text className={styles.metaAuthor} numberOfLines={1}>
+                        {item.up_name}
+                      </Text>
+                      <Text className={styles.metaDot}>·</Text>
+                      <Text className={styles.metaPlay}>
+                        {formatNumber(item.play_count || 0)} 播放
+                      </Text>
+                      {item.score != null ? (
+                        <>
+                          <Text className={styles.metaDot}>·</Text>
+                          <Text className={styles.metaScore}>
+                            <Text className={styles.metaScoreIcon}>★</Text>
+                            {item.score.toFixed(1)}
+                          </Text>
+                        </>
+                      ) : null}
                     </View>
-                  ) : null}
-                  <View className={styles.animRank}>
-                    <Text
-                      className={idx < 3 ? styles.rankTop : styles.rankNormal}
-                    >
-                      {idx + 1}
-                    </Text>
-                  </View>
-                </View>
-                <View className={styles.animInfo}>
-                  <Text className={styles.animTitle}>{item.title}</Text>
-                  {item.tag ? (
-                    <View className={styles.animtag}>
-                      {item.tag.split(',').map((tag: string) => (
-                        <Text key={tag} className={styles.animTag}>
-                          {tag}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  <View className={styles.animMeta}>
-                    <Text className={styles.metaAuthor} numberOfLines={1}>
-                      {item.up_name}
-                    </Text>
-                    <Text className={styles.metaDot}>·</Text>
-                    <Text className={styles.metaPlay}>
-                      {formatNumber(item.play_count || 0)} 播放
-                    </Text>
-                    {item.score != null && (
-                      <>
-                        <Text className={styles.metaDot}>·</Text>
-                        <Text className={styles.metaScore}>
-                          <Text className={styles.metaScoreIcon}>★</Text>
-                          {item.score.toFixed(1)}
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                </View>
-              </View>
+                  </>
+                }
+              />
             ))}
 
-            {hasMore ? (
-              <View className={styles.loadMore}>
-                <Text>{loadingMore ? '加载中...' : '上拉加载更多'}</Text>
-              </View>
-            ) : (
-              <View className={styles.loadEnd}>
-                <Text>— 已经到底了 —</Text>
-              </View>
-            )}
+            <LoadMoreFooter
+              hasMore={hasMore}
+              loading={loadingMore}
+              prompt="上拉加载更多"
+            />
           </View>
         ) : (
             !loading && (
@@ -217,7 +188,7 @@ const IndexPage: React.FC = () => {
               />
             )
           )}
-        </Skeleton>
+      </Skeleton>
         <CustomTabbar currentPath="/pages/index/index" />
       </View>
     );

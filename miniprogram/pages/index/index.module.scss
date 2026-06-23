@@ -92,93 +92,6 @@
   box-sizing: border-box;
 }
 
-.animCard {
-  background: $color-bg-card;
-  border-radius: $radius-md;
-  margin-bottom: $spacing-sm;
-  overflow: hidden;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-  display: flex;
-}
-
-.animCoverWrap {
-  width: 260rpx;
-  height: 180rpx;
-  position: relative;
-  flex-shrink: 0;
-  background: $color-bg-hover;
-}
-
-.animCover {
-  width: 100%;
-  height: 100%;
-}
-
-.animDuration {
-  position: absolute;
-  bottom: 8rpx;
-  right: 8rpx;
-  background: $color-bg-mask;
-  color: $color-text-white;
-  font-size: $font-size-xs;
-  padding: 2rpx 8rpx;
-  border-radius: $radius-xs;
-}
-
-.animRank {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rankTop,
-.rankNormal {
-  font-size: $font-size-md;
-  font-weight: $font-weight-bold;
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0 0 $radius-md 0;
-  color: $color-text-white;
-}
-
-.rankTop {
-  background: linear-gradient(135deg, $color-primary, $color-primary-light);
-}
-
-.rankNormal {
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.animInfo {
-  flex: 1;
-  min-width: 0;
-  height: 180rpx;
-  padding: $spacing-sm $spacing-sm + 4rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-  box-sizing: border-box;
-}
-
-.animTitle {
-  font-size: $font-size-md;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
-  line-height: $line-height-normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
 .animMeta {
   display: flex;
   align-items: center;
@@ -249,16 +162,4 @@
   line-height: 1.4;
   white-space: nowrap;
   flex-shrink: 0;           // tag 不允许被压缩
-}
-
-.animStats {
-  // 已合并到 .animMeta，保留空类避免被 CSS Modules 报错
-}
-
-.loadMore,
-.loadEnd {
-  text-align: center;
-  padding: $spacing-lg;
-  font-size: $font-size-sm;
-  color: $color-text-tertiary;
 }

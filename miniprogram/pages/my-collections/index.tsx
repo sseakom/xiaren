@@ -4,8 +4,10 @@ import Taro, { useReachBottom, usePullDownRefresh, useShareAppMessage } from '@t
 import { Collection } from '@/types';
 import { CollectionService, AnimationService } from '@/services/business';
 import { formatTime } from '@/utils/util';
+import { goHome } from '@/utils/nav';
 import EmptyState from '@/components/EmptyState';
 import Skeleton from '@/components/Skeleton';
+import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
@@ -139,15 +141,7 @@ const MyCollectionsPage: React.FC = () => {
                 </View>
               </View>
             ))}
-            {hasMore ? (
-              <View className={styles.loadMore}>
-                <Text>{loadingMore ? '加载中...' : '上拉加载更多'}</Text>
-              </View>
-            ) : (
-              <View className={styles.loadEnd}>
-                <Text>— 已经到底了 —</Text>
-              </View>
-            )}
+            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
           </ScrollView>
         ) : (
           !loading && (
@@ -161,7 +155,7 @@ const MyCollectionsPage: React.FC = () => {
               }
               showBtn
               btnText="去首页"
-              onAction={() => Taro.reLaunch({ url: '/pages/index/index' })}
+              onAction={goHome}
             />
           )
         )}

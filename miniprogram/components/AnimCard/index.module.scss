@@ -1,0 +1,88 @@
+@use '@/styles/variables.scss' as *;
+
+.animCard {
+  display: flex;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  cursor: pointer;
+}
+
+.hover {
+  background: $color-bg-hover;
+  opacity: 0.95;
+}
+
+.animCoverWrap {
+  position: relative;
+  width: 240rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+  border-radius: $radius-sm;
+  overflow: hidden;
+  background: $color-divider;
+}
+
+.animCover {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.animDuration {
+  position: absolute;
+  right: 8rpx;
+  bottom: 8rpx;
+  padding: 2rpx 8rpx;
+  background: rgba(0, 0, 0, 0.6);
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  border-radius: $radius-sm;
+  line-height: 1.2;
+}
+
+.animRank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 4rpx 12rpx 4rpx 10rpx;
+  background: rgba(0, 0, 0, 0.55);
+  border-bottom-right-radius: $radius-sm;
+  color: $color-text-white;
+  line-height: 1;
+}
+
+.rankTop {
+  color: $color-primary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+}
+
+.rankNormal {
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.animInfo {
+  flex: 1;
+  min-width: 0;
+  margin-left: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.animTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

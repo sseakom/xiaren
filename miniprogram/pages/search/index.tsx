@@ -1,13 +1,17 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, Input, ScrollView, Image } from '@tarojs/components';
-import Taro, { useReachBottom, useShareAppMessage, useDidShow } from '@tarojs/taro';
+import { View, Text, Input, ScrollView } from '@tarojs/components';
+import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
 import { Animation } from '@/types';
 import { CloudService } from '@/services/cloud';
 import { AnimationService } from '@/services/business';
-import { formatNumber, formatDuration } from '@/utils/util';
+import { formatNumber } from '@/utils/util';
+import { goDetail } from '@/utils/nav';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CustomTabbar from '@/components/CustomTabbar';
+import AnimCard from '@/components/AnimCard';
+import StatItem from '@/components/StatItem';
+import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
@@ -75,11 +79,7 @@ const SearchPage: React.FC = () => {
           list = (await AnimationService.search(q, p, PAGE_SIZE)) as Animation[];
           setTotal(list.length);
         }
-        const enriched = list.map((a) => ({
-          ...a,
-          durationText: formatDuration(a.duration),
-        }));
-        setResults((prev) => (p === 0 || isNew ? enriched : [...prev, ...enriched]));
+        setResults((prev) => (p === 0 || isNew ? list : [...prev, ...list]));
         setHasMore(list.length >= PAGE_SIZE);
         setPage(p + 1);
       } catch (err2) {
@@ -111,6 +111,11 @@ const SearchPage: React.FC = () => {
     setResults([]);
   };
 
+  useReachBottom(() => {
+    if (loading || loadingMore || !hasMore || !hasSearched) return;
+    doSearch(page);
+  });
+
   /**
    * 点击历史/热门关键词：先回填输入框，再立即用最新值触发搜索
    * 直接传 kw 给 doSearch，避免 setTimeout/onChange 竞态
@@ -130,15 +135,6 @@ const SearchPage: React.FC = () => {
     Taro.removeStorageSync(STORAGE_KEY);
     setHistory([]);
   };
-
-  const goDetail = (id: string) =>
-    Taro.navigateTo({ url: `/pages/detail/index?id=${id}` });
-
-  useReachBottom(() => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    doSearch(page);
-  });
 
   return (
     <View className={styles.pageSearch}>
@@ -214,54 +210,33 @@ const SearchPage: React.FC = () => {
                   <Text>找到 {total} 个结果</Text>
                 </View>
                 {results.map((item) => (
-                  <View
+                  <AnimCard
                     key={item._id}
-                    className={styles.animCard}
-                    onClick={() => goDetail(item._id)}
-                  >
-                    <View className={styles.animCoverWrap}>
-                      <Image
-                        className={styles.animCover}
-                        src={item.cover}
-                        mode="aspectFill"
-                        lazyLoad
-                      />
-                      {item.duration ? (
-                        <View className={styles.animDuration}>
-                          {item.durationText}
+                    item={item}
+                    onClick={goDetail}
+                    footer={
+                      <>
+                        <Text className={styles.animCreator}>{item.up_name}</Text>
+                        <View className={styles.animStats}>
+                          <StatItem
+                            value={formatNumber(item.play_count || 0)}
+                            label="播放"
+                          />
+                          <StatItem
+                            value={formatNumber(item.like_count || 0)}
+                            label="点赞"
+                          />
                         </View>
-                      ) : null}
-                    </View>
-                    <View className={styles.animInfo}>
-                      <Text className={styles.animTitle}>{item.title}</Text>
-                      <Text className={styles.animCreator}>{item.up_name}</Text>
-                      <View className={styles.animStats}>
-                        <View className={styles.statItem}>
-                          <Text className={styles.statValue}>
-                            {formatNumber(item.play_count || 0)}
-                          </Text>
-                          <Text className={styles.statLabel}>播放</Text>
-                        </View>
-                        <View className={styles.statItem}>
-                          <Text className={styles.statValue}>
-                            {formatNumber(item.like_count || 0)}
-                          </Text>
-                          <Text className={styles.statLabel}>点赞</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
+                      </>
+                    }
+                  />
                 ))}
 
-                {hasMore ? (
-                  <View className={styles.loadMore}>
-                    <Text>{loadingMore ? '加载中...' : '点击加载更多'}</Text>
-                  </View>
-                ) : (
-                  <View className={styles.loadEnd}>
-                    <Text>— 已经到底了 —</Text>
-                  </View>
-                )}
+                <LoadMoreFooter
+                  hasMore={hasMore}
+                  loading={loadingMore}
+                  prompt="点击加载更多"
+                />
               </ScrollView>
             ) : (
               !loading && (
