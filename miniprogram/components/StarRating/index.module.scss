@@ -1,0 +1,94 @@
+@use '@/styles/variables.scss' as *;
+
+.starRating {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+
+  &.disabled {
+    pointer-events: none;
+  }
+}
+
+.starsRow {
+  display: inline-flex;
+  align-items: center;
+}
+
+.starWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.starBg {
+  color: #e8e8e8;
+  font-weight: $font-weight-bold;
+  user-select: none;
+}
+
+.starFgWrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.starFg {
+  color: $color-primary;
+  font-weight: $font-weight-bold;
+  user-select: none;
+  // 文本阴影让星标更立体
+  text-shadow: 0 2rpx 4rpx rgba(255, 107, 53, 0.25);
+}
+
+.hitAreaLeft,
+.hitAreaRight {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 3;
+}
+
+.hitAreaLeft {
+  left: 0;
+}
+
+.hitAreaRight {
+  right: 0;
+}
+
+.scoreText {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 107, 53, 0.08);
+  transition: background 0.2s ease;
+}
+
+.scoreValue {
+  font-size: 32rpx;
+  font-weight: $font-weight-bold;
+  color: #999;
+  transition: color 0.2s ease;
+}
+
+.scoreValueActive {
+  color: $color-primary;
+}
+
+.scoreUnit {
+  font-size: $font-size-sm;
+  color: #bbb;
+}
+
+.hint {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-top: 2rpx;
+}

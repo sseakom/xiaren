@@ -1,0 +1,62 @@
+@use '@/styles/variables.scss' as *;
+
+.pageMyRatings {
+  min-height: 100vh;
+  background: $color-bg-page;
+}
+
+.ratingList {
+  padding: $spacing-sm;
+}
+
+.ratingItem {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  overflow: hidden;
+  display: flex;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.ratingCover {
+  width: 200rpx;
+  height: 140rpx;
+  flex-shrink: 0;
+  background: $color-bg-hover;
+}
+
+.ratingInfo {
+  flex: 1;
+  padding: $spacing-sm $spacing-sm + 4rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.ratingTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.ratingStars {
+  margin: 4rpx 0;
+}
+
+.ratingTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.loadMore,
+.loadEnd {
+  text-align: center;
+  padding: $spacing-lg;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}

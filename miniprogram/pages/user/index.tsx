@@ -1,0 +1,254 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, Image, Button, Input } from '@tarojs/components';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
+import { UserService } from '@/services/user';
+import { User, UserStats } from '@/types';
+import Skeleton from '@/components/Skeleton';
+import CustomTabbar from '@/components/CustomTabbar';
+import styles from './index.module.scss';
+
+const UserPage: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<UserStats>({
+    ratingCount: 0,
+    collectCount: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  // const [busy, setBusy] = useState(false);
+
+  useShareAppMessage(() => ({
+    title: '我在玩「虾仁宇宙」，一起来吧',
+    path: '/pages/user/index',
+  }));
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      await UserService.waitForReady();
+      setUser(UserService.userInfo);
+      const s = await UserService.loadStats();
+      setStats(s);
+    } catch (err) {
+      console.error('[User] 加载失败', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const goMyRatings = () => Taro.navigateTo({ url: '/pages/my-ratings/index' });
+  const goMyCollections = () => Taro.navigateTo({ url: '/pages/my-collections/index' });
+  const goWatched = () => Taro.navigateTo({ url: '/pages/my-collections/index?type=watched' });
+
+  /** 微信一键登录：复用缓存 + 校验会话，未登录时才会真正走云函数 */
+  const onLogin = async () => {
+    try {
+      Taro.showLoading({ title: '登录中…', mask: true });
+      await UserService.silentLogin();
+      await load();
+      Taro.hideLoading();
+      Taro.showToast({ title: '登录成功', icon: 'success' });
+    } catch (err) {
+      Taro.hideLoading();
+      console.error('[User] 登录失败', err);
+      Taro.showToast({ title: '登录失败，请重试', icon: 'none' });
+    }
+  };
+
+  /**
+   * 手机号一键登录：用户点击带 open-type="getPhoneNumber" 的按钮后，微信弹出
+   * 原生授权弹窗（"申请获取并验证您的手机号 / 158****0601 / 不允许 / 使用其它号码"）
+   * 用户允许后回调到这里，用 cloudID 交给 phoneLogin 云函数解密手机号
+   */
+  const onGetPhoneNumber = async (e: any) => {
+    // 微信回调 detail: { errMsg, encryptedData, iv, cloudID, code }
+    const detail = e?.detail || {};
+    if (detail.errMsg && !detail.errMsg.includes('ok')) {
+      // 用户点了"不允许"或"使用其它号码" → 静默回退到微信登录
+      console.log('[User] 用户取消手机号授权，回退到微信登录');
+      onLogin();
+      return;
+    }
+    if (!detail.cloudID && !detail.encryptedData) {
+      Taro.showToast({ title: '未获取到授权信息', icon: 'none' });
+      return;
+    }
+    try {
+      Taro.showLoading({ title: '登录中…', mask: true });
+      const { phoneNumber } = await UserService.phoneLogin(detail);
+      Taro.hideLoading();
+      Taro.showToast({
+        title: `已绑定 ${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}`,
+        icon: 'success',
+      });
+      await load();
+    } catch (err) {
+      Taro.hideLoading();
+      console.error('[User] 手机号登录失败', err);
+      Taro.showToast({ title: '登录失败，请重试', icon: 'none' });
+    }
+  };
+
+  /** 选择微信头像（仅 button open-type="chooseAvatar" 回调） */
+  const onChooseAvatar = async (e: any) => {
+    const avatarUrl: string = e?.detail?.avatarUrl;
+    if (!avatarUrl) return;
+    try {
+      Taro.showLoading({ title: '更新中…', mask: true });
+      // 临时路径上传到云存储，得到永久 https URL
+      const fileID = await Taro.cloud.uploadFile({ cloudPath: `avatar/${UserService.openid}_${Date.now()}.jpg`, filePath: avatarUrl });
+      await UserService.updateProfile({
+        nickName: user?.nickName || '微信用户',
+        avatarUrl: fileID.fileID,
+      });
+      await load();
+      Taro.hideLoading();
+      Taro.showToast({ title: '头像已更新', icon: 'success' });
+    } catch (err) {
+      Taro.hideLoading();
+      console.error('[User] 头像更新失败', err);
+      Taro.showToast({ title: '头像更新失败', icon: 'none' });
+    }
+  };
+
+  /** 昵称 input 失焦保存 */
+  const onNicknameBlur = async (e: any) => {
+    const nickName: string = (e?.detail?.value || '').trim();
+    if (!nickName || nickName === user?.nickName) return;
+    try {
+      await UserService.updateProfile({
+        nickName,
+        avatarUrl: user?.avatarUrl || '',
+      });
+      await load();
+    } catch (err) {
+      console.error('[User] 昵称更新失败', err);
+    }
+  };
+
+  /** 退出登录（二次确认） */
+  const onLogout = () => {
+    Taro.showModal({
+      title: '确认退出登录？',
+      content: '退出后将清除本地登录状态，下次使用需重新微信授权。',
+      confirmText: '退出',
+      confirmColor: '#FF4D4F',
+      cancelText: '取消',
+      success: (res) => {
+        if (!res.confirm) return;
+        UserService.logout();
+        load();
+        Taro.showToast({ title: '已退出登录', icon: 'success' });
+      },
+    });
+  };
+
+
+  return (
+    <View className={styles.pageUser}>
+      {/* 头部 */}
+      <View className={styles.header}>
+        <View className={styles.userInfo}>
+          {user ? (
+            // 已登录：button 才能调起 chooseAvatar
+            <Button
+              className={styles.avatarBtn}
+              openType="chooseAvatar"
+              onChooseAvatar={onChooseAvatar}
+            >
+              <Image
+                className={styles.avatar}
+                src={user.avatarUrl || 'https://picsum.photos/id/64/200/200'}
+                mode="aspectFill"
+              />
+            </Button>
+          ) : (
+            <Image
+              className={styles.avatar}
+              src="https://picsum.photos/id/64/200/200"
+              mode="aspectFill"
+            />
+          )}
+          <View className={styles.userMeta}>
+            {user ? (
+              <Input
+                className={styles.nickNameInput}
+                type="nickname"
+                value={user.nickName}
+                placeholder="点击设置昵称"
+                onBlur={onNicknameBlur}
+              />
+            ) : (
+              <Text className={styles.nickName}>点击登录</Text>
+            )}
+            <Text className={styles.userId}>
+              ID: {user?._id?.slice(-6) || '未登录'}
+            </Text>
+          </View>
+          {!user ? (
+            <Button
+              className={styles.phoneLoginBtn}
+              openType="getPhoneNumber"
+              onGetPhoneNumber={onGetPhoneNumber}
+            >
+              <Text className={styles.phoneLoginIcon}>📱</Text>
+              <Text>手机号一键登录</Text>
+            </Button>
+          ) : null}
+        </View>
+
+        {/* 统计卡片 */}
+        <Skeleton type="custom" loading={loading} height={120} width={100}>
+          <View className={styles.statsCard}>
+            <View className={styles.statItem} onClick={goMyRatings}>
+              <Text className={styles.statNum}>{stats.ratingCount}</Text>
+              <Text className={styles.statLabel}>我的评分</Text>
+            </View>
+            <View className={styles.statDivider} />
+            <View className={styles.statItem} onClick={goMyCollections}>
+              <Text className={styles.statNum}>{stats.collectCount}</Text>
+              <Text className={styles.statLabel}>我的收藏</Text>
+            </View>
+          </View>
+        </Skeleton>
+      </View>
+
+      {/* 功能列表 */}
+      <View className={styles.menuList}>
+        <View className={styles.menuItem} onClick={goMyRatings}>
+          <Text className={styles.menuIcon}>⭐</Text>
+          <Text className={styles.menuText}>我的评分</Text>
+          <Text className={styles.menuArrow}>›</Text>
+        </View>
+        <View className={styles.menuItem} onClick={goMyCollections}>
+          <Text className={styles.menuIcon}>★</Text>
+          <Text className={styles.menuText}>我的收藏</Text>
+          <Text className={styles.menuArrow}>›</Text>
+        </View>
+        <View className={styles.menuItem} onClick={goWatched}>
+          <Text className={styles.menuIcon}>✓</Text>
+          <Text className={styles.menuText}>我看过的</Text>
+          <Text className={styles.menuArrow}>›</Text>
+        </View>
+        {user ? (
+          <View className={styles.menuItem} onClick={onLogout}>
+            <Text className={`${styles.menuIcon} ${styles.menuIconDanger}`}>⏻</Text>
+            <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
+            <Text className={styles.menuArrow}>›</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View className={styles.about}>
+        <Text className={styles.aboutText}>虾仁宇宙 v1.0.0</Text>
+        <Text className={styles.aboutDesc}>记录你的每一次爆笑时刻</Text>
+      </View>
+      <CustomTabbar currentPath="/pages/user/index" />
+    </View>
+  );
+};
+
+export default UserPage;

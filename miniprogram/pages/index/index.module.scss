@@ -1,0 +1,164 @@
+@use '@/styles/variables.scss' as *;
+
+.pageIndex {
+  min-height: 100vh;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120rpx; // 预留底部 TabBar 高度
+}
+
+.searchBar {
+  padding: $spacing-sm $spacing-sm;
+  background: $color-bg-card;
+}
+
+.searchInput {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs + 4rpx;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  padding: $spacing-sm $spacing-md;
+}
+
+.searchIcon {
+  font-size: $font-size-md;
+}
+
+.searchPlaceholder {
+  font-size: $font-size-md - 2rpx;
+  color: $color-text-tertiary;
+}
+
+.animList {
+  flex: 1;
+  padding: $spacing-sm;
+  box-sizing: border-box;
+}
+
+.animCard {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+}
+
+.animCoverWrap {
+  width: 260rpx;
+  height: 180rpx;
+  position: relative;
+  flex-shrink: 0;
+  background: $color-bg-hover;
+}
+
+.animCover {
+  width: 100%;
+  height: 100%;
+}
+
+.animDuration {
+  position: absolute;
+  bottom: 8rpx;
+  right: 8rpx;
+  background: $color-bg-mask;
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  padding: 2rpx 8rpx;
+  border-radius: $radius-xs;
+}
+
+.animRank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rankTop,
+.rankNormal {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 $radius-md 0;
+  color: $color-text-white;
+}
+
+.rankTop {
+  background: linear-gradient(135deg, $color-primary, $color-primary-light);
+}
+
+.rankNormal {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.animInfo {
+  flex: 1;
+  padding: $spacing-sm $spacing-sm + 4rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.animTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: $line-height-normal;
+  margin-bottom: 8rpx;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.animMeta {
+  margin-bottom: 8rpx;
+}
+
+.animCreator {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.animStats {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+}
+
+.statValue {
+  font-size: $font-size-md - 2rpx;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.loadMore,
+.loadEnd {
+  text-align: center;
+  padding: $spacing-lg;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}

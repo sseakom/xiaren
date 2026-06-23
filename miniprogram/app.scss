@@ -1,0 +1,26 @@
+@use '@/styles/variables.scss' as *;
+
+// 全局基础样式
+page {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
+    'PingFang SC', sans-serif;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  background-color: $color-bg-page;
+  box-sizing: border-box;
+}
+
+// 通用类（迁移自原 wxss）
+.safeBottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+// Button 组件点击反馈
+button {
+  transition: opacity $transition-fast;
+
+  &:active {
+    opacity: 0.85;
+  }
+}

@@ -1,0 +1,221 @@
+@use '@/styles/variables.scss' as *;
+
+.pageSearch {
+  min-height: 100vh;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120rpx; // 预留底部 TabBar 高度
+}
+
+.searchHeader {
+  display: flex;
+  align-items: center;
+  padding: $spacing-sm $spacing-sm;
+  background: $color-bg-card;
+  gap: $spacing-sm;
+}
+
+.searchInputWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  padding: $spacing-xs + 4rpx $spacing-sm + 4rpx;
+  gap: $spacing-xs + 4rpx;
+}
+
+.searchIcon {
+  font-size: $font-size-md - 2rpx;
+}
+
+.searchInput {
+  flex: 1;
+  font-size: $font-size-md - 2rpx;
+  color: $color-text-primary;
+}
+
+.searchClear {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  padding: 4rpx 8rpx;
+}
+
+.searchBtn {
+  font-size: $font-size-md;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+  flex-shrink: 0;
+}
+
+.searchHistory {
+  padding: $spacing-sm;
+  background: $color-bg-card;
+  margin-top: $spacing-sm;
+}
+
+.historyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.historyTitle {
+  font-size: $font-size-md - 2rpx;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.historyClear {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.historyTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.historyTag {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-page;
+  padding: 8rpx $spacing-sm;
+  border-radius: $radius-button;
+}
+
+.searchHot {
+  padding: $spacing-lg $spacing-sm;
+}
+
+.hotTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.hotTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.hotTag {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  background: $color-primary-bg;
+  padding: 8rpx $spacing-sm;
+  border-radius: $radius-button;
+}
+
+.searchResults {
+  margin-top: $spacing-sm;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.resultList {
+  flex: 1;
+  box-sizing: border-box;
+}
+
+.resultHeader {
+  padding: $spacing-sm $spacing-sm;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.animCard {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  margin: 0 $spacing-sm $spacing-sm;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+}
+
+.animCoverWrap {
+  width: 240rpx;
+  height: 160rpx;
+  position: relative;
+  flex-shrink: 0;
+  background: $color-bg-hover;
+}
+
+.animCover {
+  width: 100%;
+  height: 100%;
+}
+
+.animDuration {
+  position: absolute;
+  bottom: 8rpx;
+  right: 8rpx;
+  background: $color-bg-mask;
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  padding: 2rpx 8rpx;
+  border-radius: $radius-xs;
+}
+
+.animInfo {
+  flex: 1;
+  padding: $spacing-sm $spacing-sm + 4rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.animTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: $line-height-normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.animCreator {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.animStats {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+}
+
+.statValue {
+  font-size: $font-size-md - 2rpx;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.loadMore,
+.loadEnd {
+  text-align: center;
+  padding: $spacing-lg;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}

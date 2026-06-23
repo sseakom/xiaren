@@ -1,0 +1,78 @@
+@use '@/styles/variables.scss' as *;
+
+.skeleton {
+  padding: $spacing-sm;
+}
+
+.skeletonRow {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: $radius-sm;
+  margin-bottom: $spacing-sm;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonCard {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  margin: $spacing-sm;
+  overflow: hidden;
+}
+
+.skeletonCover {
+  height: 340rpx;
+  margin-bottom: 0;
+  border-radius: 0;
+}
+
+.skeletonCardBody {
+  padding: $spacing-md;
+}
+
+.skeletonTitle {
+  height: 36rpx;
+  width: 80%;
+}
+
+.skeletonText {
+  height: 24rpx;
+  width: 100%;
+
+  &.short {
+    width: 60%;
+  }
+}
+
+.skeletonDetail {
+  padding: 0 $spacing-sm;
+}
+
+.skeletonCoverLarge {
+  height: 400rpx;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-md;
+}
+
+.skeletonListItem {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md $spacing-sm;
+  gap: $spacing-sm;
+}
+
+.skeletonAvatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-round;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.skeletonListContent {
+  flex: 1;
+}

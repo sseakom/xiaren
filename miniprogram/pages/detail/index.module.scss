@@ -1,0 +1,224 @@
+@use '@/styles/variables.scss' as *;
+
+.pageDetail {
+  min-height: 100vh;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailScroll {
+  flex: 1;
+}
+
+.coverSection {
+  width: 100%;
+  height: 440rpx;
+  position: relative;
+  background: $color-bg-hover;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.coverMask {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80rpx;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 $spacing-sm $spacing-sm;
+}
+
+.coverDuration {
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  background: $color-bg-mask;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+}
+
+.infoSection {
+  background: $color-bg-card;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.title {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: $line-height-normal;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.metaCreator {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.metaTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.statsRow {
+  display: flex;
+  gap: $spacing-lg;
+  padding: $spacing-sm 0;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.statValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.scoreSection {
+  background: $color-bg-card;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.scoreHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.scoreBig {
+  font-size: 64rpx;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  line-height: 1;
+}
+
+.scoreUnit {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  margin-left: 4rpx;
+}
+
+.scoreStats {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.scoreText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.scorePeople {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.myRatingSection {
+  background: $color-bg-card;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.myRatingTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.myRatingBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.myRatingHint {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.actionRow {
+  display: flex;
+  background: $color-bg-card;
+  padding: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.actionBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  padding: $spacing-xs;
+  border-radius: $radius-sm;
+  transition: background $transition-fast;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+
+  &.actionActive {
+    .actionIcon {
+      color: $color-primary;
+    }
+    .actionText {
+      color: $color-primary;
+      font-weight: $font-weight-medium;
+    }
+  }
+}
+
+.actionIcon {
+  font-size: 40rpx;
+  color: $color-text-secondary;
+  line-height: 1;
+}
+
+.actionText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.bottomSafe {
+  height: $spacing-lg;
+}
+
+.empty {
+  padding: $spacing-lg;
+  text-align: center;
+  color: $color-text-tertiary;
+}

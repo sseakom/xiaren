@@ -25,9 +25,8 @@ coverage
 # nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
+.swc
+.vscode
 # Bower dependency directory (https://bower.io/)
 bower_components
 
@@ -46,7 +45,6 @@ web_modules/
 
 # TypeScript cache
 *.tsbuildinfo
-
 # Optional npm cache directory
 .npm
 

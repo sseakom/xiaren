@@ -1,0 +1,106 @@
+@use '@/styles/variables.scss' as *;
+
+.pageMyCollections {
+  min-height: 100vh;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabBar {
+  display: flex;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.tabItem {
+  flex: 1;
+  text-align: center;
+  padding: $spacing-sm;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  position: relative;
+
+  &.tabActive {
+    color: $color-primary;
+    font-weight: $font-weight-semibold;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 56rpx;
+      height: 6rpx;
+      background: linear-gradient(90deg, $color-primary, $color-primary-light);
+      border-radius: 3rpx;
+    }
+  }
+}
+
+.collList {
+  flex: 1;
+  padding: $spacing-sm;
+}
+
+.collItem {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+  padding: $spacing-sm;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.collCover {
+  width: 160rpx;
+  height: 100rpx;
+  border-radius: $radius-sm;
+  flex-shrink: 0;
+  background: $color-bg-hover;
+}
+
+.collInfo {
+  flex: 1;
+  padding: 0 $spacing-sm + 4rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.collTitle {
+  font-size: $font-size-md - 2rpx;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+.collCreator {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.collTime {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.collArrow {
+  font-size: $font-size-lg;
+  color: $color-text-tertiary;
+  padding: 0 $spacing-xs;
+}
+
+.loadMore,
+.loadEnd {
+  text-align: center;
+  padding: $spacing-lg;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
