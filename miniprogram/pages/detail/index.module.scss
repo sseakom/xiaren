@@ -207,6 +207,7 @@
   flex: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .myRatingBadge {
@@ -230,6 +231,7 @@
   font-weight: $font-weight-bold;
   color: $color-primary;
   line-height: 1.2;
+  text-align: center;
 }
 
 .myRatingBadgeUnit {

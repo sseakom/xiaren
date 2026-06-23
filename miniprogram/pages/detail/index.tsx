@@ -25,7 +25,6 @@ const DetailPage: React.FC = () => {
   const [anim, setAnim] = useState<Animation | null>(null);
   const [loading, setLoading] = useState(true);
   const [myScore, setMyScore] = useState(0);
-  const [hasRated, setHasRated] = useState(false);
   const [isCollected, setIsCollected] = useState(false);
   const [isWatched, setIsWatched] = useState(false);
   const [WR, setWR] = useState(0);
@@ -45,7 +44,6 @@ const DetailPage: React.FC = () => {
       ]);
       setAnim(a as Animation);
       setMyScore(ms);
-      setHasRated(ms > 0);
       setIsCollected(status.isCollected);
       setIsWatched(status.isWatched);
       setWR(sc.WR);
@@ -77,7 +75,6 @@ const DetailPage: React.FC = () => {
     setMyScore(v);
     try {
       const { newRating } = await RatingService.submit(id, v);
-      setHasRated(true);
       Taro.showToast({
         title: newRating ? '感谢你的评分！' : '已更新评分',
         icon: 'success',
@@ -206,20 +203,14 @@ const DetailPage: React.FC = () => {
                 disabled={false}
                 onChange={onRate}
                 showScore={false}
-                size={36}
+                size={40}
               />
             </View>
-            {hasRated ? (
-              <View className={styles.myRatingBadge}>
-                <Text className={styles.myRatingBadgeIcon}>★</Text>
-                <Text className={styles.myRatingBadgeValue}>
-                  {myScore.toFixed(1)}
-                </Text>
-                <Text className={styles.myRatingBadgeUnit}>/ 5</Text>
-              </View>
-            ) : (
-              <Text className={styles.myRatingHint}>点击星星评分</Text>
-            )}
+           <View className={styles.myRatingBadge}>
+              <Text className={styles.myRatingBadgeValue}>
+                {myScore.toFixed(1)}
+              </Text>
+            </View>
           </View>
         </View>
 
