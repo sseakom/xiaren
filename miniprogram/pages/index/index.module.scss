@@ -160,10 +160,12 @@
 .animInfo {
   flex: 1;
   min-width: 0;
+  height: 180rpx;
   padding: $spacing-sm $spacing-sm + 4rpx;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
+  box-sizing: border-box;
 }
 
 .animTitle {
@@ -185,6 +187,7 @@
   color: $color-text-tertiary;
   min-width: 0;
   overflow: hidden;
+  margin-top: auto;        // 把 meta 推到 .animInfo 底部
 }
 
 .metaAuthor {

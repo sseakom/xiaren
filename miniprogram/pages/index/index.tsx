@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import Taro, { useReachBottom, usePullDownRefresh, useDidShow, useShareAppMessage } from '@tarojs/taro';
 import { Animation } from '@/types';
 import { AnimationService, ListSort } from '@/services/business';
@@ -37,13 +37,16 @@ const IndexPage: React.FC = () => {
   const load = useCallback(
     async (p: number, isRefresh = false) => {
       try {
-        const data = (await AnimationService.list(p, PAGE_SIZE, sortBy)) as Animation[];
+        const res = await AnimationService.list(p, PAGE_SIZE, sortBy);
+        const data = (res.list || []) as Animation[];
+        const total = res.total || 0;
         const enriched = data.map((a) => ({
           ...a,
           durationText: formatDuration(a.duration),
         }));
         setList((prev) => (p === 0 || isRefresh ? enriched : [...prev, ...enriched]));
-        setHasMore(data.length >= PAGE_SIZE);
+        // 用 total 判定：已加载数 < total 说明还有更多
+        setHasMore((p + 1) * PAGE_SIZE < total);
         setPage(p + 1);
       } catch (err) {
         console.error('[Index] 加载失败', err);
@@ -135,7 +138,7 @@ const IndexPage: React.FC = () => {
 
       <Skeleton type="card" loading={loading}>
         {list.length > 0 ? (
-          <ScrollView scrollY className={styles.animList}>
+          <View className={styles.animList}>
             {list.map((item, idx) => (
               <View
                 key={item._id}
@@ -197,14 +200,14 @@ const IndexPage: React.FC = () => {
 
             {hasMore ? (
               <View className={styles.loadMore}>
-                <Text>{loadingMore ? '加载中...' : '点击加载更多'}</Text>
+                <Text>{loadingMore ? '加载中...' : '上拉加载更多'}</Text>
               </View>
             ) : (
               <View className={styles.loadEnd}>
                 <Text>— 已经到底了 —</Text>
               </View>
             )}
-          </ScrollView>
+          </View>
         ) : (
             !loading && (
               <EmptyState

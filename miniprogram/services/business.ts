@@ -4,22 +4,95 @@ import { UserService } from './user';
 import { fuzzyMatch, fuzzyRank } from '@/utils/fuzzy';
 
 /**
+ * 把 duration 字段统一解析成秒数
+ *   - number         → 原值
+ *   - "1000:23"      → 1000 * 60 + 23
+ *   - "1:23:45"      → 1 * 3600 + 23 * 60 + 45
+ *   - "285"          → 285
+ *   - 其他/空        → 0
+ *
+ * 与 cloudfunctions/listAnimations/index.js 的 parseDurationToSec 保持一致。
+ * 排序按"冒号前的分钟数"实际对应的是总秒数（1000 分钟 = 60000 秒）。
+ */
+function parseDurationToSec(d: unknown): number {
+  if (d == null) return 0;
+  if (typeof d === 'number') {
+    return isFinite(d) && d >= 0 ? d : 0;
+  }
+  const str = String(d).trim();
+  if (!str) return 0;
+  if (/^\d+(:\d+){1,2}$/.test(str)) {
+    const parts = str.split(':').map(Number);
+    if (parts.length === 2) {
+      const [m, s] = parts;
+      return m * 60 + s;
+    }
+    const [h, m, s] = parts;
+    return h * 3600 + m * 60 + s;
+  }
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const n = Number(str);
+    return isFinite(n) && n >= 0 ? n : 0;
+  }
+  return 0;
+}
+
+/**
  * 动画业务服务
  */
 /** 列表排序方式 */
 export type ListSort = 'publish_time' | 'play_count' | 'duration_asc' | 'duration_desc';
 
+/** 列表分页结果（含总数） */
+export interface ListResult {
+  list: any[];
+  total: number;
+}
+
 export const AnimationService = {
   /**
-   * 分页获取动画列表
+   * 分页获取动画列表（走云函数 listAnimations）
    * @param page 页码（从 0 开始）
    * @param pageSize 每页条数
    * @param sortBy 排序方式：发布时间倒序（默认） / 播放量倒序 / 时长升序 / 时长降序
    *
-   * 实现说明：一次拉全量（云开发单次 max 1000 条，本项目 < 500），
-   * 客户端内存排序 + 分页。好处是不动云函数、切换排序零延迟。
+   * 实现说明：服务端做 count + orderBy + skip + limit，前端只拿当前页。
+   * 返回 { list, total }：前端按 total 判定 hasMore（避免末页 < pageSize 时误判）。
+   * 云函数失败时降级为客户端全量查询 + 内存分页，保证旧环境也能跑。
    */
-  async list(page = 0, pageSize = 20, sortBy: ListSort = 'publish_time') {
+  async list(
+    page = 0,
+    pageSize = 20,
+    sortBy: ListSort = 'publish_time',
+  ): Promise<ListResult> {
+    try {
+      const res = (await CloudService.callFunction('listAnimations', {
+        page,
+        pageSize,
+        sortBy,
+      })) as any;
+      const result = res?.result as
+        | { success?: boolean; data?: any[]; total?: number; error?: string }
+        | undefined;
+      if (result?.success) {
+        return {
+          list: result.data || [],
+          total: result.total || 0,
+        };
+      }
+      console.warn('[Animation] listAnimations 返回失败,降级客户端分页', result?.error);
+    } catch (err) {
+      console.warn('[Animation] listAnimations 调用失败,降级客户端分页', err);
+    }
+    return this.listClientFallback(page, pageSize, sortBy);
+  },
+
+  /** 降级方案：直接查 DB + 内存排序 + slice（云函数不可用时） */
+  async listClientFallback(
+    page: number,
+    pageSize: number,
+    sortBy: ListSort,
+  ): Promise<ListResult> {
     const res = await CloudService.db
       .collection('animations')
       .limit(1000)
@@ -30,15 +103,18 @@ export const AnimationService = {
         case 'play_count':
           return (b.play_count || 0) - (a.play_count || 0);
         case 'duration_asc':
-          return (a.duration || 0) - (b.duration || 0);
+          return parseDurationToSec(a.duration) - parseDurationToSec(b.duration);
         case 'duration_desc':
-          return (b.duration || 0) - (a.duration || 0);
+          return parseDurationToSec(b.duration) - parseDurationToSec(a.duration);
         case 'publish_time':
         default:
           return new Date(b.publish_time).getTime() - new Date(a.publish_time).getTime();
       }
     });
-    return sorted.slice(page * pageSize, (page + 1) * pageSize);
+    return {
+      list: sorted.slice(page * pageSize, (page + 1) * pageSize),
+      total: sorted.length,
+    };
   },
 
   /** 获取单个动画详情 */

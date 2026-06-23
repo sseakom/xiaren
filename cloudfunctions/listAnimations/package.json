@@ -1,0 +1,9 @@
+{
+  "name": "listAnimations",
+  "version": "1.0.0",
+  "description": "首页列表分页查询",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
