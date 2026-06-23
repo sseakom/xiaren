@@ -7,6 +7,7 @@ import { formatNumber } from '@/utils/util';
 import { goDetail } from '@/utils/nav';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
+import CategoryFilter from '@/components/CategoryFilter';
 import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
@@ -27,6 +28,7 @@ const SearchPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [autoFocus, setAutoFocus] = useState(true);
+  const [category, setCategory] = useState('');
   const inputRef = useRef<any>(null);
 
   useShareAppMessage(() => ({
@@ -60,14 +62,14 @@ const SearchPage: React.FC = () => {
   };
 
   const doSearch = useCallback(
-    async (p: number, isNew = false, kw: string = keyword) => {
+    async (p: number, isNew = false, kw: string = keyword, cat: string = category) => {
       const q = kw.trim();
       if (!q) return;
       try {
         if (p === 0) setLoading(true);
         setLoadingMore(p > 0);
         // 走 AnimationService.search（内部 callFunction 'search' + 超时/日志）
-        const list = (await AnimationService.search(q, p, PAGE_SIZE)) as Animation[];
+        const list = (await AnimationService.search(q, p, PAGE_SIZE, cat)) as Animation[];
         setTotal(list.length);
         setResults((prev) => (p === 0 || isNew ? list : [...prev, ...list]));
         setHasMore(list.length >= PAGE_SIZE);
@@ -80,7 +82,7 @@ const SearchPage: React.FC = () => {
         setLoadingMore(false);
       }
     },
-    [keyword],
+    [keyword, category],
   );
 
   const onSearch = () => {
@@ -126,6 +128,20 @@ const SearchPage: React.FC = () => {
     setHistory([]);
   };
 
+  /** 切换分类筛选：用当前关键词重新搜索 */
+  const onSwitchCategory = (cat: string) => {
+    setCategory(cat);
+    const q = keyword.trim();
+    if (!q) {
+      Taro.showToast({ title: '请先输入搜索关键词', icon: 'none' });
+      return;
+    }
+    setHasSearched(true);
+    setPage(0);
+    setResults([]);
+    doSearch(0, true, q, cat);
+  };
+
   return (
     <View className={styles.pageSearch}>
       <View className={styles.searchHeader}>
@@ -150,6 +166,10 @@ const SearchPage: React.FC = () => {
         <Text className={styles.searchBtn} onClick={onSearch}>
           搜索
         </Text>
+      </View>
+
+      <View className={styles.filterBar}>
+        <CategoryFilter value={category} onChange={onSwitchCategory} />
       </View>
 
       {!hasSearched ? (

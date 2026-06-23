@@ -49,6 +49,14 @@
   flex-shrink: 0;
 }
 
+.filterBar {
+  padding: $spacing-xs $spacing-sm;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+  position: relative;
+  z-index: 20;
+}
+
 .searchHistory {
   padding: $spacing-sm;
   background: $color-bg-card;

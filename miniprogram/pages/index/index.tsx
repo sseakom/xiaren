@@ -10,6 +10,7 @@ import EmptyState from '@/components/EmptyState';
 import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
+import CategoryFilter from '@/components/CategoryFilter';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
@@ -30,6 +31,7 @@ const IndexPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState<ListSort>('publish_time');
+  const [category, setCategory] = useState('');
 
   // 分享给朋友
   useShareAppMessage(() => ({
@@ -40,7 +42,7 @@ const IndexPage: React.FC = () => {
   const load = useCallback(
     async (p: number, isRefresh = false) => {
       try {
-        const res = await AnimationService.list(p, PAGE_SIZE, sortBy);
+        const res = await AnimationService.list(p, PAGE_SIZE, sortBy, category);
         const data = (res.list || []) as Animation[];
         const total = res.total || 0;
         // 预 split tags，避免渲染时反复调用 split
@@ -60,7 +62,7 @@ const IndexPage: React.FC = () => {
         setLoadingMore(false);
       }
     },
-    [sortBy],
+    [sortBy, category],
   );
 
   useEffect(() => {
@@ -109,6 +111,12 @@ const IndexPage: React.FC = () => {
   const isDurationActive = sortBy === 'duration_asc' || sortBy === 'duration_desc';
   const durationArrow = sortBy === 'duration_asc' ? '↑' : sortBy === 'duration_desc' ? '↓' : '';
 
+  /** 切换分类筛选 */
+  const onSwitchCategory = (cat: string) => {
+    setCategory(cat);
+    setLoading(true);
+  };
+
   return (
     <View className={styles.pageIndex}>
       {/* 搜索入口 */}
@@ -141,6 +149,9 @@ const IndexPage: React.FC = () => {
             </View>
           );
         })}
+        <View className={styles.sortBarRight}>
+          <CategoryFilter value={category} onChange={onSwitchCategory} />
+        </View>
       </View>
 
       <Skeleton type="card" loading={loading}>

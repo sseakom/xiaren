@@ -1,0 +1,118 @@
+@use '@/styles/variables.scss' as *;
+
+.wrap {
+  position: relative;
+  z-index: 100;
+}
+
+/* ===== 触发条 ===== */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-page;
+  padding: 8rpx $spacing-sm;
+  border-radius: $radius-button;
+  transition: color $transition-fast, background $transition-fast;
+  white-space: nowrap;
+}
+
+.triggerActive {
+  color: $color-primary;
+  background: $color-primary-bg;
+  font-weight: $font-weight-medium;
+}
+
+.triggerIcon {
+  font-size: $font-size-sm;
+  line-height: 1;
+}
+
+.triggerLabel {
+  line-height: 1.2;
+}
+
+.triggerArrow {
+  font-size: $font-size-xs;
+  line-height: 1;
+  transition: transform $transition-fast;
+}
+
+.arrowUp {
+  transform: rotate(180deg);
+}
+
+.triggerOpen {
+  color: $color-primary;
+}
+
+/* ===== 展开面板 ===== */
+.panel {
+  position: absolute;
+  top: calc(100% + 8rpx);
+  right: 0;
+  width: 560rpx;
+  max-width: 90vw;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-popup;
+  overflow: hidden;
+  z-index: 110;
+}
+
+.scroll {
+  max-height: 850rpx;
+  padding: $spacing-sm $spacing-sm $spacing-sm;
+  box-sizing: border-box;
+}
+
+.group {
+  padding: $spacing-xs 0;
+
+  & + & {
+    border-top: 1rpx solid $color-divider;
+  }
+}
+
+.groupTitle {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-xs;
+  padding-left: 4rpx;
+}
+
+.groupTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+}
+
+.tag {
+  font-size: $font-size-xs + 2rpx;
+  color: $color-text-secondary;
+  background: $color-bg-page;
+  padding: 6rpx $spacing-xs + 4rpx;
+  border-radius: $radius-button;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.tagActive {
+  color: $color-text-white;
+  background: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+/* ===== 遮罩（点击外部关闭） ===== */
+.mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 105;
+}

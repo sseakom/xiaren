@@ -76,8 +76,25 @@ function buildLoosePattern(keyword) {
   return tokens.join('|');
 }
 
+/**
+ * 判断某条动画是否包含指定 tag
+ *  - tag 可能是逗号分隔字符串，也可能是数组（兼容历史数据）
+ */
+function hasTag(tag, target) {
+  if (!tag || !target) return false;
+  if (Array.isArray(tag)) {
+    return tag.some((t) => String(t).trim() === target);
+  }
+  return String(tag)
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .includes(target);
+}
+
 exports.main = async (event, context) => {
   const { keyword, page = 0, pageSize = 20 } = event;
+  const category = String(event.category || '').trim();
 
   if (!keyword || !String(keyword).trim()) {
     return { data: [], total: 0 };
@@ -99,7 +116,12 @@ exports.main = async (event, context) => {
       .limit(200)
       .get();
 
-    const list = res.data || [];
+    let list = res.data || [];
+
+    // 1.5 分类筛选（在模糊匹配前先按 category 收窄，避免无谓打分）
+    if (category) {
+      list = list.filter((it) => hasTag(it.tag, category));
+    }
 
     // 2. JS 端过滤（去掉"碰巧命中 pattern 但并不真模糊匹配"的噪声）
     const matched = list.filter(

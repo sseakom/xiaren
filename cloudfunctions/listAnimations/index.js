@@ -1,10 +1,11 @@
 // cloudfunctions/listAnimations/index.js
 // 首页列表云函数 - 服务端分页 + 排序
 //
-// 入参：{ page, pageSize, sortBy }
+// 入参：{ page, pageSize, sortBy, category }
 //   - page      页码（从 0 开始）
 //   - pageSize  每页条数（默认 20）
 //   - sortBy    'publish_time' | 'play_count' | 'duration_asc' | 'duration_desc'
+//   - category  分类筛选（对应 tag 中的某一项，空字符串表示不筛选）
 //
 // 出参：{ success, data, total, page, pageSize }
 //   - data      当前页数据
@@ -69,20 +70,42 @@ function compare(a, b, sortBy) {
   }
 }
 
+/**
+ * 判断某条动画是否包含指定 tag
+ *  - tag 可能是逗号分隔字符串，也可能是数组（兼容历史数据）
+ */
+function hasTag(tag, target) {
+  if (!tag || !target) return false;
+  if (Array.isArray(tag)) {
+    return tag.some((t) => String(t).trim() === target);
+  }
+  return String(tag)
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .includes(target);
+}
+
 exports.main = async (event) => {
   const page = Number(event.page) || 0;
   const pageSize = Math.min(Math.max(Number(event.pageSize) || 20, 1), 100);
   const sortBy = String(event.sortBy || 'publish_time');
+  const category = String(event.category || '').trim();
 
   try {
     // 1) 一次拉全量（云开发单次 max 1000，本项目 < 500）
     const res = await db.collection('animations').limit(1000).get();
-    const all = res.data || [];
+    let all = res.data || [];
 
-    // 2) 内存排序
+    // 2) 分类筛选（tag 为逗号分隔字符串，兼容数组形态）
+    if (category) {
+      all = all.filter((it) => hasTag(it.tag, category));
+    }
+
+    // 3) 内存排序
     const sorted = [...all].sort((a, b) => compare(a, b, sortBy));
 
-    // 3) 切片
+    // 4) 切片
     const total = sorted.length;
     const start = page * pageSize;
     const data = sorted.slice(start, start + pageSize);

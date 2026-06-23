@@ -33,11 +33,13 @@ export const AnimationService = {
     page = 0,
     pageSize = 20,
     sortBy: ListSort = 'publish_time',
+    category = '',
   ): Promise<ListResult> {
     const res = (await CloudService.callFunction('listAnimations', {
       page,
       pageSize,
       sortBy,
+      category,
     })) as any;
     const result = res?.result as
       | { success?: boolean; data?: any[]; total?: number; error?: string }
@@ -67,12 +69,13 @@ export const AnimationService = {
    *  - 服务端负责 RegExp 候选集 + fuzzyScore 排序 + 分页
    *  - 客户端只传 keyword / page / pageSize
    */
-  async search(keyword: string, page = 0, pageSize = 20) {
+  async search(keyword: string, page = 0, pageSize = 20, category = '') {
     if (!keyword || !keyword.trim()) return [];
     const res = (await CloudService.callFunction('search', {
       keyword: keyword.trim(),
       page,
       pageSize,
+      category,
     })) as any;
     const result = res?.result as { data?: any[]; error?: string } | undefined;
     if (result?.error) {

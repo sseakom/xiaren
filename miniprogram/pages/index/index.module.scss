@@ -86,6 +86,11 @@
   line-height: 1;
 }
 
+.sortBarRight {
+  margin-left: auto;
+  position: relative;
+}
+
 .animList {
   flex: 1;
   padding: $spacing-sm;
