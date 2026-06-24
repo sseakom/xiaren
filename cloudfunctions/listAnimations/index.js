@@ -71,19 +71,42 @@ function compare(a, b, sortBy) {
 }
 
 /**
- * 判断某条动画是否包含指定 tag
- *  - tag 可能是逗号分隔字符串，也可能是数组（兼容历史数据）
+ * 判断某条动画是否匹配 category（模糊匹配）
+ *  - 优先匹配 tag（逗号分隔字符串或数组）
+ *  - 其次匹配 original_title
+ *  - 不区分大小写
  */
-function hasTag(tag, target) {
-  if (!tag || !target) return false;
-  if (Array.isArray(tag)) {
-    return tag.some((t) => String(t).trim() === target);
+function matchCategory(item, category) {
+  if (!category) return true;
+  const q = String(category).toLowerCase().trim();
+  if (!q) return true;
+
+  // 1) 优先匹配 tag（逗号分隔字符串或数组）
+  const tag = item.tag;
+  if (tag) {
+    let tags;
+    if (Array.isArray(tag)) {
+      tags = tag.map((t) => String(t).toLowerCase().trim());
+    } else {
+      tags = String(tag)
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
+    }
+    if (tags.some((t) => t.includes(q))) {
+      return true;
+    }
   }
-  return String(tag)
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .includes(target);
+
+  // 2) 其次匹配 original_title
+  if (item.original_title) {
+    const title = String(item.original_title).toLowerCase().trim();
+    if (title.includes(q)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 exports.main = async (event) => {
@@ -97,9 +120,9 @@ exports.main = async (event) => {
     const res = await db.collection('animations').limit(1000).get();
     let all = res.data || [];
 
-    // 2) 分类筛选（tag 为逗号分隔字符串，兼容数组形态）
+    // 2) 分类筛选（模糊匹配：优先 tag，其次 original_title）
     if (category) {
-      all = all.filter((it) => hasTag(it.tag, category));
+      all = all.filter((it) => matchCategory(it, category));
     }
 
     // 3) 内存排序
