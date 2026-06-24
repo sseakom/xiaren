@@ -19,7 +19,7 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
   },
   {
     title: '穿越',
-    items: ['穿越', '大唐', '大明', '古代', '历史', '大秦', '三国'],
+    items: ['穿越', '大唐', '大明', '历史', '大秦', '三国'],
   },
   {
     title: '悬疑',
