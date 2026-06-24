@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
+import { Tabbar } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/tabbar/style/style.css';
+import '@nutui/nutui-react-taro/dist/es/packages/tabbaritem/style/style.css';
 import AppIcon from '@/components/AppIcon';
 import styles from './index.module.scss';
 
@@ -51,33 +53,34 @@ const DEFAULT_ITEMS: TabBarItem[] = [
 const CustomTabbar: React.FC<CustomTabbarProps> = (props) => {
   const items = props.items || DEFAULT_ITEMS;
   const current = props.currentPath || Taro.getCurrentInstance().router?.path || '';
+  const activeIndex = Math.max(0, items.findIndex((item) => item.pagePath === current));
 
-  const onSwitch = (item: TabBarItem) => {
+  const onSwitch = (index: number) => {
+    const item = items[index];
+    if (!item) return;
     if (current === item.pagePath) return;
     // 非原生 tab 页之间跳转使用 redirectTo，避免页面栈堆积
     Taro.redirectTo({ url: item.pagePath });
   };
 
   return (
-    <View className={styles.tabbar} role="tabbar">
-      {items.map((item) => {
-        const active = current === item.pagePath;
-        return (
-          <View
-            key={item.pagePath}
-            className={active ? `${styles.item} ${styles.itemActive}` : styles.item}
-            onClick={() => onSwitch(item)}
-            role="tab"
-            aria-selected={active}
-          >
-            <View className={styles.icon}>
-              {active ? item.iconActive || item.icon : item.icon}
-            </View>
-            <Text className={styles.text}>{item.text}</Text>
-          </View>
-        );
-      })}
-    </View>
+    <Tabbar
+      className={styles.tabbar}
+      fixed
+      safeArea
+      value={activeIndex}
+      activeColor="#ff6b35"
+      inactiveColor="#999999"
+      onSwitch={onSwitch}
+    >
+      {items.map((item) => (
+        <Tabbar.Item
+          key={item.pagePath}
+          title={item.text}
+          icon={(active) => active ? item.iconActive || item.icon : item.icon}
+        />
+      ))}
+    </Tabbar>
   );
 };
 
