@@ -14,4 +14,5 @@ export default defineAppConfig({
     navigationBarTextStyle: 'white',
     backgroundColor: '#f5f5f5',
   },
+  lazyCodeLoading: 'requiredComponents',
 });
