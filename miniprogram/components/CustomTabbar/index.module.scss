@@ -30,7 +30,9 @@
 }
 
 .icon {
-  font-size: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   margin-bottom: 4rpx;
 }

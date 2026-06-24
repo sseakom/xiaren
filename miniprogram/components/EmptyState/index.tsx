@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, Button } from '@tarojs/components';
+import AppIcon from '@/components/AppIcon';
 import styles from './index.module.scss';
 
 export interface EmptyStateProps {
-  icon?: string;
+  icon?: React.ReactNode;
   title?: string;
   description?: string;
   showBtn?: boolean;
@@ -12,7 +13,7 @@ export interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = '📭',
+  icon = <AppIcon name="empty" size="100rpx" />,
   title = '暂无内容',
   description = '',
   showBtn = false,

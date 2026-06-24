@@ -49,6 +49,8 @@
     "@tarojs/taro": "4.1.9",
     "@tarojs/plugin-framework-react": "4.1.9",
     "@tarojs/react": "4.1.9",
+    "@nutui/icons-react-taro": "3.0.2-cpp.3.beta.9",
+    "@nutui/nutui-react-taro": "^3.0.19",
     "react-dom": "^18.0.0",
     "react": "^18.0.0",
     "zustand": "^4.5.0",

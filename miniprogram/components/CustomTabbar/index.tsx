@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
+import AppIcon from '@/components/AppIcon';
 import styles from './index.module.scss';
 
 export interface TabBarItem {
@@ -8,10 +9,10 @@ export interface TabBarItem {
   pagePath: string;
   /** 显示文字 */
   text: string;
-  /** 未选中时图标（emoji 或文本） */
-  icon?: string;
-  /** 选中时图标（emoji 或文本） */
-  iconActive?: string;
+  /** 未选中时图标 */
+  icon?: React.ReactNode;
+  /** 选中时图标 */
+  iconActive?: React.ReactNode;
 }
 
 export interface CustomTabbarProps {
@@ -22,9 +23,24 @@ export interface CustomTabbarProps {
 }
 
 const DEFAULT_ITEMS: TabBarItem[] = [
-  { pagePath: '/pages/index/index', text: '首页', icon: '🏠', iconActive: '🏠' },
-  { pagePath: '/pages/search/index', text: '搜索', icon: '🔍', iconActive: '🔍' },
-  { pagePath: '/pages/user/index', text: '我的', icon: '👤', iconActive: '👤' },
+  {
+    pagePath: '/pages/index/index',
+    text: '首页',
+    icon: <AppIcon name="home" size="40rpx" />,
+    iconActive: <AppIcon name="home" size="40rpx" />,
+  },
+  {
+    pagePath: '/pages/search/index',
+    text: '搜索',
+    icon: <AppIcon name="search" size="40rpx" />,
+    iconActive: <AppIcon name="search" size="40rpx" />,
+  },
+  {
+    pagePath: '/pages/user/index',
+    text: '我的',
+    icon: <AppIcon name="user" size="40rpx" />,
+    iconActive: <AppIcon name="user" size="40rpx" />,
+  },
 ];
 
 /**
@@ -54,9 +70,9 @@ const CustomTabbar: React.FC<CustomTabbarProps> = (props) => {
             role="tab"
             aria-selected={active}
           >
-            <Text className={styles.icon}>
+            <View className={styles.icon}>
               {active ? item.iconActive || item.icon : item.icon}
-            </Text>
+            </View>
             <Text className={styles.text}>{item.text}</Text>
           </View>
         );

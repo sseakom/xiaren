@@ -23,7 +23,10 @@
 }
 
 .searchIcon {
-  font-size: $font-size-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-tertiary;
 }
 
 .searchPlaceholder {
@@ -139,8 +142,9 @@
 }
 
 .metaScoreIcon {
-  font-size: $font-size-xs;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ===== 标签 ===== */

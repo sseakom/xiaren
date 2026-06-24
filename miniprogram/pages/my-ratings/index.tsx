@@ -7,6 +7,7 @@ import { formatTime } from '@/utils/util';
 import { goDetail, goHome } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
+import AppIcon from '@/components/AppIcon';
 import EmptyState from '@/components/EmptyState';
 import Skeleton from '@/components/Skeleton';
 import StarRating from '@/components/StarRating';
@@ -64,7 +65,7 @@ const MyRatingsPage: React.FC = () => {
         ) : (
           !loading && (
             <EmptyState
-              icon="⭐"
+              icon={<AppIcon name="rating" size="100rpx" />}
               title="还没有评分"
               description="去首页给喜欢的动画打个分吧"
               showBtn

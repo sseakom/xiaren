@@ -279,7 +279,9 @@
 }
 
 .actionIcon {
-  font-size: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: $color-text-secondary;
   line-height: 1;
 }

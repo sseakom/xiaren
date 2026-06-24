@@ -15,7 +15,8 @@ import {
   openBilibili,
 } from '@/utils/util';
 import { toastError } from '@/utils/error';
-import StarRating from '@/components/StarRating';
+import AppIcon from '@/components/AppIcon';
+import RatingRow from '@/components/RatingRow';
 import ScoreChart from '@/components/ScoreChart';
 import Skeleton from '@/components/Skeleton';
 import StatItem from '@/components/StatItem';
@@ -206,23 +207,7 @@ const DetailPage: React.FC = () => {
 
         {/* 我的评分（横排） */}
         <View className={styles.myRatingSection}>
-          <View className={styles.myRatingRow}>
-            <Text className={styles.myRatingTitle}>我的评分</Text>
-            <View className={styles.myRatingStars}>
-              <StarRating
-                value={myScore}
-                disabled={false}
-                onChange={onRate}
-                showScore={false}
-                size={40}
-              />
-            </View>
-           <View className={styles.myRatingBadge}>
-              <Text className={styles.myRatingBadgeValue}>
-                {myScore.toFixed(1)}
-              </Text>
-            </View>
-          </View>
+          <RatingRow value={myScore} onChange={onRate} size={40} />
         </View>
 
         {/* 操作区 */}
@@ -231,9 +216,11 @@ const DetailPage: React.FC = () => {
             className={`${styles.actionBtn} ${isCollected ? styles.actionActive : ''}`}
             onClick={toggleCollect}
           >
-            <Text className={styles.actionIcon}>
-              {isCollected ? '★' : '☆'}
-            </Text>
+            <AppIcon
+              name={isCollected ? 'collectionFilled' : 'collection'}
+              size="40rpx"
+              className={styles.actionIcon}
+            />
             <Text className={styles.actionText}>
               {isCollected ? '已收藏' : '收藏'}
             </Text>
@@ -243,22 +230,24 @@ const DetailPage: React.FC = () => {
             className={`${styles.actionBtn} ${isWatched ? styles.actionActive : ''}`}
             onClick={toggleWatched}
           >
-            <Text className={styles.actionIcon}>
-              {isWatched ? '✓' : '○'}
-            </Text>
+            <AppIcon
+              name={isWatched ? 'watchedFilled' : 'watched'}
+              size="40rpx"
+              className={styles.actionIcon}
+            />
             <Text className={styles.actionText}>
               {isWatched ? '已看过' : '已看过'}
             </Text>
           </View>
 
           <View className={styles.actionBtn} onClick={onOpenBili}>
-            <Text className={styles.actionIcon}>🔗</Text>
+            <AppIcon name="link" size="40rpx" className={styles.actionIcon} />
             <Text className={styles.actionText}>复制BVID</Text>
           </View>
 
           {UserService.hasLogin && (
             <View className={styles.actionBtn} onClick={onCorrect}>
-              <Text className={styles.actionIcon}>✎</Text>
+              <AppIcon name="edit" size="40rpx" className={styles.actionIcon} />
               <Text className={styles.actionText}>勘误</Text>
             </View>
           )}

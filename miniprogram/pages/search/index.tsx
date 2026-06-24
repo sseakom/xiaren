@@ -5,6 +5,7 @@ import { Animation } from '@/types';
 import { AnimationService } from '@/services/business';
 import { goDetail } from '@/utils/nav';
 import { toastError } from '@/utils/error';
+import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CategoryFilter from '@/components/CategoryFilter';
@@ -146,7 +147,7 @@ const SearchPage: React.FC = () => {
     <View className={styles.pageSearch}>
       <View className={styles.searchHeader}>
         <View className={styles.searchInputWrap}>
-          <Text className={styles.searchIcon}>🔍</Text>
+          <AppIcon name="search" size="28rpx" className={styles.searchIcon} />
           <Input
             ref={inputRef}
             className={styles.searchInput}
@@ -158,9 +159,9 @@ const SearchPage: React.FC = () => {
             confirmType="search"
           />
           {keyword ? (
-            <Text className={styles.searchClear} onClick={onClear}>
-              ✕
-            </Text>
+            <View className={styles.searchClear} onClick={onClear}>
+              <AppIcon name="close" size="22rpx" />
+            </View>
           ) : null}
         </View>
         <Text className={styles.searchBtn} onClick={onSearch}>
@@ -233,7 +234,7 @@ const SearchPage: React.FC = () => {
             ) : (
               !loading && (
                 <EmptyState
-                  icon="🔍"
+                  icon={<AppIcon name="search" size="100rpx" />}
                   title="未找到相关动画"
                   description="换个关键词试试吧"
                 />

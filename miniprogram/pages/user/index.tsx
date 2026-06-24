@@ -3,6 +3,7 @@ import { View, Text, Image, Button, Input } from '@tarojs/components';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { UserService } from '@/services/user';
 import { User, UserStats } from '@/types';
+import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import CustomTabbar from '@/components/CustomTabbar';
 import styles from './index.module.scss';
@@ -194,7 +195,7 @@ const UserPage: React.FC = () => {
               openType="getPhoneNumber"
               onGetPhoneNumber={onGetPhoneNumber}
             >
-              <Text className={styles.phoneLoginIcon}>📱</Text>
+              <AppIcon name="phone" size="28rpx" className={styles.phoneLoginIcon} />
               <Text>手机号一键登录</Text>
             </Button>
           ) : null}
@@ -219,19 +220,19 @@ const UserPage: React.FC = () => {
       {/* 功能列表 */}
       <View className={styles.menuList}>
         <View className={styles.menuItem} onClick={goMyRatings}>
-          <Text className={styles.menuIcon}>⭐</Text>
+          <AppIcon name="rating" size="36rpx" className={styles.menuIcon} />
           <Text className={styles.menuText}>我的评分</Text>
-          <Text className={styles.menuArrow}>›</Text>
+          <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
         </View>
         <View className={styles.menuItem} onClick={goMyCollections}>
-          <Text className={styles.menuIcon}>★</Text>
+          <AppIcon name="collectionFilled" size="36rpx" className={styles.menuIcon} />
           <Text className={styles.menuText}>我的收藏</Text>
-          <Text className={styles.menuArrow}>›</Text>
+          <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
         </View>
         <View className={styles.menuItem} onClick={goWatched}>
-          <Text className={styles.menuIcon}>✓</Text>
+          <AppIcon name="watchedFilled" size="36rpx" className={styles.menuIcon} />
           <Text className={styles.menuText}>我看过的</Text>
-          <Text className={styles.menuArrow}>›</Text>
+          <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
         </View>
         {user ? (
           <>
@@ -239,32 +240,36 @@ const UserPage: React.FC = () => {
               className={styles.menuItem}
               onClick={() => Taro.navigateTo({ url: '/pages/animation-form/index?mode=create' })}
             >
-              <Text className={styles.menuIcon}>＋</Text>
+              <AppIcon name="add" size="36rpx" className={styles.menuIcon} />
               <Text className={styles.menuText}>录入动画</Text>
-              <Text className={styles.menuArrow}>›</Text>
+              <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
             </View>
             <View
               className={styles.menuItem}
               onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
             >
-              <Text className={styles.menuIcon}>≡</Text>
+              <AppIcon name="submission" size="36rpx" className={styles.menuIcon} />
               <Text className={styles.menuText}>我的提交</Text>
-              <Text className={styles.menuArrow}>›</Text>
+              <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
             </View>
             {UserService.isAdmin() && (
               <View
                 className={styles.menuItem}
                 onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
               >
-                <Text className={styles.menuIcon}>审</Text>
+                <AppIcon name="review" size="36rpx" className={styles.menuIcon} />
                 <Text className={styles.menuText}>审核中心</Text>
-                <Text className={styles.menuArrow}>›</Text>
+                <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
               </View>
             )}
             <View className={styles.menuItem} onClick={onLogout}>
-              <Text className={`${styles.menuIcon} ${styles.menuIconDanger}`}>⏻</Text>
+              <AppIcon
+                name="logout"
+                size="36rpx"
+                className={`${styles.menuIcon} ${styles.menuIconDanger}`}
+              />
               <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
-              <Text className={styles.menuArrow}>›</Text>
+              <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
             </View>
           </>
         ) : null}

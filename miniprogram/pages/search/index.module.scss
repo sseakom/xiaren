@@ -27,7 +27,10 @@
 }
 
 .searchIcon {
-  font-size: $font-size-md - 2rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-tertiary;
 }
 
 .searchInput {
@@ -37,7 +40,9 @@
 }
 
 .searchClear {
-  font-size: $font-size-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: $color-text-tertiary;
   padding: 4rpx 8rpx;
 }
@@ -217,6 +222,7 @@
 }
 
 .metaScoreIcon {
-  font-size: $font-size-xs;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

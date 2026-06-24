@@ -92,7 +92,9 @@
 }
 
 .collArrow {
-  font-size: $font-size-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: $color-text-tertiary;
   padding: 0 $spacing-xs;
 }

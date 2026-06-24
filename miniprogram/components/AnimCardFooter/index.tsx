@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
 import { Animation } from '@/types';
+import AppIcon from '@/components/AppIcon';
 import { formatNumber } from '@/utils/util';
 
 export interface AnimCardFooterProps {
@@ -35,10 +36,10 @@ const AnimCardFooter: React.FC<AnimCardFooterProps> = ({ item, styles }) => (
       {item.score != null ? (
         <>
           <Text className={styles.metaDot}>·</Text>
-          <Text className={styles.metaScore}>
-            <Text className={styles.metaScoreIcon}>★</Text>
-            {item.score.toFixed(1)}
-          </Text>
+          <View className={styles.metaScore}>
+            <AppIcon name="rating" size="20rpx" className={styles.metaScoreIcon} />
+            <Text>{item.score.toFixed(1)}</Text>
+          </View>
         </>
       ) : null}
     </View>

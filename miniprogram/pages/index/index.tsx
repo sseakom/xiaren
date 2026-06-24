@@ -6,6 +6,7 @@ import { AnimationService, ListSort } from '@/services/business';
 import { goDetail, goSearch } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
+import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CustomTabbar from '@/components/CustomTabbar';
@@ -88,7 +89,7 @@ const IndexPage: React.FC = () => {
       {/* 搜索入口 */}
       <View className={styles.searchBar} onClick={goSearch}>
         <View className={styles.searchInput}>
-          <Text className={styles.searchIcon}>🔍</Text>
+          <AppIcon name="search" size="30rpx" className={styles.searchIcon} />
           <Text className={styles.searchPlaceholder}>搜索动画片源...</Text>
         </View>
       </View>
@@ -142,7 +143,7 @@ const IndexPage: React.FC = () => {
         ) : (
             !loading && (
               <EmptyState
-                icon="🎬"
+                icon={<AppIcon name="movie" size="100rpx" />}
                 title="暂无动画片源"
                 description="采集器正在努力收录中..."
               />

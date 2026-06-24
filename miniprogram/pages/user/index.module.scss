@@ -110,7 +110,9 @@
 }
 
 .phoneLoginIcon {
-  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wechatLoginBtn {
@@ -186,8 +188,7 @@
 }
 
 .menuIconDanger {
-  // 红色退出图标
-  filter: hue-rotate(-30deg) saturate(1.5);
+  color: #ff4d4f;
 }
 
 .menuTextDanger {
@@ -196,9 +197,11 @@
 }
 
 .menuIcon {
-  font-size: 36rpx;
   width: 60rpx;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-primary;
 }
 
 .menuText {
@@ -208,7 +211,9 @@
 }
 
 .menuArrow {
-  font-size: $font-size-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: $color-text-tertiary;
 }
 

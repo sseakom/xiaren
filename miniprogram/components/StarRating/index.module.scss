@@ -11,54 +11,22 @@
   }
 }
 
-.starsRow {
+.rate {
+  --nutui-rate-icon-color: #{$color-primary};
+  --nutui-rate-icon-inactive-color: #e5e7eb;
+  --nutui-rate-font-color: #{$color-primary};
   display: inline-flex;
   align-items: center;
 }
 
-.starWrapper {
-  position: relative;
-  display: inline-block;
+.rate :global(.nut-rate-item) {
+  line-height: 1;
 }
 
-.starBg {
-  color: #e8e8e8;
-  font-weight: $font-weight-bold;
-  user-select: none;
-}
-
-.starFgWrap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.starFg {
-  color: $color-primary;
-  font-weight: $font-weight-bold;
-  user-select: none;
-  // 文本阴影让星标更立体
-  text-shadow: 0 2rpx 4rpx rgba(255, 107, 53, 0.25);
-}
-
-.hitAreaLeft,
-.hitAreaRight {
-  position: absolute;
-  top: 0;
-  width: 50%;
-  height: 100%;
-  z-index: 3;
-}
-
-.hitAreaLeft {
-  left: 0;
-}
-
-.hitAreaRight {
-  right: 0;
+.rate :global(.nut-icon) {
+  line-height: 1;
+  text-align: left;
+  vertical-align: top;
 }
 
 .scoreText {

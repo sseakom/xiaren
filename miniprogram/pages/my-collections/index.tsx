@@ -7,6 +7,7 @@ import { formatTime } from '@/utils/util';
 import { goDetail, goHome } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
+import AppIcon from '@/components/AppIcon';
 import EmptyState from '@/components/EmptyState';
 import Skeleton from '@/components/Skeleton';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
@@ -92,7 +93,7 @@ const MyCollectionsPage: React.FC = () => {
                   <Text className={styles.collTime}>{c.timeText}</Text>
                 </View>
                 <View className={styles.collArrow}>
-                  <Text>›</Text>
+                  <AppIcon name="arrowRight" size="20rpx" />
                 </View>
               </View>
             ))}
@@ -101,7 +102,12 @@ const MyCollectionsPage: React.FC = () => {
         ) : (
           !loading && (
             <EmptyState
-              icon={type === 'collect' ? '★' : '✓'}
+              icon={(
+                <AppIcon
+                  name={type === 'collect' ? 'collectionFilled' : 'watchedFilled'}
+                  size="100rpx"
+                />
+              )}
               title={type === 'collect' ? '还没有收藏' : '还没看过'}
               description={
                 type === 'collect'
