@@ -145,10 +145,39 @@ async function submit(event) {
   }
 }
 
+/**
+ * 提交人主动取消自己的 submission（仅 status=2 允许）
+ *  - 校验 submitter_openid == openid
+ *  - db.collection('submissions').doc(_id).remove()
+ */
+async function cancelAction(event) {
+  const openid = cloud.getWXContext().OPENID;
+  if (!openid) return { success: false, error: '未登录' };
+  if (!event._id) return { success: false, error: '缺少 _id' };
+  try {
+    const doc = await db.collection('submissions').doc(event._id).get();
+    if (!doc.data) return { success: false, error: '记录不存在' };
+    if (doc.data.submitter_openid !== openid) {
+      return { success: false, error: '只能取消自己的提交' };
+    }
+    if (doc.data.status !== 2) {
+      return { success: false, error: '仅审核中的提交可取消' };
+    }
+    await db.collection('submissions').doc(event._id).remove();
+    return { success: true, data: { _id: event._id } };
+  } catch (err) {
+    console.error('[animationSubmit.cancel] 失败', err);
+    return { success: false, error: err.message };
+  }
+}
+
 exports.main = async (event /*, context*/) => {
   // 提供独立 action 用于前端实时校验
   if (event.action === 'checkBvidUnique') {
     return checkBvidUniqueAction(event.bvid);
+  }
+  if (event.action === 'cancel') {
+    return cancelAction(event);
   }
   return submit(event);
 };

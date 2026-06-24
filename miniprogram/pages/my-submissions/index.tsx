@@ -44,6 +44,28 @@ const MySubmissionsPage: React.FC = () => {
     setTimeout(() => Taro.stopPullDownRefresh(), 300);
   });
 
+  const onCancel = (it: Submission) => {
+    if (it.status !== 2) return;
+    Taro.showModal({
+      title: '取消提交',
+      content: `确认取消「${TYPE_LABEL[it.type] || it.type}」吗？取消后无法恢复。`,
+      confirmText: '确认取消',
+      cancelText: '不取消',
+      confirmColor: '#d23a3a',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await SubmissionService.cancel(it._id);
+          Taro.showToast({ title: '已取消', icon: 'success' });
+          setList((prev) => prev.filter((x) => x._id !== it._id));
+        } catch (err: any) {
+          console.error('[my-submissions] 取消失败', err);
+          Taro.showToast({ title: err?.message || '取消失败', icon: 'none' });
+        }
+      },
+    });
+  };
+
   return (
     <View className={styles.page}>
       <View className={styles.tip}>
@@ -121,6 +143,16 @@ const MySubmissionsPage: React.FC = () => {
                         {it.status === 3 ? '驳回原因' : '审核备注'}：
                       </Text>
                       <Text className={styles.reviewText}>{it.review_comment}</Text>
+                    </View>
+                  )}
+                  {it.status === 2 && (
+                    <View className={styles.actions}>
+                      <View
+                        className={styles.cancelBtn}
+                        onClick={() => onCancel(it)}
+                      >
+                        <Text className={styles.cancelBtnText}>取消提交</Text>
+                      </View>
                     </View>
                   )}
                 </View>

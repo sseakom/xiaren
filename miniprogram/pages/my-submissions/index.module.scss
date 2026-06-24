@@ -124,3 +124,21 @@
   color: #5c3a1e;
   line-height: 1.5;
 }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12rpx;
+}
+
+.cancelBtn {
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+  border: 2rpx solid #d23a3a;
+  background: #fff;
+}
+
+.cancelBtnText {
+  color: #d23a3a;
+  font-size: 24rpx;
+}

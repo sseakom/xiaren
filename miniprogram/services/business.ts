@@ -391,6 +391,26 @@ export const SubmissionService = {
       return [];
     }
   },
+
+  /**
+   * 主动取消自己的提交（仅 status=2 审核中可取消）
+   * @returns 成功返回被删除的 _id
+   */
+  async cancel(_id: string): Promise<{ _id: string } | null> {
+    if (!UserService.openid) throw new Error('未登录');
+    if (!_id) throw new Error('缺少 _id');
+    const res = (await CloudService.callFunction('animationSubmit', {
+      action: 'cancel',
+      _id,
+    })) as any;
+    const result = res?.result as
+      | { success?: boolean; data?: { _id: string }; error?: string }
+      | undefined;
+    if (!result?.success) {
+      throw new Error(result?.error || '取消失败');
+    }
+    return result.data || null;
+  },
 };
 
 /**
