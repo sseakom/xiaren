@@ -14,7 +14,6 @@ const UserPage: React.FC = () => {
     collectCount: 0,
   });
   const [loading, setLoading] = useState(true);
-  // const [busy, setBusy] = useState(false);
 
   useShareAppMessage(() => ({
     title: '我在玩「虾仁宇宙」，一起来吧',

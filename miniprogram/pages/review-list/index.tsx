@@ -3,22 +3,15 @@ import Taro, { usePullDownRefresh } from '@tarojs/taro';
 import { View, Text, Image as TaroImage } from '@tarojs/components';
 import { ReviewService } from '@/services/business';
 import { UserService } from '@/services/user';
-import { Submission, SubmissionType } from '@/types';
+import { Submission } from '@/types';
 import { formatDateTime } from '@/utils/util';
+import { toastError } from '@/utils/error';
+import {
+  SUBMISSION_TYPE_LABEL,
+  SUBMISSION_TYPE_COLOR,
+  getSubmissionDisplay,
+} from '@/utils/submission';
 import styles from './index.module.scss';
-
-/** 展示用 type 标签 */
-const TYPE_LABEL: Record<SubmissionType, string> = {
-  create: '录入',
-  correction: '勘误',
-  correction_delete: '申请删除',
-};
-
-const TYPE_COLOR: Record<SubmissionType, string> = {
-  create: 'typeCreate',
-  correction: 'typeCorrection',
-  correction_delete: 'typeDelete',
-};
 
 const ReviewListPage: React.FC = () => {
   const [list, setList] = useState<Submission[]>([]);
@@ -37,8 +30,7 @@ const ReviewListPage: React.FC = () => {
       const data = await ReviewService.list(filter);
       setList(data);
     } catch (err) {
-      console.error('[review-list] 加载失败', err);
-      Taro.showToast({ title: '加载失败', icon: 'none' });
+      toastError('[review-list]', err);
     } finally {
       setLoading(false);
     }
@@ -99,22 +91,7 @@ const ReviewListPage: React.FC = () => {
       ) : (
         <View className={styles.list}>
           {list.map((it) => {
-            // 标题与封面：create 模式从 payload 取，correction/correction_delete 从 target 取
-            const isCreate = it.type === 'create';
-            const title = isCreate
-              ? (it.payload as any)?.title || '未命名'
-              : it.type === 'correction'
-              ? (it.payload as any)?.title || it.target?.title || '勘误'
-              : it.target?.title || '申请删除';
-            const cover = isCreate
-              ? (it.payload as any)?.cover
-              : it.target?.cover;
-            const upName = isCreate
-              ? (it.payload as any)?.up_name
-              : it.target?.up_name;
-            const bvid = isCreate
-              ? (it.payload as any)?.bvid
-              : it.target?.bvid;
+            const disp = getSubmissionDisplay(it);
             return (
               <View
                 key={it._id}
@@ -122,10 +99,10 @@ const ReviewListPage: React.FC = () => {
                 onClick={() => onTap(it)}
               >
                 <View className={styles.coverWrap}>
-                  {cover ? (
+                  {disp.cover ? (
                     <TaroImage
                       className={styles.cover}
-                      src={cover}
+                      src={disp.cover}
                       mode="aspectFill"
                     />
                   ) : (
@@ -134,11 +111,11 @@ const ReviewListPage: React.FC = () => {
                 </View>
                 <View className={styles.info}>
                   <View className={styles.titleRow}>
-                    <Text className={`${styles.typeTag} ${styles[TYPE_COLOR[it.type]] || ''}`}>
-                      {TYPE_LABEL[it.type] || it.type}
+                    <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[it.type]] || ''}`}>
+                      {SUBMISSION_TYPE_LABEL[it.type] || it.type}
                     </Text>
                     <Text className={styles.title} numberOfLines={1}>
-                      {title}
+                      {disp.title}
                     </Text>
                     <Text
                       className={`${styles.statusTag} ${
@@ -149,7 +126,7 @@ const ReviewListPage: React.FC = () => {
                     </Text>
                   </View>
                   <Text className={styles.meta}>
-                    {upName || '未知 UP'} · {bvid || ''}
+                    {disp.upName || '未知 UP'} · {disp.bvid || ''}
                   </Text>
                   <Text className={styles.meta}>
                     提交人：{(it as any).submitter?.nickName || '匿名用户'}

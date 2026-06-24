@@ -3,13 +3,14 @@ import { View, Text, Input, ScrollView } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
 import { Animation } from '@/types';
 import { AnimationService } from '@/services/business';
-import { formatNumber } from '@/utils/util';
 import { goDetail } from '@/utils/nav';
+import { toastError } from '@/utils/error';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CategoryFilter from '@/components/CategoryFilter';
 import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
+import AnimCardFooter from '@/components/AnimCardFooter';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
@@ -75,8 +76,7 @@ const SearchPage: React.FC = () => {
         setHasMore(list.length >= PAGE_SIZE);
         setPage(p + 1);
       } catch (err) {
-        console.error('[Search] 搜索失败', err);
-        Taro.showToast({ title: '搜索失败', icon: 'none' });
+        toastError('[Search]', err, '搜索失败');
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -224,37 +224,7 @@ const SearchPage: React.FC = () => {
                     key={item._id}
                     item={item}
                     onClick={goDetail}
-                    footer={
-                      <>
-                        {item.tags?.length ? (
-                          <View className={styles.animtag}>
-                            {item.tags.map((tag: string) => (
-                              <Text key={tag} className={styles.animTag}>
-                                {tag}
-                              </Text>
-                            ))}
-                          </View>
-                        ) : null}
-                        <View className={styles.animMeta}>
-                          <Text className={styles.metaAuthor} numberOfLines={1}>
-                            {item.up_name}
-                          </Text>
-                          <Text className={styles.metaDot}>·</Text>
-                          <Text className={styles.metaPlay}>
-                            {formatNumber(item.play_count || 0)} 播放
-                          </Text>
-                          {item.score != null ? (
-                            <>
-                              <Text className={styles.metaDot}>·</Text>
-                              <Text className={styles.metaScore}>
-                                <Text className={styles.metaScoreIcon}>★</Text>
-                                {item.score.toFixed(1)}
-                              </Text>
-                            </>
-                          ) : null}
-                        </View>
-                      </>
-                    }
+                    footer={<AnimCardFooter item={item} styles={styles} />}
                   />
                 ))}
 

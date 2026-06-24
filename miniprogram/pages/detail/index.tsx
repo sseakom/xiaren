@@ -14,6 +14,7 @@ import {
   formatTime,
   openBilibili,
 } from '@/utils/util';
+import { toastError } from '@/utils/error';
 import StarRating from '@/components/StarRating';
 import ScoreChart from '@/components/ScoreChart';
 import Skeleton from '@/components/Skeleton';
@@ -50,8 +51,7 @@ const DetailPage: React.FC = () => {
       setR(sc.R);
       setDistribution(sc.distribution || {});
     } catch (err) {
-      console.error('[Detail] 加载失败', err);
-      Taro.showToast({ title: '加载失败', icon: 'none' });
+      toastError('[Detail]', err);
     } finally {
       setLoading(false);
     }

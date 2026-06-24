@@ -5,22 +5,31 @@ import {
   ScoreDistribution,
   Submission,
   SubmissionType,
+  AnimationFormPayload,
 } from '@/types';
 import { UserService } from './user';
 
 /**
  * 业务服务层 —— 所有查询 / 修改全部走云函数，云函数内部操作数据库。
  * 客户端不持有 db 实例，DB 入口已从 CloudService 类型层移除。
+ *
+ * 重构说明：
+ *  - 查询类方法统一用 CloudService.callCloudSafe（失败降级返回空，不抛错）
+ *  - 操作类方法统一用 CloudService.callCloud（失败抛 Error 给上层 toast）
+ *  - AnimationFormPayload 复用 @/types 定义，不再重复声明
  */
 
 /** 列表排序方式 */
 export type ListSort = 'publish_time' | 'play_count' | 'duration_asc' | 'duration_desc';
 
 /** 列表分页结果（含总数） */
-export interface ListResult {
-  list: any[];
+export interface ListResult<T = any> {
+  list: T[];
   total: number;
 }
+
+// 向后兼容：保留 AnimationFormPayload 的 re-export
+export type { AnimationFormPayload };
 
 /**
  * 动画业务服务
@@ -41,33 +50,20 @@ export const AnimationService = {
     sortBy: ListSort = 'publish_time',
     category = '',
   ): Promise<ListResult> {
-    const res = (await CloudService.callFunction('listAnimations', {
+    const r = await CloudService.callCloudSafe('listAnimations', {
       page,
       pageSize,
       sortBy,
       category,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: any[]; total?: number; error?: string }
-      | undefined;
-    if (result?.success) {
-      return { list: result.data || [], total: result.total || 0 };
-    }
-    console.warn('[Animation] listAnimations 返回失败', result?.error);
-    return { list: [], total: 0 };
+    });
+    if (!r) return { list: [], total: 0 };
+    return { list: r.data || [], total: r.total || 0 };
   },
 
   /** 获取单个动画详情 */
   async getById(id: string) {
-    const res = (await CloudService.callFunction('getAnimationById', {
-      id,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: any; error?: string }
-      | undefined;
-    if (result?.success) return result.data ?? null;
-    console.warn('[Animation] getAnimationById 失败', result?.error);
-    return null;
+    const r = await CloudService.callCloudSafe('getAnimationById', { id });
+    return r?.data ?? null;
   },
 
   /**
@@ -77,13 +73,13 @@ export const AnimationService = {
    */
   async search(keyword: string, page = 0, pageSize = 20, category = '') {
     if (!keyword || !keyword.trim()) return [];
-    const res = (await CloudService.callFunction('search', {
+    const res = await CloudService.callFunction('search', {
       keyword: keyword.trim(),
       page,
       pageSize,
       category,
-    })) as any;
-    const result = res?.result as { data?: any[]; error?: string } | undefined;
+    });
+    const result = (res as any)?.result as { data?: any[]; error?: string } | undefined;
     if (result?.error) {
       console.warn('[Animation] search 失败', result.error);
     }
@@ -99,29 +95,22 @@ export const RatingService = {
   /** 获取用户对某动画的评分 */
   async getMyRating(animationId: string): Promise<number> {
     if (!UserService.openid) return 0;
-    const res = (await CloudService.callFunction('rating', {
+    const r = await CloudService.callCloudSafe('rating', {
       action: 'get',
       animation_id: animationId,
-    })) as any;
-    const result = res?.result as { success?: boolean; score?: number } | undefined;
-    return result?.success ? result.score || 0 : 0;
+    });
+    return r ? r.score || 0 : 0;
   },
 
   /** 提交评分；云函数内部会自动触发 calcScore 聚合 */
   async submit(animationId: string, score: number): Promise<{ newRating: boolean }> {
     if (!UserService.openid) throw new Error('未登录');
-    const res = (await CloudService.callFunction('rating', {
+    const r = await CloudService.callCloud('rating', {
       action: 'submit',
       animation_id: animationId,
       score,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; newRating?: boolean; error?: string }
-      | undefined;
-    if (!result?.success) {
-      throw new Error(result?.error || '提交评分失败');
-    }
-    return { newRating: !!result.newRating };
+    });
+    return { newRating: !!r.newRating };
   },
 
   /** 获取用户全部评分（带分页 + 关联动画信息） */
@@ -131,17 +120,14 @@ export const RatingService = {
     includeAnim = false,
   ): Promise<{ list: Rating[]; total: number }> {
     if (!UserService.openid) return { list: [], total: 0 };
-    const res = (await CloudService.callFunction('rating', {
+    const r = await CloudService.callCloudSafe('rating', {
       action: 'listMy',
       limit: pageSize,
       offset: page * pageSize,
       include_anim: includeAnim,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: Rating[]; total?: number }
-      | undefined;
-    if (!result?.success) return { list: [], total: 0 };
-    return { list: result.data || [], total: result.total || 0 };
+    });
+    if (!r) return { list: [], total: 0 };
+    return { list: r.data || [], total: r.total || 0 };
   },
 };
 
@@ -154,20 +140,12 @@ export const CollectionService = {
     animationId: string,
   ): Promise<{ isCollected: boolean; isWatched: boolean }> {
     if (!UserService.openid) return { isCollected: false, isWatched: false };
-    const res = (await CloudService.callFunction('collection', {
+    const r = await CloudService.callCloudSafe('collection', {
       action: 'getStatus',
       animation_id: animationId,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; isCollected?: boolean; isWatched?: boolean }
-      | undefined;
-    if (result?.success) {
-      return {
-        isCollected: !!result.isCollected,
-        isWatched: !!result.isWatched,
-      };
-    }
-    return { isCollected: false, isWatched: false };
+    });
+    if (!r) return { isCollected: false, isWatched: false };
+    return { isCollected: !!r.isCollected, isWatched: !!r.isWatched };
   },
 
   async toggle(
@@ -176,27 +154,13 @@ export const CollectionService = {
     add: boolean,
   ): Promise<{ isCollected: boolean; isWatched: boolean }> {
     if (!UserService.openid) throw new Error('未登录');
-    const res = (await CloudService.callFunction('collection', {
+    const r = await CloudService.callCloud('collection', {
       action: 'toggle',
       animation_id: animationId,
       type,
       add,
-    })) as any;
-    const result = res?.result as
-      | {
-          success?: boolean;
-          isCollected?: boolean;
-          isWatched?: boolean;
-          error?: string;
-        }
-      | undefined;
-    if (!result?.success) {
-      throw new Error(result?.error || '操作失败');
-    }
-    return {
-      isCollected: !!result.isCollected,
-      isWatched: !!result.isWatched,
-    };
+    });
+    return { isCollected: !!r.isCollected, isWatched: !!r.isWatched };
   },
 
   async listByUser(
@@ -206,18 +170,15 @@ export const CollectionService = {
     includeAnim = false,
   ): Promise<{ list: Collection[]; total: number }> {
     if (!UserService.openid) return { list: [], total: 0 };
-    const res = (await CloudService.callFunction('collection', {
+    const r = await CloudService.callCloudSafe('collection', {
       action: 'listMy',
       type,
       limit: pageSize,
       offset: page * pageSize,
       include_anim: includeAnim,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: Collection[]; total?: number }
-      | undefined;
-    if (!result?.success) return { list: [], total: 0 };
-    return { list: result.data || [], total: result.total || 0 };
+    });
+    if (!r) return { list: [], total: 0 };
+    return { list: r.data || [], total: r.total || 0 };
   },
 };
 
@@ -230,33 +191,17 @@ export const ScoreService = {
     C: number;
     distribution: ScoreDistribution;
   }> {
-    try {
-      const res = (await CloudService.callFunction('calcScore', {
-        animation_id: animationId,
-      })) as any;
-      const result = res?.result as
-        | {
-            success?: boolean;
-            WR?: number;
-            R?: number;
-            v?: number;
-            C?: number;
-            distribution?: ScoreDistribution;
-          }
-        | undefined;
-      if (result?.success) {
-        return {
-          WR: result.WR || 0,
-          R: result.R || 0,
-          v: result.v || 0,
-          C: result.C || 3.5,
-          distribution: result.distribution || {},
-        };
-      }
-    } catch (err) {
-      console.warn('[Score] calcScore failed', err);
-    }
-    return { WR: 0, R: 0, v: 0, C: 3.5, distribution: {} };
+    const r = await CloudService.callCloudSafe('calcScore', {
+      animation_id: animationId,
+    });
+    if (!r) return { WR: 0, R: 0, v: 0, C: 3.5, distribution: {} };
+    return {
+      WR: r.WR || 0,
+      R: r.R || 0,
+      v: r.v || 0,
+      C: r.C || 3.5,
+      distribution: r.distribution || {},
+    };
   },
 };
 
@@ -288,36 +233,15 @@ export const BilibiliService = {
     const raw = (input || '').trim();
     if (!raw) throw new Error('请输入 bvid 或包含 bvid 的链接');
     try {
-      const res = (await CloudService.callFunction('bilibiliFetch', {
-        bvid: raw,
-      })) as any;
-      const result = res?.result as
-        | { success?: boolean; data?: BilibiliVideoInfo; error?: string }
-        | undefined;
-      if (!result?.success || !result.data) {
-        throw new Error(result?.error || 'B 站信息拉取失败');
-      }
-      return result.data;
+      const r = await CloudService.callCloud('bilibiliFetch', { bvid: raw });
+      if (!r.data) throw new Error('B 站信息拉取失败');
+      return r.data as BilibiliVideoInfo;
     } catch (err: any) {
       console.error('[Bilibili] fetchByBvid 失败', err);
       throw new Error(err?.message || 'B 站信息拉取失败');
     }
   },
 };
-
-/** 动画提交表单字段（录入/勘误共用） */
-export interface AnimationFormPayload {
-  title: string;
-  bvid: string;
-  up_name: string;
-  cover: string;
-  duration: number;
-  tag: string;
-  url?: string;
-  play_count?: number;
-  like_count?: number;
-  publish_time: string | Date;
-}
 
 /**
  * 用户提交动画（录入/勘误/申请删除）—— 走云函数 animationSubmit
@@ -331,17 +255,11 @@ export const SubmissionService = {
    */
   async checkBvidUnique(bvid: string): Promise<boolean> {
     if (!bvid || !bvid.trim()) return true;
-    try {
-      const res = (await CloudService.callFunction('animationSubmit', {
-        action: 'checkBvidUnique',
-        bvid: bvid.trim(),
-      })) as any;
-      const result = res?.result as { success?: boolean; data?: { unique?: boolean } };
-      return !!(result?.success && result.data?.unique);
-    } catch (err) {
-      console.warn('[Submission] checkBvidUnique 失败', err);
-      return true;
-    }
+    const r = await CloudService.callCloudSafe('animationSubmit', {
+      action: 'checkBvidUnique',
+      bvid: bvid.trim(),
+    });
+    return !!(r && r.data?.unique);
   },
 
   /**
@@ -349,17 +267,11 @@ export const SubmissionService = {
    */
   async create(payload: AnimationFormPayload) {
     if (!UserService.openid) throw new Error('未登录');
-    const res = (await CloudService.callFunction('animationSubmit', {
+    const r = await CloudService.callCloud('animationSubmit', {
       type: 'create',
       payload,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: { _id: string; status: number }; error?: string }
-      | undefined;
-    if (!result?.success) {
-      throw new Error(result?.error || '提交失败');
-    }
-    return result.data;
+    });
+    return r.data;
   },
 
   /**
@@ -376,7 +288,7 @@ export const SubmissionService = {
     if (!payload.title?.trim()) throw new Error('标题不能为空');
     if (!payload.tag?.trim()) throw new Error('标签不能为空');
     const note = (payload.note || '').trim().slice(0, 200);
-    const res = (await CloudService.callFunction('animationSubmit', {
+    const r = await CloudService.callCloud('animationSubmit', {
       type: 'correction',
       target_id: targetId,
       payload: {
@@ -384,14 +296,8 @@ export const SubmissionService = {
         tag: payload.tag.trim(),
         ...(note ? { note } : {}),
       },
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: { _id: string; status: number }; error?: string }
-      | undefined;
-    if (!result?.success) {
-      throw new Error(result?.error || '提交失败');
-    }
-    return result.data;
+    });
+    return r.data;
   },
 
   /**
@@ -407,34 +313,22 @@ export const SubmissionService = {
     const trimmed = (reason || '').trim();
     if (trimmed.length < 4) throw new Error('请填写删除理由（至少 4 个字）');
     const noteTrim = (note || '').trim().slice(0, 200);
-    const res = (await CloudService.callFunction('animationSubmit', {
+    const r = await CloudService.callCloud('animationSubmit', {
       type: 'correction_delete',
       target_id: targetId,
       payload: {
         reason: trimmed,
         ...(noteTrim ? { note: noteTrim } : {}),
       },
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: { _id: string; status: number }; error?: string }
-      | undefined;
-    if (!result?.success) {
-      throw new Error(result?.error || '提交失败');
-    }
-    return result.data;
+    });
+    return r.data;
   },
 
   /** 我的提交/勘误/申请删除记录（status in 2,3） */
   async listMySubmissions(): Promise<Submission[]> {
     if (!UserService.openid) return [];
-    try {
-      const res = (await CloudService.callFunction('animationMySubmissions', {})) as any;
-      const result = res?.result as { success?: boolean; data?: Submission[] };
-      return result?.data || [];
-    } catch (err) {
-      console.error('[Submission] listMySubmissions 失败', err);
-      return [];
-    }
+    const r = await CloudService.callCloudSafe('animationMySubmissions', {});
+    return (r?.data as Submission[]) || [];
   },
 
   /**
@@ -444,17 +338,11 @@ export const SubmissionService = {
   async cancel(_id: string): Promise<{ _id: string } | null> {
     if (!UserService.openid) throw new Error('未登录');
     if (!_id) throw new Error('缺少 _id');
-    const res = (await CloudService.callFunction('animationSubmit', {
+    const r = await CloudService.callCloud('animationSubmit', {
       action: 'cancel',
       _id,
-    })) as any;
-    const result = res?.result as
-      | { success?: boolean; data?: { _id: string }; error?: string }
-      | undefined;
-    if (!result?.success) {
-      throw new Error(result?.error || '取消失败');
-    }
-    return result.data || null;
+    });
+    return r.data || null;
   },
 };
 
@@ -468,58 +356,42 @@ export const ReviewService = {
     typeFilter?: SubmissionType[],
   ): Promise<Submission[]> {
     if (!UserService.openid) return [];
-    try {
-      const res = (await CloudService.callFunction('animationReview', {
-        action: 'list',
-        statusFilter,
-        ...(typeFilter ? { typeFilter } : {}),
-      })) as any;
-      const result = res?.result as { success?: boolean; data?: Submission[] };
-      return result?.data || [];
-    } catch (err) {
-      console.error('[Review] list 失败', err);
-      return [];
-    }
+    const r = await CloudService.callCloudSafe('animationReview', {
+      action: 'list',
+      statusFilter,
+      ...(typeFilter ? { typeFilter } : {}),
+    });
+    return (r?.data as Submission[]) || [];
   },
 
   /** 单条详情 */
   async get(id: string): Promise<Submission | null> {
     if (!UserService.openid || !id) return null;
-    try {
-      const res = (await CloudService.callFunction('animationReview', {
-        action: 'get',
-        _id: id,
-      })) as any;
-      const result = res?.result as { success?: boolean; data?: Submission };
-      return result?.data || null;
-    } catch (err) {
-      console.error('[Review] get 失败', err);
-      return null;
-    }
+    const r = await CloudService.callCloudSafe('animationReview', {
+      action: 'get',
+      _id: id,
+    });
+    return (r?.data as Submission) || null;
   },
 
   /** 通过 */
   async approve(id: string, comment = '') {
     if (!UserService.openid) throw new Error('未登录');
-    const res = (await CloudService.callFunction('animationReview', {
+    await CloudService.callCloud('animationReview', {
       action: 'approve',
       _id: id,
       comment,
-    })) as any;
-    const result = res?.result as { success?: boolean; error?: string };
-    if (!result?.success) throw new Error(result?.error || '审核通过失败');
+    });
   },
 
   /** 驳回（必须填原因） */
   async reject(id: string, comment: string) {
     if (!UserService.openid) throw new Error('未登录');
     if (!comment || !comment.trim()) throw new Error('请填写驳回原因');
-    const res = (await CloudService.callFunction('animationReview', {
+    await CloudService.callCloud('animationReview', {
       action: 'reject',
       _id: id,
       comment: comment.trim(),
-    })) as any;
-    const result = res?.result as { success?: boolean; error?: string };
-    if (!result?.success) throw new Error(result?.error || '驳回失败');
+    });
   },
 };

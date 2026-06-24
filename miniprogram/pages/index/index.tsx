@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, Text } from '@tarojs/components';
-import Taro, { useReachBottom, usePullDownRefresh, useDidShow, useShareAppMessage } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Animation } from '@/types';
 import { AnimationService, ListSort } from '@/services/business';
-import { formatNumber } from '@/utils/util';
 import { goDetail, goSearch } from '@/utils/nav';
+import { usePagination } from '@/hooks/usePagination';
+import { toastError } from '@/utils/error';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
+import AnimCardFooter from '@/components/AnimCardFooter';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
 import CategoryFilter from '@/components/CategoryFilter';
 import styles from './index.module.scss';
@@ -25,49 +27,27 @@ const SORT_TABS: { key: ListSort; label: string }[] = [
 ];
 
 const IndexPage: React.FC = () => {
-  const [list, setList] = useState<Animation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState<ListSort>('publish_time');
   const [category, setCategory] = useState('');
+
+  const { list, loading, loadingMore, hasMore, load } = usePagination<Animation>(
+    async (p) => {
+      const res = await AnimationService.list(p, PAGE_SIZE, sortBy, category);
+      const enriched = (res.list || []).map((a: any) => ({
+        ...a,
+        tags: a.tag ? a.tag.split(',').filter(Boolean) : [],
+      }));
+      return { list: enriched, total: res.total };
+    },
+    [sortBy, category],
+    (err) => toastError('[Index]', err),
+  );
 
   // 分享给朋友
   useShareAppMessage(() => ({
     title: '虾仁宇宙 - 发现最沙雕的番剧',
     path: '/pages/index/index',
   }));
-
-  const load = useCallback(
-    async (p: number, isRefresh = false) => {
-      try {
-        const res = await AnimationService.list(p, PAGE_SIZE, sortBy, category);
-        const data = (res.list || []) as Animation[];
-        const total = res.total || 0;
-        // 预 split tags，避免渲染时反复调用 split
-        const enriched = data.map((a) => ({
-          ...a,
-          tags: a.tag ? a.tag.split(',').filter(Boolean) : [],
-        }));
-        setList((prev) => (p === 0 || isRefresh ? enriched : [...prev, ...enriched]));
-        // 用 total 判定：已加载数 < total 说明还有更多
-        setHasMore((p + 1) * PAGE_SIZE < total);
-        setPage(p + 1);
-      } catch (err) {
-        console.error('[Index] 加载失败', err);
-        Taro.showToast({ title: '加载失败', icon: 'none' });
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [sortBy, category],
-  );
-
-  useEffect(() => {
-    load(0, true);
-  }, [load]);
 
   useDidShow(() => {
     // 只在从详情/搜索/收藏等非 tabbar 页面返回时刷新一次，
@@ -85,23 +65,10 @@ const IndexPage: React.FC = () => {
     }
   });
 
-  usePullDownRefresh(async () => {
-    setLoading(true);
-    await load(0, true);
-    Taro.stopPullDownRefresh();
-  });
-
-  useReachBottom(() => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    load(page);
-  });
-
   /** 切换排序（特殊处理"时长"：点同一按钮切换 asc/desc） */
   const onSwitchSort = (key: ListSort) => {
     if (key === 'duration_asc' || key === 'duration_desc') {
-      const next = sortBy === 'duration_asc' ? 'duration_desc' : 'duration_asc';
-      setSortBy(next);
+      setSortBy((prev) => (prev === 'duration_asc' ? 'duration_desc' : 'duration_asc'));
     } else {
       setSortBy(key);
     }
@@ -114,7 +81,6 @@ const IndexPage: React.FC = () => {
   /** 切换分类筛选 */
   const onSwitchCategory = (cat: string) => {
     setCategory(cat);
-    setLoading(true);
   };
 
   return (
@@ -163,37 +129,7 @@ const IndexPage: React.FC = () => {
                 item={item}
                 onClick={goDetail}
                 rank={idx}
-                footer={
-                  <>
-                    {item.tags?.length ? (
-                      <View className={styles.animtag}>
-                        {item.tags.map((tag: string) => (
-                          <Text key={tag} className={styles.animTag}>
-                            {tag}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    <View className={styles.animMeta}>
-                      <Text className={styles.metaAuthor} numberOfLines={1}>
-                        {item.up_name}
-                      </Text>
-                      <Text className={styles.metaDot}>·</Text>
-                      <Text className={styles.metaPlay}>
-                        {formatNumber(item.play_count || 0)} 播放
-                      </Text>
-                      {item.score != null ? (
-                        <>
-                          <Text className={styles.metaDot}>·</Text>
-                          <Text className={styles.metaScore}>
-                            <Text className={styles.metaScoreIcon}>★</Text>
-                            {item.score.toFixed(1)}
-                          </Text>
-                        </>
-                      ) : null}
-                    </View>
-                  </>
-                }
+                footer={<AnimCardFooter item={item} styles={styles} />}
               />
             ))}
 

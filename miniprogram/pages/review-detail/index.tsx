@@ -1,16 +1,12 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Taro, { useRouter } from '@tarojs/taro';
 import { View, Text, Image as TaroImage, Button, Textarea } from '@tarojs/components';
 import { ReviewService } from '@/services/business';
-import { Submission, SubmissionType } from '@/types';
+import { Submission } from '@/types';
 import { formatDateTime, formatDuration } from '@/utils/util';
+import { toastError, toastOpError } from '@/utils/error';
+import { SUBMISSION_TYPE_LABEL_FULL } from '@/utils/submission';
 import styles from './index.module.scss';
-
-const TYPE_LABEL: Record<SubmissionType, string> = {
-  create: '录入动画',
-  correction: '勘误',
-  correction_delete: '申请删除',
-};
 
 const ReviewDetailPage: React.FC = () => {
   const router = useRouter();
@@ -28,8 +24,7 @@ const ReviewDetailPage: React.FC = () => {
       const data = await ReviewService.get(id);
       setItem(data);
     } catch (err) {
-      console.error('[review-detail] 加载失败', err);
-      Taro.showToast({ title: '加载失败', icon: 'none' });
+      toastError('[review-detail]', err);
     } finally {
       setLoading(false);
     }
@@ -39,20 +34,18 @@ const ReviewDetailPage: React.FC = () => {
     load();
   }, [load]);
 
-  // 标题文案按 type 分发
-  const approveCopy = useMemo(() => {
-    if (!item) return '通过';
-    if (item.type === 'create') return '通过';
-    if (item.type === 'correction') return '通过';
-    return '通过（删除原动画）';
-  }, [item]);
+  // 通过按钮文案：仅 correction_delete 需要提示删除
+  const approveCopy =
+    !item || item.type !== 'correction_delete' ? '通过' : '通过（删除原动画）';
 
-  const approveConfirm = useMemo(() => {
-    if (!item) return '通过后该动画将出现在首页/搜索列表。';
-    if (item.type === 'create') return '通过后该动画将出现在首页/搜索列表。';
-    if (item.type === 'correction') return '通过后将把新标题和标签合并到原动画。';
-    return '通过后该动画将被永久删除。';
-  }, [item]);
+  // 通过确认文案按 type 分发
+  const approveConfirm = !item
+    ? '通过后该动画将出现在首页/搜索列表。'
+    : item.type === 'correction'
+      ? '通过后将把新标题和标签合并到原动画。'
+      : item.type === 'correction_delete'
+        ? '通过后该动画将被永久删除。'
+        : '通过后该动画将出现在首页/搜索列表。';
 
   const onApprove = async () => {
     if (!item) return;
@@ -68,8 +61,8 @@ const ReviewDetailPage: React.FC = () => {
           await ReviewService.approve(item._id, comment);
           Taro.showToast({ title: '已通过', icon: 'success' });
           setTimeout(() => Taro.navigateBack(), 1000);
-        } catch (err: any) {
-          Taro.showToast({ title: err?.message || '操作失败', icon: 'none' });
+        } catch (err) {
+          toastOpError('[review-detail]', err, '操作失败');
         } finally {
           setBusy(false);
         }
@@ -96,8 +89,8 @@ const ReviewDetailPage: React.FC = () => {
           await ReviewService.reject(item._id, comment);
           Taro.showToast({ title: '已驳回', icon: 'success' });
           setTimeout(() => Taro.navigateBack(), 1000);
-        } catch (err: any) {
-          Taro.showToast({ title: err?.message || '操作失败', icon: 'none' });
+        } catch (err) {
+          toastOpError('[review-detail]', err, '操作失败');
         } finally {
           setBusy(false);
         }
@@ -148,7 +141,7 @@ const ReviewDetailPage: React.FC = () => {
       {/* 类型横幅 */}
       <View className={styles.typeBanner}>
         <Text className={styles.typeBannerText}>
-          {TYPE_LABEL[item.type] || item.type}
+          {SUBMISSION_TYPE_LABEL_FULL[item.type] || item.type}
         </Text>
       </View>
 

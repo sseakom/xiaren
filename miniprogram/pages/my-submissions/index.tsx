@@ -2,21 +2,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Taro, { usePullDownRefresh } from '@tarojs/taro';
 import { View, Text, Image as TaroImage } from '@tarojs/components';
 import { SubmissionService } from '@/services/business';
-import { Submission, SubmissionType } from '@/types';
+import { Submission } from '@/types';
 import { formatDateTime, formatDuration } from '@/utils/util';
+import { toastError, toastOpError } from '@/utils/error';
+import {
+  SUBMISSION_TYPE_LABEL,
+  SUBMISSION_TYPE_COLOR,
+  getSubmissionDisplay,
+} from '@/utils/submission';
 import styles from './index.module.scss';
-
-const TYPE_LABEL: Record<SubmissionType, string> = {
-  create: '录入',
-  correction: '勘误',
-  correction_delete: '申请删除',
-};
-
-const TYPE_COLOR: Record<SubmissionType, string> = {
-  create: 'typeCreate',
-  correction: 'typeCorrection',
-  correction_delete: 'typeDelete',
-};
 
 const MySubmissionsPage: React.FC = () => {
   const [list, setList] = useState<Submission[]>([]);
@@ -28,8 +22,7 @@ const MySubmissionsPage: React.FC = () => {
       const data = await SubmissionService.listMySubmissions();
       setList(data);
     } catch (err) {
-      console.error('[my-submissions] 加载失败', err);
-      Taro.showToast({ title: '加载失败', icon: 'none' });
+      toastError('[my-submissions]', err);
     } finally {
       setLoading(false);
     }
@@ -48,7 +41,7 @@ const MySubmissionsPage: React.FC = () => {
     if (it.status !== 2) return;
     Taro.showModal({
       title: '取消提交',
-      content: `确认取消「${TYPE_LABEL[it.type] || it.type}」吗？取消后无法恢复。`,
+      content: `确认取消「${SUBMISSION_TYPE_LABEL[it.type] || it.type}」吗？取消后无法恢复。`,
       confirmText: '确认取消',
       cancelText: '不取消',
       confirmColor: '#d23a3a',
@@ -58,9 +51,8 @@ const MySubmissionsPage: React.FC = () => {
           await SubmissionService.cancel(it._id);
           Taro.showToast({ title: '已取消', icon: 'success' });
           setList((prev) => prev.filter((x) => x._id !== it._id));
-        } catch (err: any) {
-          console.error('[my-submissions] 取消失败', err);
-          Taro.showToast({ title: err?.message || '取消失败', icon: 'none' });
+        } catch (err) {
+          toastOpError('[my-submissions]', err, '取消失败');
         }
       },
     });
@@ -82,28 +74,14 @@ const MySubmissionsPage: React.FC = () => {
       ) : (
         <View className={styles.list}>
           {list.map((it) => {
-            const isCreate = it.type === 'create';
-            const showTitle = isCreate
-              ? (it.payload as any)?.title || '未命名'
-              : it.type === 'correction'
-              ? (it.payload as any)?.title || it.target?.title || '勘误'
-              : it.target?.title || '申请删除';
-            const showCover = isCreate
-              ? (it.payload as any)?.cover
-              : it.target?.cover;
-            const showUp = isCreate
-              ? (it.payload as any)?.up_name
-              : it.target?.up_name;
-            const showDur = isCreate
-              ? Number((it.payload as any)?.duration) || 0
-              : Number(it.target?.duration) || 0;
+            const disp = getSubmissionDisplay(it);
             return (
               <View key={it._id} className={styles.item}>
                 <View className={styles.coverWrap}>
-                  {showCover ? (
+                  {disp.cover ? (
                     <TaroImage
                       className={styles.cover}
-                      src={showCover}
+                      src={disp.cover}
                       mode="aspectFill"
                     />
                   ) : (
@@ -112,11 +90,11 @@ const MySubmissionsPage: React.FC = () => {
                 </View>
                 <View className={styles.info}>
                   <View className={styles.titleRow}>
-                    <Text className={`${styles.typeTag} ${styles[TYPE_COLOR[it.type]] || ''}`}>
-                      {TYPE_LABEL[it.type] || it.type}
+                    <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[it.type]] || ''}`}>
+                      {SUBMISSION_TYPE_LABEL[it.type] || it.type}
                     </Text>
                     <Text className={styles.title} numberOfLines={1}>
-                      {showTitle}
+                      {disp.title}
                     </Text>
                     <Text
                       className={`${styles.statusTag} ${
@@ -127,7 +105,7 @@ const MySubmissionsPage: React.FC = () => {
                     </Text>
                   </View>
                   <Text className={styles.meta}>
-                    {showUp || '未知 UP'} · {formatDuration(showDur)}
+                    {disp.upName || '未知 UP'} · {formatDuration(disp.duration || 0)}
                   </Text>
                   <Text className={styles.meta}>
                     提交时间：{formatDateTime(it.submitted_at)}

@@ -86,6 +86,50 @@ class CloudServiceImpl {
       throw wrapped;
     }
   }
+
+  /**
+   * 调用云函数并返回 result（已校验 success）
+   * 适用于"写/操作"类调用：失败时抛出带 error 信息的 Error。
+   *   const r = await CloudService.callCloud('rating', { action: 'submit', ... });
+   *   return { newRating: !!r.newRating };
+   */
+  async callCloud(
+    name: string,
+    data?: Record<string, any>,
+    options?: { timeoutMs?: number },
+  ): Promise<Record<string, any>> {
+    const res = await this.callFunction(name, data, options);
+    const result = (res as any)?.result;
+    if (!result || result.success === false) {
+      throw new Error(result?.error || `${name} 调用失败`);
+    }
+    return result;
+  }
+
+  /**
+   * 调用云函数，成功返回 result，失败/异常返回 null（不抛错）
+   * 适用于"读/查询"类调用：失败时降级返回空，由调用方兜底。
+   *   const r = await CloudService.callCloudSafe('getAnimationById', { id });
+   *   return r?.data ?? null;
+   */
+  async callCloudSafe(
+    name: string,
+    data?: Record<string, any>,
+    options?: { timeoutMs?: number },
+  ): Promise<Record<string, any> | null> {
+    try {
+      const res = await this.callFunction(name, data, options);
+      const result = (res as any)?.result;
+      if (!result || result.success === false) {
+        console.warn(`[Cloud] callCloudSafe ${name} business-fail`, result?.error);
+        return null;
+      }
+      return result;
+    } catch (err) {
+      console.warn(`[Cloud] callCloudSafe ${name} failed`, err);
+      return null;
+    }
+  }
 }
 
 export const CloudService = new CloudServiceImpl();

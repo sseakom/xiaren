@@ -12,6 +12,7 @@ import { SubmissionService, BilibiliService, BilibiliVideoInfo } from '@/service
 import { Animation } from '@/types';
 import { CATEGORY_GROUPS } from '@/constants/categories';
 import { formatNumber } from '@/utils/util';
+import { getErrMsg, toastOpError } from '@/utils/error';
 import styles from './index.module.scss';
 
 export type AnimationFormMode = 'create' | 'correction' | 'delete';
@@ -29,7 +30,7 @@ export interface AnimationFormProps {
   onSuccess?: (_id: string) => void;
 }
 
-/** 把秒数格式化为 "mm:ss" / "h:mm:ss" */
+/** 把秒数格式化为 "mm:ss" / "h:mm:ss"（空值返回空串，区别于 utils.formatDuration） */
 function formatDurationText(sec: number): string {
   if (!sec || sec <= 0) return '';
   const h = Math.floor(sec / 3600);
@@ -49,6 +50,117 @@ function parseTags(str: string | undefined | null): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+// ============== 内部子组件（消除 correction / create / delete 模式间的 JSX 重复） ==============
+
+/** 标签选择弹窗 —— correction 与 create 模式完全相同 */
+const TagPicker: React.FC<{
+  draft: string[];
+  onDraftChange: (next: string[]) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}> = ({ draft, onDraftChange, onClose, onConfirm }) => (
+  <View className={styles.tagPickerMask} onClick={onClose}>
+    <View className={styles.tagPickerPanel} onClick={(e) => e.stopPropagation()}>
+      <View className={styles.tagPickerHeader}>
+        <Text className={styles.tagPickerTitle}>选择标签</Text>
+        <Text className={styles.tagPickerSub}>已选 {draft.length} 个</Text>
+      </View>
+      <View className={styles.tagPickerBody}>
+        {CATEGORY_GROUPS.map((group) => (
+          <View key={group.title} className={styles.tagPickerGroup}>
+            <Text className={styles.tagPickerGroupTitle}>{group.title}</Text>
+            <View className={styles.tagPickerItems}>
+              {group.items.map((it) => {
+                const active = draft.includes(it);
+                return (
+                  <View
+                    key={it}
+                    className={`${styles.tagPickerItem} ${active ? styles.tagPickerItemActive : ''}`}
+                    onClick={() => {
+                      onDraftChange(
+                        draft.includes(it)
+                          ? draft.filter((x) => x !== it)
+                          : [...draft, it],
+                      );
+                    }}
+                  >
+                    <Text
+                      className={`${styles.tagPickerItemText} ${active ? styles.tagPickerItemTextActive : ''}`}
+                    >
+                      {it}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+      </View>
+      <View className={styles.tagPickerActions}>
+        <Button className={`${styles.btn} ${styles.btnGhost}`} onClick={onClose}>
+          取消
+        </Button>
+        <Button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onConfirm}>
+          确定
+        </Button>
+      </View>
+    </View>
+  </View>
+);
+
+/** 已选标签 chips + 选择按钮 —— correction 与 create 模式完全相同 */
+const TagSelector: React.FC<{
+  tags: string[];
+  onRemove: (t: string) => void;
+  onOpenPicker: () => void;
+  error?: string;
+}> = ({ tags, onRemove, onOpenPicker, error }) => (
+  <View className={styles.field}>
+    <Text className={styles.label}>
+      标签<Text className={styles.required}>*</Text>
+    </Text>
+    {tags.length > 0 ? (
+      <View className={styles.selectedTags}>
+        {tags.map((t) => (
+          <View key={t} className={styles.selectedTagChip}>
+            <Text className={styles.selectedTagText}>{t}</Text>
+            <View className={styles.selectedTagRemove} onClick={() => onRemove(t)}>
+              <Text className={styles.selectedTagRemoveIcon}>×</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    ) : (
+      <Text className={styles.tagEmptyHint}>尚未选择标签</Text>
+    )}
+    <Button className={styles.pickTagBtn} onClick={onOpenPicker}>
+      + 选择标签
+    </Button>
+    {error && <Text className={styles.error}>{error}</Text>}
+  </View>
+);
+
+/** 备注字段 —— correction / delete / create 三处完全相同 */
+const NoteField: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+}> = ({ value, onChange }) => (
+  <View className={styles.field}>
+    <Text className={styles.label}>
+      备注<Text className={styles.optional}>(可选)</Text>
+    </Text>
+    <Textarea
+      className={styles.textarea}
+      placeholder="给审核管理员的补充说明（最多 200 字）"
+      value={value}
+      maxlength={200}
+      onInput={(e) => onChange(e.detail.value)}
+    />
+  </View>
+);
+
+// ============== 主组件 ==============
 
 const AnimationForm: React.FC<AnimationFormProps> = ({
   mode,
@@ -112,6 +224,21 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     });
   };
 
+  // 标签操作的通用回调
+  const removeTag = (t: string) => {
+    setTags((prev) => prev.filter((x) => x !== t));
+    clearErr('tag');
+  };
+  const openTagPicker = () => {
+    setTagPickerDraft([...tags]);
+    setTagPickerOpen(true);
+  };
+  const confirmTagPicker = () => {
+    setTags(tagPickerDraft);
+    clearErr('tag');
+    setTagPickerOpen(false);
+  };
+
   /** 校验 */
   const validate = (): { ok: boolean; errs: Record<string, string> } => {
     const errs: Record<string, string> = {};
@@ -168,9 +295,9 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
       }
       // 触发 bvid 唯一性校验
       checkBvid(info.bvid);
-    } catch (err: any) {
+    } catch (err) {
       console.error('[AnimationForm] B 站拉取失败', err);
-      setBilibiliError(err?.message || 'B 站信息拉取失败');
+      setBilibiliError(getErrMsg(err, 'B 站信息拉取失败'));
     } finally {
       setBilibiliLoading(false);
     }
@@ -223,9 +350,8 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         Taro.showToast({ title: '删除申请已提交，等待审核', icon: 'success' });
         if (ret?._id) onSuccess?.(ret._id);
       }
-    } catch (err: any) {
-      console.error('[AnimationForm] 提交失败', err);
-      Taro.showToast({ title: err?.message || '提交失败', icon: 'none' });
+    } catch (err) {
+      toastOpError('[AnimationForm]', err, '提交失败');
     } finally {
       setSubmitting(false);
     }
@@ -271,9 +397,8 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
       } else {
         setDeletePhase(null);
       }
-    } catch (err: any) {
-      console.error('[AnimationForm] 申请删除失败', err);
-      Taro.showToast({ title: err?.message || '提交失败', icon: 'none' });
+    } catch (err) {
+      toastOpError('[AnimationForm]', err, '提交失败');
     } finally {
       setSubmitting(false);
     }
@@ -332,57 +457,15 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         </View>
 
         {/* 标签 chips */}
-        <View className={styles.field}>
-          <Text className={styles.label}>
-            标签<Text className={styles.required}>*</Text>
-          </Text>
-          {/* 已选标签：每个带 × 按钮 */}
-          {tags.length > 0 ? (
-            <View className={styles.selectedTags}>
-              {tags.map((t) => (
-                <View key={t} className={styles.selectedTagChip}>
-                  <Text className={styles.selectedTagText}>{t}</Text>
-                  <View
-                    className={styles.selectedTagRemove}
-                    onClick={() => {
-                      setTags((prev) => prev.filter((x) => x !== t));
-                      clearErr('tag');
-                    }}
-                  >
-                    <Text className={styles.selectedTagRemoveIcon}>×</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text className={styles.tagEmptyHint}>尚未选择标签</Text>
-          )}
-          {/* 选择标签 按钮 */}
-          <Button
-            className={styles.pickTagBtn}
-            onClick={() => {
-              setTagPickerDraft([...tags]);
-              setTagPickerOpen(true);
-            }}
-          >
-            + 选择标签
-          </Button>
-          {errors.tag && <Text className={styles.error}>{errors.tag}</Text>}
-        </View>
+        <TagSelector
+          tags={tags}
+          onRemove={removeTag}
+          onOpenPicker={openTagPicker}
+          error={errors.tag}
+        />
 
         {/* 备注（可选） */}
-        <View className={styles.field}>
-          <Text className={styles.label}>
-            备注<Text className={styles.optional}>(可选)</Text>
-          </Text>
-          <Textarea
-            className={styles.textarea}
-            placeholder="给审核管理员的补充说明（最多 200 字）"
-            value={note}
-            maxlength={200}
-            onInput={(e) => setNote(e.detail.value)}
-          />
-        </View>
+        <NoteField value={note} onChange={setNote} />
 
         {/* 申请删除子面板（correction 模式下内嵌） */}
         {deletePhase === 'reason' && (
@@ -444,73 +527,12 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
 
         {/* 标签选择弹窗 */}
         {tagPickerOpen && (
-          <View
-            className={styles.tagPickerMask}
-            onClick={() => setTagPickerOpen(false)}
-          >
-            <View
-              className={styles.tagPickerPanel}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <View className={styles.tagPickerHeader}>
-                <Text className={styles.tagPickerTitle}>选择标签</Text>
-                <Text className={styles.tagPickerSub}>
-                  已选 {tagPickerDraft.length} 个
-                </Text>
-              </View>
-              <View className={styles.tagPickerBody}>
-                {CATEGORY_GROUPS.map((group) => (
-                  <View key={group.title} className={styles.tagPickerGroup}>
-                    <Text className={styles.tagPickerGroupTitle}>
-                      {group.title}
-                    </Text>
-                    <View className={styles.tagPickerItems}>
-                      {group.items.map((it) => {
-                        const active = tagPickerDraft.includes(it);
-                        return (
-                          <View
-                            key={it}
-                            className={`${styles.tagPickerItem} ${active ? styles.tagPickerItemActive : ''}`}
-                            onClick={() => {
-                              setTagPickerDraft((prev) =>
-                                prev.includes(it)
-                                  ? prev.filter((x) => x !== it)
-                                  : [...prev, it],
-                              );
-                            }}
-                          >
-                            <Text
-                              className={`${styles.tagPickerItemText} ${active ? styles.tagPickerItemTextActive : ''}`}
-                            >
-                              {it}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </View>
-                ))}
-              </View>
-              <View className={styles.tagPickerActions}>
-                <Button
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  onClick={() => setTagPickerOpen(false)}
-                >
-                  取消
-                </Button>
-                <Button
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  onClick={() => {
-                    setTags(tagPickerDraft);
-                    clearErr('tag');
-                    setTagPickerOpen(false);
-                  }}
-                >
-                  确定
-                </Button>
-              </View>
-            </View>
-          </View>
+          <TagPicker
+            draft={tagPickerDraft}
+            onDraftChange={setTagPickerDraft}
+            onClose={() => setTagPickerOpen(false)}
+            onConfirm={confirmTagPicker}
+          />
         )}
       </View>
     );
@@ -567,18 +589,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         </View>
 
         {/* 备注（可选） */}
-        <View className={styles.field}>
-          <Text className={styles.label}>
-            备注<Text className={styles.optional}>(可选)</Text>
-          </Text>
-          <Textarea
-            className={styles.textarea}
-            placeholder="给审核管理员的补充说明（最多 200 字）"
-            value={note}
-            maxlength={200}
-            onInput={(e) => setNote(e.detail.value)}
-          />
-        </View>
+        <NoteField value={note} onChange={setNote} />
 
         <Button
           className={styles.submitBtn}
@@ -699,55 +710,15 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
           </View>
 
           {/* 标签：chips 多选（与 correction 模式同款） */}
-          <View className={styles.field}>
-            <Text className={styles.label}>
-              标签<Text className={styles.required}>*</Text>
-            </Text>
-            {tags.length > 0 ? (
-              <View className={styles.selectedTags}>
-                {tags.map((t) => (
-                  <View key={t} className={styles.selectedTagChip}>
-                    <Text className={styles.selectedTagText}>{t}</Text>
-                    <View
-                      className={styles.selectedTagRemove}
-                      onClick={() => {
-                        setTags((prev) => prev.filter((x) => x !== t));
-                        clearErr('tag');
-                      }}
-                    >
-                      <Text className={styles.selectedTagRemoveIcon}>×</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text className={styles.tagEmptyHint}>尚未选择标签</Text>
-            )}
-            <Button
-              className={styles.pickTagBtn}
-              onClick={() => {
-                setTagPickerDraft([...tags]);
-                setTagPickerOpen(true);
-              }}
-            >
-              + 选择标签
-            </Button>
-            {errors.tag && <Text className={styles.error}>{errors.tag}</Text>}
-          </View>
+          <TagSelector
+            tags={tags}
+            onRemove={removeTag}
+            onOpenPicker={openTagPicker}
+            error={errors.tag}
+          />
 
           {/* 备注（可选） */}
-          <View className={styles.field}>
-            <Text className={styles.label}>
-              备注<Text className={styles.optional}>(可选)</Text>
-            </Text>
-            <Textarea
-              className={styles.textarea}
-              placeholder="给审核管理员的补充说明（最多 200 字）"
-              value={note}
-              maxlength={200}
-              onInput={(e) => setNote(e.detail.value)}
-            />
-          </View>
+          <NoteField value={note} onChange={setNote} />
 
           <Button
             className={styles.submitBtn}
@@ -762,73 +733,12 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
 
       {/* 标签选择弹窗（create 模式复用） */}
       {tagPickerOpen && (
-        <View
-          className={styles.tagPickerMask}
-          onClick={() => setTagPickerOpen(false)}
-        >
-          <View
-            className={styles.tagPickerPanel}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <View className={styles.tagPickerHeader}>
-              <Text className={styles.tagPickerTitle}>选择标签</Text>
-              <Text className={styles.tagPickerSub}>
-                已选 {tagPickerDraft.length} 个
-              </Text>
-            </View>
-            <View className={styles.tagPickerBody}>
-              {CATEGORY_GROUPS.map((group) => (
-                <View key={group.title} className={styles.tagPickerGroup}>
-                  <Text className={styles.tagPickerGroupTitle}>
-                    {group.title}
-                  </Text>
-                  <View className={styles.tagPickerItems}>
-                    {group.items.map((it) => {
-                      const active = tagPickerDraft.includes(it);
-                      return (
-                        <View
-                          key={it}
-                          className={`${styles.tagPickerItem} ${active ? styles.tagPickerItemActive : ''}`}
-                          onClick={() => {
-                            setTagPickerDraft((prev) =>
-                              prev.includes(it)
-                                ? prev.filter((x) => x !== it)
-                                : [...prev, it],
-                            );
-                          }}
-                        >
-                          <Text
-                            className={`${styles.tagPickerItemText} ${active ? styles.tagPickerItemTextActive : ''}`}
-                          >
-                            {it}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
-            </View>
-            <View className={styles.tagPickerActions}>
-              <Button
-                className={`${styles.btn} ${styles.btnGhost}`}
-                onClick={() => setTagPickerOpen(false)}
-              >
-                取消
-              </Button>
-              <Button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
-                  setTags(tagPickerDraft);
-                  clearErr('tag');
-                  setTagPickerOpen(false);
-                }}
-              >
-                确定
-              </Button>
-            </View>
-          </View>
-        </View>
+        <TagPicker
+          draft={tagPickerDraft}
+          onDraftChange={setTagPickerDraft}
+          onClose={() => setTagPickerOpen(false)}
+          onConfirm={confirmTagPicker}
+        />
       )}
     </View>
   );

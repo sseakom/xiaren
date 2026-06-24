@@ -6,6 +6,7 @@ import AnimationForm, {
 } from '@/components/AnimationForm';
 import { AnimationService } from '@/services/business';
 import { Animation } from '@/types';
+import { toastError } from '@/utils/error';
 import styles from './index.module.scss';
 
 function parseMode(raw: string | undefined, hasTarget: boolean): AnimationFormMode {
@@ -46,8 +47,7 @@ const AnimationFormPage: React.FC = () => {
         setLoaded(true);
       })
       .catch((err) => {
-        console.error('[animation-form] 加载原动画失败', err);
-        Taro.showToast({ title: '加载失败', icon: 'none' });
+        toastError('[animation-form]', err);
       });
   }, [mode, target]);
 

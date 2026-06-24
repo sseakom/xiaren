@@ -1,16 +1,20 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
-import Taro, { useReachBottom, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro';
+import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Collection } from '@/types';
 import { CollectionService } from '@/services/business';
 import { formatTime } from '@/utils/util';
-import { goHome } from '@/utils/nav';
+import { goDetail, goHome } from '@/utils/nav';
+import { usePagination } from '@/hooks/usePagination';
+import { toastError } from '@/utils/error';
 import EmptyState from '@/components/EmptyState';
 import Skeleton from '@/components/Skeleton';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
+
+type CollectionItem = Collection & { timeText?: string };
 
 const MyCollectionsPage: React.FC = () => {
   // 支持 type=watched 从URL参数读取
@@ -19,76 +23,36 @@ const MyCollectionsPage: React.FC = () => {
       | 'collect'
       | 'watched') || 'collect';
   const [type, setType] = useState<'collect' | 'watched'>(initialType);
-  // 列表项附带派生字段 timeText，单独扩展类型以避免 setState 类型不匹配
-  type CollectionItem = Collection & { timeText?: string };
-  const [list, setList] = useState<CollectionItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(0);
 
-  useShareAppMessage(() => ({
-    title:
-      type === 'watched' ? '我看过的沙雕动画' : '我收藏的沙雕动画',
-    path: `/pages/my-collections/index?type=${type}`,
-  }));
-
-  const load = useCallback(
-    async (p: number, t: 'collect' | 'watched', refresh = false) => {
-      try {
-        if (p === 0) setLoading(true);
-        setLoadingMore(p > 0);
-        // include_anim=true：云函数一次性返回 title/up_name/cover，去掉 N+1
-        const { list: data, total: cnt } = await CollectionService.listByUser(
-          t,
-          p,
-          PAGE_SIZE,
-          true,
-        );
-        const enriched: CollectionItem[] = data.map((c) => ({
-          ...c,
-          timeText: formatTime(c.created_at),
-        }));
-        setList((prev) => (p === 0 || refresh ? enriched : [...prev, ...enriched]));
-        setTotal(cnt);
-        setPage(p + 1);
-      } catch (err) {
-        console.error('[MyCollections] 加载失败', err);
-        Taro.showToast({ title: '加载失败', icon: 'none' });
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
+  const { list, loading, loadingMore, hasMore } = usePagination<CollectionItem>(
+    async (p) => {
+      const { list, total } = await CollectionService.listByUser(
+        type,
+        p,
+        PAGE_SIZE,
+        true,
+      );
+      const enriched: CollectionItem[] = list.map((c) => ({
+        ...c,
+        timeText: formatTime(c.created_at),
+      }));
+      return { list: enriched, total };
     },
-    [],
+    [type],
+    (err) => toastError('[MyCollections]', err),
   );
 
+  // 切换 type 时同步导航栏标题
   useEffect(() => {
-    setList([]);
-    setPage(0);
-    setTotal(0);
-    load(0, type);
-    // 设置导航栏标题
     Taro.setNavigationBarTitle({
       title: type === 'collect' ? '我的收藏' : '我看过的',
     });
-  }, [load, type]);
+  }, [type]);
 
-  usePullDownRefresh(async () => {
-    setLoading(true);
-    await load(0, type, true);
-    Taro.stopPullDownRefresh();
-  });
-
-  useReachBottom(() => {
-    if (loadingMore || loading) return;
-    if (list.length >= total) return;
-    setLoadingMore(true);
-    load(page, type);
-  });
-
-  const goDetail = (id: string) =>
-    Taro.navigateTo({ url: `/pages/detail/index?id=${id}` });
+  useShareAppMessage(() => ({
+    title: type === 'watched' ? '我看过的沙雕动画' : '我收藏的沙雕动画',
+    path: `/pages/my-collections/index?type=${type}`,
+  }));
 
   return (
     <View className={styles.pageMyCollections}>
@@ -132,10 +96,7 @@ const MyCollectionsPage: React.FC = () => {
                 </View>
               </View>
             ))}
-            <LoadMoreFooter
-              hasMore={list.length < total}
-              loading={loadingMore}
-            />
+            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
           </ScrollView>
         ) : (
           !loading && (

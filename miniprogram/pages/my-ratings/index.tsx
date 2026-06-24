@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
-import Taro, { useReachBottom, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro';
+import { useShareAppMessage } from '@tarojs/taro';
 import { Rating } from '@/types';
 import { RatingService } from '@/services/business';
 import { formatTime } from '@/utils/util';
 import { goDetail, goHome } from '@/utils/nav';
+import { usePagination } from '@/hooks/usePagination';
+import { toastError } from '@/utils/error';
 import EmptyState from '@/components/EmptyState';
 import Skeleton from '@/components/Skeleton';
 import StarRating from '@/components/StarRating';
@@ -14,55 +16,19 @@ import styles from './index.module.scss';
 const PAGE_SIZE = 20;
 
 const MyRatingsPage: React.FC = () => {
-  const [list, setList] = useState<Rating[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(0);
+  const { list, loading, loadingMore, hasMore } = usePagination<Rating>(
+    async (p) => {
+      const { list, total } = await RatingService.listByUser(p, PAGE_SIZE, true);
+      return { list, total };
+    },
+    [],
+    (err) => toastError('[MyRatings]', err),
+  );
 
   useShareAppMessage(() => ({
     title: '我评过的沙雕动画',
     path: '/pages/my-ratings/index',
   }));
-
-  const load = useCallback(async (p: number, refresh = false) => {
-    try {
-      if (p === 0) setLoading(true);
-      setLoadingMore(p > 0);
-      // include_anim=true：云函数一次性回传 animTitle/animCover，去掉 N+1
-      const { list: data, total: cnt } = await RatingService.listByUser(
-        p,
-        PAGE_SIZE,
-        true,
-      );
-      setList((prev) => (p === 0 || refresh ? data : [...prev, ...data]));
-      setTotal(cnt);
-      setPage(p + 1);
-    } catch (err) {
-      console.error('[MyRatings] 加载失败', err);
-      Taro.showToast({ title: '加载失败', icon: 'none' });
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load(0);
-  }, [load]);
-
-  usePullDownRefresh(async () => {
-    setLoading(true);
-    await load(0, true);
-    Taro.stopPullDownRefresh();
-  });
-
-  useReachBottom(() => {
-    if (loadingMore || loading) return;
-    if (list.length >= total) return;
-    setLoadingMore(true);
-    load(page);
-  });
 
   return (
     <View className={styles.pageMyRatings}>
@@ -93,10 +59,7 @@ const MyRatingsPage: React.FC = () => {
                 </View>
               </View>
             ))}
-            <LoadMoreFooter
-              hasMore={list.length < total}
-              loading={loadingMore}
-            />
+            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
           </ScrollView>
         ) : (
           !loading && (
