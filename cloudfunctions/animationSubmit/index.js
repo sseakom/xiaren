@@ -1,18 +1,18 @@
 // cloudfunctions/animationSubmit/index.js
-// 动画提交入口（用户录入新动画 / 详情页勘误）
+// 用户提交入口（写入 submissions 集合，不直接操作 animations）
 // 入参：
-//   - mode: 'create' | 'correction'
-//       create     → 新建一条 status=2 记录（需全部必填字段）
-//       correction → 保留原 bvid + 拷贝原动画其他字段，只允许改 title + tag
-//   - payload:
-//       create:     { title, bvid, up_name, cover, duration, tag, url?, play_count?, like_count?, publish_time }
-//       correction: { title, tag }
-//   - correction_of?:  原动画 _id（仅 correction 模式）
+//   - type: 'create' | 'correction' | 'correction_delete'
+//       create           → payload 为完整动画字段；通过后写入 animations
+//       correction       → payload 为 { title, tag }；通过后合并到 animations.doc(target_id)
+//       correction_delete→ payload 为 { reason }；通过后删除 animations.doc(target_id)
+//   - payload:        类型对应的数据（见上）
+//   - target_id?:     correction / correction_delete 必传（原动画 _id）
 // 返回：{ success, data: { _id, status } } 或 { success: false, error }
 //
 // 校验规则：
 //   1. create: 必填 title/bvid/up_name/cover/duration/publish_time/tag；bvid 格式 + 唯一性
-//   2. correction: 必填 title + tag；其他字段从原动画拷贝；bvid 沿用原值
+//   2. correction: 必填 title + tag；target_id 指向 status=1 的原动画
+//   3. correction_delete: 必填 reason（>= 4 字）；target_id 指向 status=1 的原动画
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -44,22 +44,34 @@ function validateCorrectionPayload(p) {
   return null;
 }
 
+/** correction_delete 模式只校验 reason */
+function validateDeletePayload(p) {
+  if (!p) return '请填写删除理由';
+  const reason = String(p.reason || '').trim();
+  if (!reason) return '请填写删除理由';
+  if (reason.length < 4) return '删除理由至少 4 个字';
+  return null;
+}
+
 /**
- * bvid 唯一性校验
- *  - 「同 bvid + 状态为 1 或 2」视为已占用（不允许再提交）
- *  - 状态 3（驳回）的同 bvid 记录允许用户重新提交
+ * bvid 唯一性校验（仅 create 模式）
+ *  - animations 集合不再有 status 字段，直接查重
+ *  - 查 submissions 集合（status=2，未被驳回且未通过）
  */
-async function checkBvidUnique(bvid, excludeId) {
-  const res = await db
+async function checkBvidUnique(bvid) {
+  const animRes = await db
     .collection('animations')
-    .where({
-      bvid,
-      status: _.in([1, 2]),
-    })
-    .limit(10)
+    .where({ bvid })
+    .limit(5)
     .get();
-  const conflict = (res.data || []).filter((it) => it._id !== excludeId);
-  return conflict.length === 0;
+  if ((animRes.data || []).length > 0) return false;
+  // 查 pending 状态的 create 提交
+  const subRes = await db
+    .collection('submissions')
+    .where({ type: 'create', status: 2 })
+    .limit(100)
+    .get();
+  return !(subRes.data || []).some((s) => s.payload && s.payload.bvid === bvid);
 }
 
 async function checkBvidUniqueAction(bvid) {
@@ -72,35 +84,42 @@ async function submit(event) {
   const openid = wxContext.OPENID;
   if (!openid) return { success: false, error: '未登录' };
 
-  const mode = event.mode || 'create';
+  const type = event.type || (event.mode === 'correction' ? 'correction' : 'create');
   const payload = event.payload || {};
 
-  if (mode === 'create') {
+  if (type === 'create') {
     const err = validateCreatePayload(payload);
     if (err) return { success: false, error: err };
-  } else if (mode === 'correction') {
+  } else if (type === 'correction') {
     const err = validateCorrectionPayload(payload);
     if (err) return { success: false, error: err };
+  } else if (type === 'correction_delete') {
+    const err = validateDeletePayload(payload);
+    if (err) return { success: false, error: err };
   } else {
-    return { success: false, error: '不支持的 mode' };
+    return { success: false, error: '不支持的 type' };
   }
 
-  let correctionOf = null;
-  let orig = null;
-  if (mode === 'correction') {
-    correctionOf = event.correction_of;
-    if (!correctionOf) {
-      return { success: false, error: '勘误模式缺少 correction_of' };
+  let targetId = null;
+  if (type === 'correction' || type === 'correction_delete') {
+    targetId = event.target_id || event.correction_of;
+    if (!targetId) {
+      return { success: false, error: '缺少原动画 id（target_id）' };
     }
+    let orig;
     try {
-      orig = await db.collection('animations').doc(correctionOf).get();
+      orig = await db.collection('animations').doc(targetId).get();
     } catch (e) {
       return { success: false, error: '原动画不存在' };
     }
+    if (!orig.data) {
+      return { success: false, error: '原动画不存在' };
+    }
+    // 不校验 status：下架(status=0)/待审(status=2) 的动画也应允许被勘误/申请删除
   }
 
-  // bvid 唯一性（仅 create 模式；correction 沿用原 bvid）
-  if (mode === 'create') {
+  // create 模式做 bvid 唯一性校验
+  if (type === 'create') {
     const unique = await checkBvidUnique(payload.bvid);
     if (!unique) {
       return { success: false, error: 'bvid 已存在（已被使用或正在审核中）' };
@@ -108,49 +127,17 @@ async function submit(event) {
   }
 
   const now = new Date();
-  let doc;
-  if (mode === 'correction') {
-    // 勘误：拷贝原动画所有字段，只覆盖 title + tag
-    const o = orig.data;
-    doc = {
-      ...o,
-      _id: undefined, // 不可拷贝 _id
-      title: String(payload.title).trim(),
-      tag: String(payload.tag).trim(),
-      status: 2,
-      submitter_openid: openid,
-      submitted_at: now,
-      correction_of: correctionOf,
-      // 清空审核相关字段（新提交待审）
-      reviewer_openid: undefined,
-      review_time: undefined,
-      review_comment: undefined,
-      // 时间戳
-      update_time: now,
-    };
-    // 清理 undefined，避免 db.add 拒绝
-    Object.keys(doc).forEach((k) => doc[k] === undefined && delete doc[k]);
-  } else {
-    doc = {
-      title: String(payload.title).trim(),
-      bvid: String(payload.bvid).trim(),
-      url: payload.url ? String(payload.url).trim() : `https://www.bilibili.com/video/${payload.bvid}`,
-      up_name: String(payload.up_name).trim(),
-      cover: String(payload.cover).trim(),
-      duration: Number(payload.duration),
-      play_count: Number(payload.play_count) || 0,
-      like_count: Number(payload.like_count) || 0,
-      publish_time: new Date(payload.publish_time),
-      update_time: now,
-      tag: String(payload.tag).trim(),
-      status: 2,
-      submitter_openid: openid,
-      submitted_at: now,
-    };
-  }
+  const doc = {
+    type,
+    target_id: targetId || null,
+    payload,
+    status: 2,
+    submitter_openid: openid,
+    submitted_at: now,
+  };
 
   try {
-    const res = await db.collection('animations').add({ data: doc });
+    const res = await db.collection('submissions').add({ data: doc });
     return { success: true, data: { _id: res._id, status: 2 } };
   } catch (e) {
     console.error('[animationSubmit] 写入失败', e);

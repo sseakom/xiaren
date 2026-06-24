@@ -20,33 +20,68 @@ export interface Animation {
   tag?: string;
   /** 预 split 后的标签数组（页面渲染时直接 map，避免反复 split） */
   tags?: string[];
+  /**
+   * 状态字段已废弃：animations 集合不再做上下架/草稿判断，
+   * 所有记录默认对外可见，删除走 submissions（type=correction_delete）。
+   * 保留可选字段仅为兼容历史数据。
+   */
+  status?: 0 | 1;
 }
 
 /**
- * 动画状态机
- *  - 0 草稿（预留，暂未使用）
- *  - 1 已发布（默认；首页/搜索能查到）
- *  - 2 审核中（用户提交的新动画/勘误；首页/搜索不可见）
- *  - 3 驳回（首页/搜索不可见；用户可在《我的提交》看到）
+ * 动画状态机（在 submissions 集合中使用）
+ *  - 1 已应用（管理员已通过；create 已写入 animations，correction 已合并，correction_delete 已删除）
+ *  - 2 审核中（管理员待审）
+ *  - 3 驳回（管理员驳回）
  */
-export type AnimationStatus = 0 | 1 | 2 | 3;
+export type SubmissionStatus = 1 | 2 | 3;
 
-/** 动画提交记录（在 animations 集合中带审核相关字段） */
-export interface AnimationSubmission extends Animation {
-  /** 状态：2 审核中 / 3 驳回 / 1 已发布 */
-  status: AnimationStatus;
-  /** 提交人 openid */
-  submitter_openid?: string;
-  /** 提交时间 */
-  submitted_at?: string | Date;
-  /** 审核人 openid */
+/** 提交类型 */
+export type SubmissionType = 'create' | 'correction' | 'correction_delete';
+
+/** 提交人摘要（review 系列云函数联表带回） */
+export interface SubmitterInfo {
+  nickName: string;
+  _id?: string;
+}
+
+/**
+ * 用户提交记录 - 对应 submissions 集合
+ *  - create：用户新增动画，payload 为完整动画字段；通过后写入 animations
+ *  - correction：用户勘误，target_id 指向原动画，payload 为 { title, tag }；通过后合并
+ *  - correction_delete：用户申请删除，target_id 指向原动画，payload 为 { reason }；通过后删除动画
+ */
+export interface Submission {
+  _id: string;
+  type: SubmissionType;
+  /** correction / correction_delete 指向原动画 _id */
+  target_id?: string;
+  /** create 模式为完整动画字段；correction 模式为 { title, tag }；correction_delete 模式为 { reason } */
+  payload: Record<string, any>;
+  status: SubmissionStatus;
+  submitter_openid: string;
+  submitted_at: string | Date;
   reviewer_openid?: string;
-  /** 审核时间 */
   review_time?: string | Date;
-  /** 审核/驳回备注（如驳回原因） */
   review_comment?: string;
-  /** 勘误来源：如果是勘误记录，指向原动画的 _id */
-  correction_of?: string;
+  /** 联表展示（review 系列云函数带回） */
+  submitter?: SubmitterInfo;
+  /** 联表展示（correction 系列带回原动画摘要） */
+  target?: Partial<Animation>;
+}
+
+/** 用户提交动画的表单字段（录入） */
+export interface AnimationFormPayload {
+  title: string;
+  bvid: string;
+  up_name: string;
+  cover: string;
+  duration: number;
+  tag: string;
+  url?: string;
+  play_count?: number;
+  like_count?: number;
+  publish_time: string | Date;
 }
 
 /** 评分实体 - 对应 ratings 集合 */

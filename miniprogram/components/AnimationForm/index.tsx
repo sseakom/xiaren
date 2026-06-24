@@ -14,14 +14,16 @@ import { Animation } from '@/types';
 import { CATEGORY_GROUPS } from '@/constants/categories';
 import styles from './index.module.scss';
 
-export type AnimationFormMode = 'create' | 'correction';
+export type AnimationFormMode = 'create' | 'correction' | 'delete';
 
 export interface AnimationFormProps {
-  /** 'create' 录入 / 'correction' 勘误 */
+  /** 'create' 录入 / 'correction' 勘误 / 'delete' 申请删除 */
   mode: AnimationFormMode;
-  /** 勘误模式必传：原动画 _id */
+  /** 勘误 / 删除 模式必传：原动画 _id */
+  targetId?: string;
+  /** 兼容旧 prop 名（建议用 targetId） */
   correctionOf?: string;
-  /** 回填数据（勘误时使用；录入时为空） */
+  /** 回填数据（勘误时使用；录入/删除时为空或可选） */
   initialValues?: Partial<Animation> | null;
   /** 提交成功回调：参数是新建记录的 _id */
   onSuccess?: (_id: string) => void;
@@ -74,10 +76,14 @@ function parseTags(str: string | undefined | null): string[] {
 
 const AnimationForm: React.FC<AnimationFormProps> = ({
   mode,
+  targetId,
   correctionOf,
   initialValues,
   onSuccess,
 }) => {
+  // 兼容旧 prop
+  const target = targetId || correctionOf;
+
   // correction 模式：仅 title + tags
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -94,6 +100,16 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     like_count: 0,
     publishTimeText: '',
   });
+
+  // delete 模式：删除理由
+  const [reason, setReason] = useState('');
+
+  // correction / delete 模式：备注（可选，给审核管理员的补充说明）
+  const [note, setNote] = useState('');
+
+  // correction 模式下"申请删除"子面板控制
+  const [deletePhase, setDeletePhase] = useState<'reason' | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
 
   const [bvidUnique, setBvidUnique] = useState<boolean | null>(null);
   const [bvidChecking, setBvidChecking] = useState(false);
@@ -120,10 +136,11 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     }
   }, [initialValues]);
 
-  const submitText = useMemo(
-    () => (mode === 'create' ? '提交录入' : '提交勘误'),
-    [mode],
-  );
+  const submitText = useMemo(() => {
+    if (mode === 'create') return '提交录入';
+    if (mode === 'correction') return '提交勘误';
+    return '提交删除申请';
+  }, [mode]);
 
   const setField = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -150,6 +167,8 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     if (mode === 'correction') {
       if (!title.trim()) errs.title = '请输入动画标题';
       if (tags.length === 0) errs.tag = '请至少选择一个标签';
+    } else if (mode === 'delete') {
+      if (reason.trim().length < 4) errs.reason = '删除理由至少 4 个字';
     } else {
       if (!form.bvid.trim()) errs.bvid = '请输入 bvid';
       else if (!/^BV1[A-Za-z0-9]{8,}$/.test(form.bvid.trim())) errs.bvid = 'bvid 格式不正确';
@@ -207,17 +226,72 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         });
         Taro.showToast({ title: '提交成功，等待审核', icon: 'success' });
         if (ret?._id) onSuccess?.(ret._id);
-      } else {
-        if (!correctionOf) throw new Error('勘误模式缺少原动画 id');
-        const ret = await SubmissionService.correct(correctionOf, {
+      } else if (mode === 'correction') {
+        if (!target) throw new Error('勘误模式缺少原动画 id');
+        const ret = await SubmissionService.correct(target, {
           title: title.trim(),
           tag: tags.join(','),
+          note: note.trim(),
         });
         Taro.showToast({ title: '勘误已提交，等待审核', icon: 'success' });
+        if (ret?._id) onSuccess?.(ret._id);
+      } else {
+        // delete
+        if (!target) throw new Error('删除申请缺少原动画 id');
+        const ret = await SubmissionService.remove(target, reason, note.trim());
+        Taro.showToast({ title: '删除申请已提交，等待审核', icon: 'success' });
         if (ret?._id) onSuccess?.(ret._id);
       }
     } catch (err: any) {
       console.error('[AnimationForm] 提交失败', err);
+      Taro.showToast({ title: err?.message || '提交失败', icon: 'none' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** correction 模式：展开"申请删除"子面板 */
+  const onRequestDelete = () => {
+    if (!target) {
+      Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
+      return;
+    }
+    Taro.showModal({
+      title: '申请删除',
+      content: '申请删除当前动画（需管理员审核），是否继续？',
+      confirmText: '继续',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          setDeleteReason('');
+          setDeletePhase('reason');
+        }
+      },
+    });
+  };
+
+  /** 提交删除申请（correction 模式下内嵌的删除流程） */
+  const onSubmitDelete = async () => {
+    const trimmed = deleteReason.trim();
+    if (trimmed.length < 4) {
+      Taro.showToast({ title: '删除理由至少 4 个字', icon: 'none' });
+      return;
+    }
+    if (!target) {
+      Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const ret = await SubmissionService.remove(target, trimmed);
+      Taro.showToast({ title: '删除申请已提交，等待审核', icon: 'success' });
+      if (ret?._id) {
+        onSuccess?.(ret._id);
+      } else {
+        setDeletePhase(null);
+      }
+    } catch (err: any) {
+      console.error('[AnimationForm] 申请删除失败', err);
       Taro.showToast({ title: err?.message || '提交失败', icon: 'none' });
     } finally {
       setSubmitting(false);
@@ -321,6 +395,145 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
             </View>
           )}
           {errors.tag && <Text className={styles.error}>{errors.tag}</Text>}
+        </View>
+
+        {/* 备注（可选） */}
+        <View className={styles.field}>
+          <Text className={styles.label}>
+            备注<Text className={styles.optional}>(可选)</Text>
+          </Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="给审核管理员的补充说明（最多 200 字）"
+            value={note}
+            maxlength={200}
+            onInput={(e) => setNote(e.detail.value)}
+          />
+        </View>
+
+        {/* 申请删除子面板（correction 模式下内嵌） */}
+        {deletePhase === 'reason' && (
+          <View className={styles.deletePanel}>
+            <Text className={styles.deletePanelTitle}>申请删除</Text>
+            <Text className={styles.deletePanelTip}>
+              填写删除理由，管理员审核通过后该动画将从列表中消失。
+            </Text>
+            <Textarea
+              className={styles.textarea}
+              placeholder="请说明删除原因（如：重复录入、违规内容、版权问题等），至少 4 个字"
+              value={deleteReason}
+              maxlength={200}
+              onInput={(e) => setDeleteReason(e.detail.value)}
+            />
+            <View className={styles.deletePanelActions}>
+              <Button
+                className={`${styles.btn} ${styles.btnGhost}`}
+                disabled={submitting}
+                onClick={() => {
+                  setDeletePhase(null);
+                  setDeleteReason('');
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                className={`${styles.btn} ${styles.btnDanger}`}
+                loading={submitting}
+                disabled={submitting}
+                onClick={onSubmitDelete}
+              >
+                提交删除申请
+              </Button>
+            </View>
+          </View>
+        )}
+
+        {/* 底部操作栏：左 申请删除 / 右 提交勘误 */}
+        {deletePhase !== 'reason' && (
+          <View className={styles.bottomActions}>
+            <Button
+              className={`${styles.btn} ${styles.btnDanger}`}
+              disabled={submitting}
+              onClick={onRequestDelete}
+            >
+              申请删除
+            </Button>
+            <Button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              loading={submitting}
+              disabled={submitting}
+              onClick={onSubmit}
+            >
+              {submitText}
+            </Button>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // ============== delete 模式：申请删除当前视频 ==============
+  if (mode === 'delete') {
+    return (
+      <View className={styles.form}>
+        <View className={styles.tip}>
+          申请删除当前动画。请填写删除理由，管理员审核通过后该动画将从列表中消失。
+        </View>
+
+        {/* 原动画只读卡片 */}
+        {initialValues && (
+          <View className={styles.origCard}>
+            {initialValues.cover ? (
+              <TaroImage
+                className={styles.origCover}
+                src={initialValues.cover}
+                mode="aspectFill"
+              />
+            ) : (
+              <View className={styles.origCoverPlaceholder}>无封面</View>
+            )}
+            <View className={styles.origInfo}>
+              <Text className={styles.origLabel}>原动画</Text>
+              <Text className={styles.origText} numberOfLines={1}>
+                {initialValues.title || '未知标题'}
+              </Text>
+              <Text className={styles.origText} numberOfLines={1}>
+                {initialValues.up_name || '未知 UP'} · {initialValues.bvid || ''}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* 删除理由 */}
+        <View className={styles.field}>
+          <Text className={styles.label}>
+            删除理由<Text className={styles.required}>*</Text>
+          </Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="请说明删除原因（如：重复录入、违规内容、版权问题等），至少 4 个字"
+            value={reason}
+            maxlength={200}
+            onInput={(e) => {
+              setReason(e.detail.value);
+              clearErr('reason');
+            }}
+          />
+          {errors.reason && <Text className={styles.error}>{errors.reason}</Text>}
+        </View>
+
+        {/* 备注（可选） */}
+        <View className={styles.field}>
+          <Text className={styles.label}>
+            备注<Text className={styles.optional}>(可选)</Text>
+          </Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="给审核管理员的补充说明（最多 200 字）"
+            value={note}
+            maxlength={200}
+            onInput={(e) => setNote(e.detail.value)}
+          />
         </View>
 
         <Button

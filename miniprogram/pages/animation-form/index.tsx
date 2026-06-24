@@ -8,46 +8,48 @@ import { AnimationService } from '@/services/business';
 import { Animation } from '@/types';
 import styles from './index.module.scss';
 
+function parseMode(raw: string | undefined, hasTarget: boolean): AnimationFormMode {
+  if (raw === 'create' || raw === 'correction' || raw === 'delete') return raw;
+  // 兼容：correction_of 有值默认走 correction
+  if (hasTarget) return 'correction';
+  return 'create';
+}
+
 const AnimationFormPage: React.FC = () => {
   const router = useRouter();
   const params = (router.params || {}) as {
     mode?: string;
     correction_of?: string;
+    target_id?: string;
     id?: string;
   };
-  // mode 优先级：URL 参数 > correction_of 推断 > create
-  const mode: AnimationFormMode =
-    params.mode === 'correction'
-      ? 'correction'
-      : params.correction_of
-      ? 'correction'
-      : 'create';
+  // 兼容多个参数名：correction_of / target_id / id
+  const target = params.correction_of || params.target_id || params.id;
+  const mode: AnimationFormMode = parseMode(params.mode, !!target);
 
   const [initial, setInitial] = useState<Partial<Animation> | null>(null);
   const [loaded, setLoaded] = useState(mode === 'create');
 
   React.useEffect(() => {
-    if (mode === 'correction') {
-      const id = params.correction_of || params.id;
-      if (!id) {
-        Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
-        return;
-      }
-      AnimationService.getById(id)
-        .then((data) => {
-          if (!data) {
-            Taro.showToast({ title: '原动画不存在', icon: 'none' });
-            return;
-          }
-          setInitial(data as Animation);
-          setLoaded(true);
-        })
-        .catch((err) => {
-          console.error('[animation-form] 加载原动画失败', err);
-          Taro.showToast({ title: '加载失败', icon: 'none' });
-        });
+    if (mode === 'create') return;
+    if (!target) {
+      Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
+      return;
     }
-  }, [mode, params.correction_of, params.id]);
+    AnimationService.getById(target)
+      .then((data) => {
+        if (!data) {
+          Taro.showToast({ title: '原动画不存在', icon: 'none' });
+          return;
+        }
+        setInitial(data as Animation);
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error('[animation-form] 加载原动画失败', err);
+        Taro.showToast({ title: '加载失败', icon: 'none' });
+      });
+  }, [mode, target]);
 
   const onSuccess = () => {
     setTimeout(() => {
@@ -55,14 +57,21 @@ const AnimationFormPage: React.FC = () => {
     }, 1200);
   };
 
+  const title =
+    mode === 'create' ? '录入动画' : mode === 'correction' ? '勘误动画' : '申请删除';
+
+  React.useEffect(() => {
+    Taro.setNavigationBarTitle({ title });
+  }, [title]);
+
   return (
     <View className={styles.page}>
-      {mode === 'correction' && !loaded ? (
+      {mode !== 'create' && !loaded ? (
         <View className={styles.loading}>正在加载原动画…</View>
       ) : (
         <AnimationForm
           mode={mode}
-          correctionOf={params.correction_of || params.id}
+          targetId={target}
           initialValues={initial}
           onSuccess={onSuccess}
         />

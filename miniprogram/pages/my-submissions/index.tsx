@@ -2,12 +2,24 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Taro, { usePullDownRefresh } from '@tarojs/taro';
 import { View, Text, Image as TaroImage } from '@tarojs/components';
 import { SubmissionService } from '@/services/business';
-import { AnimationSubmission } from '@/types';
+import { Submission, SubmissionType } from '@/types';
 import { formatDateTime, formatDuration } from '@/utils/util';
 import styles from './index.module.scss';
 
+const TYPE_LABEL: Record<SubmissionType, string> = {
+  create: '录入',
+  correction: '勘误',
+  correction_delete: '申请删除',
+};
+
+const TYPE_COLOR: Record<SubmissionType, string> = {
+  create: 'typeCreate',
+  correction: 'typeCorrection',
+  correction_delete: 'typeDelete',
+};
+
 const MySubmissionsPage: React.FC = () => {
-  const [list, setList] = useState<AnimationSubmission[]>([]);
+  const [list, setList] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -47,57 +59,74 @@ const MySubmissionsPage: React.FC = () => {
         </View>
       ) : (
         <View className={styles.list}>
-          {list.map((it) => (
-            <View key={it._id} className={styles.item}>
-              <View className={styles.coverWrap}>
-                {it.cover ? (
-                  <TaroImage
-                    className={styles.cover}
-                    src={it.cover}
-                    mode="aspectFill"
-                  />
-                ) : (
-                  <View className={styles.coverPlaceholder}>无封面</View>
-                )}
-              </View>
-              <View className={styles.info}>
-                <View className={styles.titleRow}>
-                  <Text className={styles.title} numberOfLines={1}>
-                    {it.title}
-                  </Text>
-                  <Text
-                    className={`${styles.statusTag} ${
-                      it.status === 2 ? styles.statusPending : styles.statusRejected
-                    }`}
-                  >
-                    {it.status === 2 ? '审核中' : '已驳回'}
-                  </Text>
+          {list.map((it) => {
+            const isCreate = it.type === 'create';
+            const showTitle = isCreate
+              ? (it.payload as any)?.title || '未命名'
+              : it.type === 'correction'
+              ? (it.payload as any)?.title || it.target?.title || '勘误'
+              : it.target?.title || '申请删除';
+            const showCover = isCreate
+              ? (it.payload as any)?.cover
+              : it.target?.cover;
+            const showUp = isCreate
+              ? (it.payload as any)?.up_name
+              : it.target?.up_name;
+            const showDur = isCreate
+              ? Number((it.payload as any)?.duration) || 0
+              : Number(it.target?.duration) || 0;
+            return (
+              <View key={it._id} className={styles.item}>
+                <View className={styles.coverWrap}>
+                  {showCover ? (
+                    <TaroImage
+                      className={styles.cover}
+                      src={showCover}
+                      mode="aspectFill"
+                    />
+                  ) : (
+                    <View className={styles.coverPlaceholder}>无封面</View>
+                  )}
                 </View>
-                <Text className={styles.meta}>
-                  {it.up_name} · {formatDuration(it.duration)}
-                </Text>
-                <Text className={styles.meta}>
-                  提交时间：{formatDateTime(it.submitted_at)}
-                </Text>
-                {it.review_time && (
-                  <Text className={styles.meta}>
-                    审核时间：{formatDateTime(it.review_time)}
-                  </Text>
-                )}
-                {it.review_comment && (
-                  <View className={styles.reviewBox}>
-                    <Text className={styles.reviewLabel}>
-                      {it.status === 3 ? '驳回原因' : '审核备注'}：
+                <View className={styles.info}>
+                  <View className={styles.titleRow}>
+                    <Text className={`${styles.typeTag} ${styles[TYPE_COLOR[it.type]] || ''}`}>
+                      {TYPE_LABEL[it.type] || it.type}
                     </Text>
-                    <Text className={styles.reviewText}>{it.review_comment}</Text>
+                    <Text className={styles.title} numberOfLines={1}>
+                      {showTitle}
+                    </Text>
+                    <Text
+                      className={`${styles.statusTag} ${
+                        it.status === 2 ? styles.statusPending : styles.statusRejected
+                      }`}
+                    >
+                      {it.status === 2 ? '审核中' : '已驳回'}
+                    </Text>
                   </View>
-                )}
-                {it.correction_of && (
-                  <Text className={styles.meta}>类型：勘误</Text>
-                )}
+                  <Text className={styles.meta}>
+                    {showUp || '未知 UP'} · {formatDuration(showDur)}
+                  </Text>
+                  <Text className={styles.meta}>
+                    提交时间：{formatDateTime(it.submitted_at)}
+                  </Text>
+                  {it.review_time && (
+                    <Text className={styles.meta}>
+                      审核时间：{formatDateTime(it.review_time)}
+                    </Text>
+                  )}
+                  {it.review_comment && (
+                    <View className={styles.reviewBox}>
+                      <Text className={styles.reviewLabel}>
+                        {it.status === 3 ? '驳回原因' : '审核备注'}：
+                      </Text>
+                      <Text className={styles.reviewText}>{it.review_comment}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </View>

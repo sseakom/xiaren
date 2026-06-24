@@ -1,5 +1,11 @@
 import { CloudService } from './cloud';
-import { Rating, Collection, ScoreDistribution, AnimationSubmission } from '@/types';
+import {
+  Rating,
+  Collection,
+  ScoreDistribution,
+  Submission,
+  SubmissionType,
+} from '@/types';
 import { UserService } from './user';
 
 /**
@@ -269,12 +275,14 @@ export interface AnimationFormPayload {
 }
 
 /**
- * 用户提交动画（录入/勘误）—— 走云函数 animationSubmit
+ * 用户提交动画（录入/勘误/申请删除）—— 走云函数 animationSubmit
+ *  - create: 录入新动画
+ *  - correct: 勘误（修改标题 + 标签）
+ *  - remove:  申请删除（需填理由）
  */
 export const SubmissionService = {
   /**
    * 提交前实时校验 bvid 是否已被占用
-   * 用于输入框 onBlur 时给反馈
    */
   async checkBvidUnique(bvid: string): Promise<boolean> {
     if (!bvid || !bvid.trim()) return true;
@@ -287,18 +295,17 @@ export const SubmissionService = {
       return !!(result?.success && result.data?.unique);
     } catch (err) {
       console.warn('[Submission] checkBvidUnique 失败', err);
-      // 网络异常时返回 true，由提交时再校一次
       return true;
     }
   },
 
   /**
-   * 提交一条新动画（mode=create）
+   * 提交一条新动画（type=create）
    */
   async create(payload: AnimationFormPayload) {
     if (!UserService.openid) throw new Error('未登录');
     const res = (await CloudService.callFunction('animationSubmit', {
-      mode: 'create',
+      type: 'create',
       payload,
     })) as any;
     const result = res?.result as
@@ -311,23 +318,26 @@ export const SubmissionService = {
   },
 
   /**
-   * 勘误：保留原 bvid，写入新 status=2 记录
-   * correction 模式下只能传 title + tag，其他字段从原动画拷贝
+   * 勘误：修改标题 + 标签（type=correction）
+   * 其他字段保留原状，由管理员通过后合并到 animations
+   * @param note 备注（可选，给审核管理员看的补充说明）
    */
   async correct(
-    correctionOf: string,
-    payload: { title: string; tag: string },
+    targetId: string,
+    payload: { title: string; tag: string; note?: string },
   ) {
     if (!UserService.openid) throw new Error('未登录');
-    if (!correctionOf) throw new Error('缺少原动画 id');
+    if (!targetId) throw new Error('缺少原动画 id');
     if (!payload.title?.trim()) throw new Error('标题不能为空');
     if (!payload.tag?.trim()) throw new Error('标签不能为空');
+    const note = (payload.note || '').trim().slice(0, 200);
     const res = (await CloudService.callFunction('animationSubmit', {
-      mode: 'correction',
-      correction_of: correctionOf,
+      type: 'correction',
+      target_id: targetId,
       payload: {
         title: payload.title.trim(),
         tag: payload.tag.trim(),
+        ...(note ? { note } : {}),
       },
     })) as any;
     const result = res?.result as
@@ -339,12 +349,42 @@ export const SubmissionService = {
     return result.data;
   },
 
-  /** 我的提交/勘误记录（status in 2,3） */
-  async listMySubmissions(): Promise<AnimationSubmission[]> {
+  /**
+   * 申请删除当前视频（type=correction_delete）
+   *  - 需传 target_id（原动画 _id）
+   *  - 需传 reason（>= 4 字）
+   *  - note 备注（可选）
+   *  - 管理员通过后从 animations 集合删除
+   */
+  async remove(targetId: string, reason: string, note?: string) {
+    if (!UserService.openid) throw new Error('未登录');
+    if (!targetId) throw new Error('缺少原动画 id');
+    const trimmed = (reason || '').trim();
+    if (trimmed.length < 4) throw new Error('请填写删除理由（至少 4 个字）');
+    const noteTrim = (note || '').trim().slice(0, 200);
+    const res = (await CloudService.callFunction('animationSubmit', {
+      type: 'correction_delete',
+      target_id: targetId,
+      payload: {
+        reason: trimmed,
+        ...(noteTrim ? { note: noteTrim } : {}),
+      },
+    })) as any;
+    const result = res?.result as
+      | { success?: boolean; data?: { _id: string; status: number }; error?: string }
+      | undefined;
+    if (!result?.success) {
+      throw new Error(result?.error || '提交失败');
+    }
+    return result.data;
+  },
+
+  /** 我的提交/勘误/申请删除记录（status in 2,3） */
+  async listMySubmissions(): Promise<Submission[]> {
     if (!UserService.openid) return [];
     try {
       const res = (await CloudService.callFunction('animationMySubmissions', {})) as any;
-      const result = res?.result as { success?: boolean; data?: AnimationSubmission[] };
+      const result = res?.result as { success?: boolean; data?: Submission[] };
       return result?.data || [];
     } catch (err) {
       console.error('[Submission] listMySubmissions 失败', err);
@@ -358,14 +398,18 @@ export const SubmissionService = {
  */
 export const ReviewService = {
   /** 列出待审记录（默认 status=2） */
-  async list(statusFilter: number[] = [2]): Promise<AnimationSubmission[]> {
+  async list(
+    statusFilter: number[] = [2],
+    typeFilter?: SubmissionType[],
+  ): Promise<Submission[]> {
     if (!UserService.openid) return [];
     try {
       const res = (await CloudService.callFunction('animationReview', {
         action: 'list',
         statusFilter,
+        ...(typeFilter ? { typeFilter } : {}),
       })) as any;
-      const result = res?.result as { success?: boolean; data?: AnimationSubmission[] };
+      const result = res?.result as { success?: boolean; data?: Submission[] };
       return result?.data || [];
     } catch (err) {
       console.error('[Review] list 失败', err);
@@ -374,14 +418,14 @@ export const ReviewService = {
   },
 
   /** 单条详情 */
-  async get(id: string): Promise<AnimationSubmission | null> {
+  async get(id: string): Promise<Submission | null> {
     if (!UserService.openid || !id) return null;
     try {
       const res = (await CloudService.callFunction('animationReview', {
         action: 'get',
         _id: id,
       })) as any;
-      const result = res?.result as { success?: boolean; data?: AnimationSubmission };
+      const result = res?.result as { success?: boolean; data?: Submission };
       return result?.data || null;
     } catch (err) {
       console.error('[Review] get 失败', err);

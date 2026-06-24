@@ -33,6 +33,13 @@
   margin-left: 4rpx;
 }
 
+.optional {
+  margin-left: 8rpx;
+  color: #999;
+  font-size: 24rpx;
+  font-weight: normal;
+}
+
 .input,
 .textarea,
 .pickerInput {
@@ -223,4 +230,72 @@
   &[disabled] {
     opacity: 0.6;
   }
+}
+
+/* ============== correction 模式底部双按钮 ============== */
+.bottomActions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 32rpx;
+}
+
+.btn {
+  flex: 1;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  line-height: 80rpx;
+  height: 80rpx;
+
+  &::after {
+    border: none;
+  }
+
+  &[disabled] {
+    opacity: 0.6;
+  }
+}
+
+.btnPrimary {
+  background: $color-primary;
+  color: #fff;
+}
+
+.btnDanger {
+  background: #fff;
+  color: #d23a3a;
+  border: 2rpx solid #d23a3a;
+}
+
+.btnGhost {
+  background: #f4f4f4;
+  color: #666;
+}
+
+/* ============== 申请删除子面板 ============== */
+.deletePanel {
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  background: #fff5f5;
+  border: 2rpx solid #ffd2d2;
+  border-radius: 12rpx;
+}
+
+.deletePanelTitle {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #d23a3a;
+  margin-bottom: 8rpx;
+}
+
+.deletePanelTip {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+  line-height: 1.5;
+}
+
+.deletePanelActions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
 }
