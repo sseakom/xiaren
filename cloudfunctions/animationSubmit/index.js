@@ -2,21 +2,15 @@
 // 用户提交入口（写入 submissions 集合，不直接操作 animations）
 // 入参：
 //   - type: 'create' | 'correction' | 'correction_delete'
-//       create           → payload 为完整动画字段；通过后写入 animations
-//       correction       → payload 为 { title, tag }；通过后合并到 animations.doc(target_id)
-//       correction_delete→ payload 为 { reason }；通过后删除 animations.doc(target_id)
-//   - payload:        类型对应的数据（见上）
+//   - payload:        类型对应的数据
 //   - target_id?:     correction / correction_delete 必传（原动画 _id）
+//   - action: 'checkBvidUnique' | 'cancel' （独立 action 分发）
 // 返回：{ success, data: { _id, status } } 或 { success: false, error }
-//
-// 校验规则：
-//   1. create: 必填 title/bvid/up_name/cover/duration/publish_time/tag；bvid 格式 + 唯一性
-//   2. correction: 必填 title + tag；target_id 指向 status=1 的原动画
-//   3. correction_delete: 必填 reason（>= 4 字）；target_id 指向 status=1 的原动画
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
-const _ = db.command;
+
+const BV_REGEX = /^BV1[A-Za-z0-9]{8,}$/;
 
 /** create 模式必填字段统一校验 */
 function validateCreatePayload(p) {
@@ -30,7 +24,7 @@ function validateCreatePayload(p) {
   if (typeof p.duration !== 'number' || p.duration <= 0) {
     return 'duration 必须为正数（秒）';
   }
-  if (typeof p.bvid !== 'string' || !/^BV1[A-Za-z0-9]{8,}$/.test(p.bvid)) {
+  if (typeof p.bvid !== 'string' || !BV_REGEX.test(p.bvid)) {
     return 'bvid 格式不正确（应为 BV 开头 10+ 位的 B 站视频 ID）';
   }
   return null;
@@ -55,23 +49,24 @@ function validateDeletePayload(p) {
 
 /**
  * bvid 唯一性校验（仅 create 模式）
- *  - animations 集合不再有 status 字段，直接查重
- *  - 查 submissions 集合（status=2，未被驳回且未通过）
+ *  - 查 animations 集合是否已有该 bvid
+ *  - 查 submissions 集合是否有 pending 的 create 提交
+ *
+ * 优化：原代码拉取最多 100 条 pending submissions 后在 JS 端 some() 过滤；
+ *       现直接用 DB where 'payload.bvid' 精确查询，避免全量拉取和 JS 遍历。
  */
 async function checkBvidUnique(bvid) {
-  const animRes = await db
-    .collection('animations')
-    .where({ bvid })
-    .limit(5)
-    .get();
+  // 1. 查 animations 集合
+  const animRes = await db.collection('animations').where({ bvid }).limit(1).get();
   if ((animRes.data || []).length > 0) return false;
-  // 查 pending 状态的 create 提交
+
+  // 2. 查 submissions 集合 pending 的 create 提交（直接 DB 精确匹配）
   const subRes = await db
     .collection('submissions')
-    .where({ type: 'create', status: 2 })
-    .limit(100)
+    .where({ type: 'create', status: 2, 'payload.bvid': bvid })
+    .limit(1)
     .get();
-  return !(subRes.data || []).some((s) => s.payload && s.payload.bvid === bvid);
+  return (subRes.data || []).length === 0;
 }
 
 async function checkBvidUniqueAction(bvid) {
@@ -80,12 +75,10 @@ async function checkBvidUniqueAction(bvid) {
 }
 
 async function submit(event) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
 
-  // 防御性拦截：exports.main 应已处理，但若主入口 action 分发被漏掉，
-  // 防止 action 字段被忽略、type 默认 create 而误报 "缺少必填字段：title"
+  // 防御性拦截：action 字段应由 exports.main 分发，不应进入 submit
   if (event.action) {
     return { success: false, error: `submit 不处理 action: ${event.action}` };
   }
@@ -93,6 +86,7 @@ async function submit(event) {
   const type = event.type || (event.mode === 'correction' ? 'correction' : 'create');
   const payload = event.payload || {};
 
+  // 按类型校验
   if (type === 'create') {
     const err = validateCreatePayload(payload);
     if (err) return { success: false, error: err };
@@ -106,22 +100,21 @@ async function submit(event) {
     return { success: false, error: '不支持的 type' };
   }
 
+  // correction / correction_delete 需校验原动画存在
   let targetId = null;
   if (type === 'correction' || type === 'correction_delete') {
     targetId = event.target_id || event.correction_of;
     if (!targetId) {
       return { success: false, error: '缺少原动画 id（target_id）' };
     }
-    let orig;
     try {
-      orig = await db.collection('animations').doc(targetId).get();
+      const orig = await db.collection('animations').doc(targetId).get();
+      if (!orig.data) {
+        return { success: false, error: '原动画不存在' };
+      }
     } catch (e) {
       return { success: false, error: '原动画不存在' };
     }
-    if (!orig.data) {
-      return { success: false, error: '原动画不存在' };
-    }
-    // 不校验 status：下架(status=0)/待审(status=2) 的动画也应允许被勘误/申请删除
   }
 
   // create 模式做 bvid 唯一性校验
@@ -132,14 +125,13 @@ async function submit(event) {
     }
   }
 
-  const now = new Date();
   const doc = {
     type,
     target_id: targetId || null,
     payload,
     status: 2,
     submitter_openid: openid,
-    submitted_at: now,
+    submitted_at: new Date(),
   };
 
   try {
@@ -154,7 +146,6 @@ async function submit(event) {
 /**
  * 提交人主动取消自己的 submission（仅 status=2 允许）
  *  - 校验 submitter_openid == openid
- *  - db.collection('submissions').doc(_id).remove()
  */
 async function cancelAction(event) {
   const openid = cloud.getWXContext().OPENID;
@@ -178,7 +169,6 @@ async function cancelAction(event) {
 }
 
 exports.main = async (event /*, context*/) => {
-  // 提供独立 action 用于前端实时校验
   if (event.action === 'checkBvidUnique') {
     return checkBvidUniqueAction(event.bvid);
   }

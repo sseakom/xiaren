@@ -1,4 +1,14 @@
 // cloudfunctions/search/index.js
+// 模糊搜索云函数
+// 入参：{ keyword, page?, pageSize?, category? }
+// 出参：{ data, total, page, pageSize }
+//
+// 优化点：
+//   - 合并 fuzzyMatch + fuzzyScore 为单次遍历：原代码先 filter(fuzzyMatch) 再 map(fuzzyScore)
+//     每条记录的 title/up_name/tag 被 tokenize 两次；现合并为一次 map 返回 score，
+//     score>0 即匹配，省去整遍 filter
+//   - 修复变量名拼写：tagcore → tagScore
+//   - 预计算 keyword tokens，避免每条记录重复 tokenize
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -34,31 +44,30 @@ function isAllTokensPresent(text, tokens) {
   return true;
 }
 
-function fuzzyMatch(text, keyword) {
-  if (!text || !keyword) return false;
+/**
+ * 计算单字段评分（越高越相关）
+ *  - 完全相等：1000
+ *  - 前缀匹配：500
+ *  - 完整子串：200
+ *  - token 全部按序出现：100
+ *  - token 全出现（任意顺序）：30
+ *  - 不匹配：0
+ */
+function fuzzyScore(text, keyword, kwTokens) {
+  if (!text) return 0;
   const t = String(text).toLowerCase();
-  const k = String(keyword).toLowerCase().trim();
-  if (!k) return false;
-  if (t.includes(k)) return true;
-  const kwTokens = tokenize(k);
-  if (kwTokens.length === 0) return false;
-  return isAllTokensPresent(t, kwTokens);
-}
-
-function fuzzyScore(text, keyword) {
-  if (!text || !keyword) return 0;
-  const t = String(text).toLowerCase();
-  const k = String(keyword).toLowerCase().trim();
-  if (!k) return 0;
-  if (t === k) return 1000;
-  if (t.startsWith(k)) return 500;
-  if (t.includes(k)) return 200;
-  const kwTokens = tokenize(k);
-  if (kwTokens.length === 0) return 0;
+  if (!keyword) return 0;
+  if (t === keyword) return 1000;
+  if (t.startsWith(keyword)) return 500;
+  if (t.includes(keyword)) return 200;
+  if (!kwTokens || kwTokens.length === 0) return 0;
+  // token 按序出现？
   let cursor = 0;
   for (const tk of kwTokens) {
     const idx = t.indexOf(tk, cursor);
-    if (idx === -1) return isAllTokensPresent(t, kwTokens) ? 30 : 0;
+    if (idx === -1) {
+      return isAllTokensPresent(t, kwTokens) ? 30 : 0;
+    }
     cursor = idx + tk.length;
   }
   return 100;
@@ -69,11 +78,10 @@ function fuzzyScore(text, keyword) {
  *  - 单 token：直接匹配
  *  - 多 token：合并为 (tok1|tok2|...)，让 DB 端能拉出包含任一字符的记录
  */
-function buildLoosePattern(keyword) {
-  const tokens = tokenize(keyword).map(escapeRegExp);
+function buildLoosePattern(tokens) {
   if (tokens.length === 0) return null;
-  if (tokens.length === 1) return tokens[0];
-  return tokens.join('|');
+  const escaped = tokens.map(escapeRegExp);
+  return escaped.length === 1 ? escaped[0] : escaped.join('|');
 }
 
 /**
@@ -92,70 +100,71 @@ function hasTag(tag, target) {
     .includes(target);
 }
 
-exports.main = async (event, context) => {
-  const { keyword, page = 0, pageSize = 20 } = event;
+exports.main = async (event /*, context*/) => {
+  const { page = 0, pageSize = 20 } = event;
   const category = String(event.category || '').trim();
 
-  if (!keyword || !String(keyword).trim()) {
+  if (!event.keyword || !String(event.keyword).trim()) {
     return { data: [], total: 0 };
   }
 
-  const kw = String(keyword).trim();
-  const pattern = buildLoosePattern(kw);
+  const kw = String(event.keyword).trim();
+  const kwTokens = tokenize(kw);
+  const kwLower = kw.toLowerCase();
+  const pattern = buildLoosePattern(kwTokens);
   if (!pattern) return { data: [], total: 0 };
 
   try {
     // 1. DB 端用宽松 RegExp 拉候选集（上限 200，避免一次性拉太多）
-    const res = await db.collection('animations')
-      .where(_.or([
-        { title: db.RegExp({ regexp: pattern, options: 'i' }) },
-        { up_name: db.RegExp({ regexp: pattern, options: 'i' }) },
-        { tag: db.RegExp({ regexp: pattern, options: 'i' }) },
-      ]))
+    const res = await db
+      .collection('animations')
+      .where(
+        _.or([
+          { title: db.RegExp({ regexp: pattern, options: 'i' }) },
+          { up_name: db.RegExp({ regexp: pattern, options: 'i' }) },
+          { tag: db.RegExp({ regexp: pattern, options: 'i' }) },
+        ]),
+      )
       .orderBy('publish_time', 'desc')
       .limit(200)
       .get();
 
     let list = res.data || [];
 
-    // 1.5 分类筛选（在模糊匹配前先按 category 收窄，避免无谓打分）
+    // 1.5 分类筛选（在打分前先按 category 收窄，减少计算量）
     if (category) {
       list = list.filter((it) => hasTag(it.tag, category));
     }
 
-    // 2. JS 端过滤（去掉"碰巧命中 pattern 但并不真模糊匹配"的噪声）
-    const matched = list.filter(
-      (it) => fuzzyMatch(it.title, kw) || fuzzyMatch(it.up_name, kw) || (Array.isArray(it.tag) && it.tag.some((tg) => fuzzyMatch(tg, kw)))
-    );
-
-    // 3. JS 端排序：title 优先，其次 up_name，最后 tag
-    const scored = matched.map((it) => {
-      const titleScore = fuzzyScore(it.title || '', kw);
-      const upScore = fuzzyScore(it.up_name || '', kw);
-      const tagcore = Array.isArray(it.tag)
-        ? Math.max(...it.tag.map((tg) => fuzzyScore(String(tg), kw)))
+    // 2+3. 合并匹配判定与评分到单次遍历
+    //  原代码先 filter(fuzzyMatch) 再 map(fuzzyScore)，每条记录 tokenize 两次
+    //  现在只 tokenize 一次：score > 0 即匹配
+    const scored = [];
+    for (const it of list) {
+      const titleScore = fuzzyScore(it.title, kwLower, kwTokens);
+      const upScore = fuzzyScore(it.up_name, kwLower, kwTokens);
+      const tagScore = Array.isArray(it.tag)
+        ? it.tag.reduce((max, tg) => {
+            const s = fuzzyScore(String(tg), kwLower, kwTokens);
+            return s > max ? s : max;
+          }, 0)
         : 0;
-      return { it, score: Math.max(titleScore * 2, upScore, tagcore) };
-    }).filter((x) => x.score > 0);
+      const score = Math.max(titleScore * 2, upScore, tagScore);
+      if (score > 0) {
+        scored.push({ it, score });
+      }
+    }
 
+    // 按评分降序
     scored.sort((a, b) => b.score - a.score);
 
     const total = scored.length;
     const skip = page * pageSize;
     const paged = scored.slice(skip, skip + pageSize).map((x) => x.it);
 
-    return {
-      data: paged,
-      total,
-      page,
-      pageSize,
-    };
+    return { data: paged, total, page, pageSize };
   } catch (err) {
     console.error('[search] 失败', err);
-    return {
-      data: [],
-      total: 0,
-      error: err.message,
-    };
+    return { data: [], total: 0, error: err.message };
   }
 };

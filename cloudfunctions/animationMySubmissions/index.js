@@ -7,6 +7,40 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
+// DB where _.in() 单次上限
+const BATCH_SIZE = 50;
+
+/**
+ * 批量按 _id 查询集合，返回 id→doc 的 Map
+ *  - 自动分片，并行查询（原为串行 for...of await）
+ */
+async function batchGetByIds(collection, ids, fieldFn) {
+  if (!ids || ids.length === 0) return new Map();
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (uniqueIds.length === 0) return new Map();
+
+  const chunks = [];
+  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+    chunks.push(uniqueIds.slice(i, i + BATCH_SIZE));
+  }
+
+  const results = await Promise.all(
+    chunks.map((chunk) => {
+      let query = db.collection(collection).where({ _id: _.in(chunk) }).limit(BATCH_SIZE);
+      if (fieldFn) query = query.field(fieldFn());
+      return query.get();
+    }),
+  );
+
+  const map = new Map();
+  results.forEach((res) => {
+    (res.data || []).forEach((doc) => {
+      map.set(doc._id, doc);
+    });
+  });
+  return map;
+}
+
 exports.main = async (event /*, context*/) => {
   const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
@@ -31,34 +65,21 @@ exports.main = async (event /*, context*/) => {
       .orderBy('submitted_at', 'desc')
       .limit(50)
       .get();
-    let data = res.data || [];
+    const data = res.data || [];
 
     // 联表：correction / correction_delete 带回原动画摘要
-    const targetIds = Array.from(
-      new Set(data.map((s) => s.target_id).filter(Boolean)),
-    );
-    if (targetIds.length) {
-      const animMap = {};
-      const chunks = [];
-      for (let i = 0; i < targetIds.length; i += 50) {
-        chunks.push(targetIds.slice(i, i + 50));
-      }
-      for (const chunk of chunks) {
-        const aRes = await db.collection('animations').where({ _id: _.in(chunk) }).limit(50).get();
-        (aRes.data || []).forEach((a) => {
-          animMap[a._id] = {
-            _id: a._id,
-            title: a.title,
-            bvid: a.bvid,
-            up_name: a.up_name,
-            cover: a.cover,
-          };
-        });
-      }
-      data = data.map((s) => ({
-        ...s,
-        target: s.target_id ? animMap[s.target_id] || null : null,
+    const targetIds = data.map((s) => s.target_id).filter(Boolean);
+    if (targetIds.length > 0) {
+      const animMap = await batchGetByIds('animations', targetIds, () => ({
+        _id: true,
+        title: true,
+        bvid: true,
+        up_name: true,
+        cover: true,
       }));
+      data.forEach((s) => {
+        s.target = s.target_id ? animMap.get(s.target_id) || null : null;
+      });
     }
 
     return { success: true, data };

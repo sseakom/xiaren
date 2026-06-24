@@ -1,5 +1,5 @@
 // cloudfunctions/phoneLogin/index.js
-// 入参：{ cloudID?: string, encryptedData?: string, iv?: string, code?: string }
+// 入参：{ cloudID?, encryptedData?, iv?, code?, sessionKey? }
 //  - 优先用 cloudID（云开发自动解密，免 session_key）
 //  - 兜底用 encryptedData + iv（需自行解密）
 // 出参：{ success, phoneNumber, openid } 或 { success:false, error }
@@ -20,7 +20,8 @@ exports.main = async (event /*, context*/) => {
   if (event && event.cloudID) {
     try {
       const res = await cloud.getOpenData({ list: [{ cloudID: event.cloudID }] });
-      phoneNumber = (res && res.list && res.list[0] && res.list[0].data && res.list[0].data.phoneNumber) || '';
+      phoneNumber =
+        (res && res.list && res.list[0] && res.list[0].data && res.list[0].data.phoneNumber) || '';
     } catch (e) {
       console.error('[phoneLogin] cloudID 解密失败', e);
     }
@@ -42,25 +43,32 @@ exports.main = async (event /*, context*/) => {
   }
 
   // upsert 用户档案：以 openid 作主键，phoneNumber 作业务字段
+  // 优化：原代码 set→catch→update 的回退逻辑冗余且会覆盖已有字段；
+  //   现先 update（只写 phoneNumber 不覆盖其他字段），
+  //   stats.updated===0 表示文档不存在 → 用 set 创建完整档案
   const now = new Date();
   try {
-    await db.collection('users').doc(openid).set({
-      data: {
-        _id: openid,
-        phoneNumber,
-        updated_at: now,
-      },
-    });
-  } catch (e) {
-    // 兼容已有用户：尝试 update
-    try {
-      await db.collection('users').doc(openid).update({
-        data: { phoneNumber, updated_at: now },
+    const updateRes = await db
+      .collection('users')
+      .doc(openid)
+      .update({ data: { phoneNumber, updated_at: now } });
+
+    if (!updateRes.stats || updateRes.stats.updated === 0) {
+      await db.collection('users').doc(openid).set({
+        data: {
+          _id: openid,
+          phoneNumber,
+          nickName: '',
+          avatarUrl: '',
+          is_admin: false,
+          created_at: now,
+          updated_at: now,
+        },
       });
-    } catch (e2) {
-      console.error('[phoneLogin] upsert 失败', e2);
-      // 不阻塞返回，phoneNumber 已经拿到
     }
+  } catch (e) {
+    console.error('[phoneLogin] upsert 失败', e);
+    // 不阻塞返回，phoneNumber 已经拿到
   }
 
   return { success: true, phoneNumber, openid };

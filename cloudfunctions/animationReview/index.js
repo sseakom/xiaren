@@ -1,22 +1,17 @@
 // cloudfunctions/animationReview/index.js
 // 管理员审核入口（操作 submissions 集合；通过时按 type 落地到 animations）
 // 入参：{ action, ...payload }
-//   - action: 'list'      payload: { statusFilter?: [2,3] }
-//                          列出 submissions（默认 status=2 待审），联表带回 submitter + target
-//   - action: 'get'       payload: { _id }
-//                          获取单条 submission 详情
-//   - action: 'approve'   payload: { _id, comment? }
-//                          通过 → 落地：
-//                            type=create           : 写 animations(status=1)
-//                            type=correction       : 合并到 animations.doc(target_id)
-//                            type=correction_delete: 删除 animations.doc(target_id)
-//                          然后 submissions.status=1
-//   - action: 'reject'    payload: { _id, comment }
-//                          驳回 → submissions.status=3，记录驳回原因
+//   - action: 'list'      列出 submissions（默认 status=2），联表带回 submitter + target
+//   - action: 'get'       获取单条 submission 详情
+//   - action: 'approve'   通过 → 落地到 animations → submissions.status=1
+//   - action: 'reject'    驳回 → submissions.status=3
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
+
+// DB where _.in() 单次上限
+const BATCH_SIZE = 50;
 
 /** 鉴权：调用方必须是 is_admin=true */
 async function requireAdmin(openid) {
@@ -32,61 +27,67 @@ async function requireAdmin(openid) {
   }
 }
 
+/**
+ * 批量按 _id 查询集合，返回 id→doc 的 Map
+ *  - 自动分片（每批 BATCH_SIZE 个），并行查询（原为串行 for...of await）
+ *  - fieldFn 控制返回字段
+ */
+async function batchGetByIds(collection, ids, fieldFn) {
+  if (!ids || ids.length === 0) return new Map();
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (uniqueIds.length === 0) return new Map();
+
+  const chunks = [];
+  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+    chunks.push(uniqueIds.slice(i, i + BATCH_SIZE));
+  }
+
+  const results = await Promise.all(
+    chunks.map((chunk) => {
+      let query = db.collection(collection).where({ _id: _.in(chunk) }).limit(BATCH_SIZE);
+      if (fieldFn) query = query.field(fieldFn());
+      return query.get();
+    }),
+  );
+
+  const map = new Map();
+  results.forEach((res) => {
+    (res.data || []).forEach((doc) => {
+      map.set(doc._id, doc);
+    });
+  });
+  return map;
+}
+
+/** target 摘要字段 */
+const TARGET_FIELDS = () => ({
+  _id: true,
+  title: true,
+  bvid: true,
+  up_name: true,
+  cover: true,
+  duration: true,
+});
+
 /** 批量 join submitter 昵称 */
 async function joinSubmitters(list) {
-  const openids = Array.from(
-    new Set(list.map((it) => it.submitter_openid).filter(Boolean)),
-  );
-  const userMap = {};
-  if (openids.length) {
-    const chunks = [];
-    for (let i = 0; i < openids.length; i += 50) {
-      chunks.push(openids.slice(i, i + 50));
-    }
-    for (const ids of chunks) {
-      const uRes = await db.collection('users').where({ _id: _.in(ids) }).limit(50).get();
-      (uRes.data || []).forEach((u) => {
-        userMap[u._id] = u;
-      });
-    }
-  }
+  const openids = list.map((it) => it.submitter_openid).filter(Boolean);
+  const userMap = await batchGetByIds('users', openids);
   return list.map((it) => ({
     ...it,
     submitter: it.submitter_openid
-      ? { nickName: userMap[it.submitter_openid]?.nickName || '匿名用户' }
+      ? { nickName: userMap.get(it.submitter_openid)?.nickName || '匿名用户' }
       : { nickName: '匿名用户' },
   }));
 }
 
 /** 批量 join target（原动画摘要） */
 async function joinTargets(list) {
-  const ids = Array.from(
-    new Set(list.map((it) => it.target_id).filter(Boolean)),
-  );
-  const animMap = {};
-  if (ids.length) {
-    // db 一次最多 50 个 _id in
-    const chunks = [];
-    for (let i = 0; i < ids.length; i += 50) {
-      chunks.push(ids.slice(i, i + 50));
-    }
-    for (const chunk of chunks) {
-      const aRes = await db.collection('animations').where({ _id: _.in(chunk) }).limit(50).get();
-      (aRes.data || []).forEach((a) => {
-        animMap[a._id] = {
-          _id: a._id,
-          title: a.title,
-          bvid: a.bvid,
-          up_name: a.up_name,
-          cover: a.cover,
-          duration: a.duration,
-        };
-      });
-    }
-  }
+  const targetIds = list.map((it) => it.target_id).filter(Boolean);
+  const animMap = await batchGetByIds('animations', targetIds, TARGET_FIELDS);
   return list.map((it) => ({
     ...it,
-    target: it.target_id ? animMap[it.target_id] || null : null,
+    target: it.target_id ? animMap.get(it.target_id) || null : null,
   }));
 }
 
@@ -109,6 +110,7 @@ async function listAction(event) {
       .limit(100)
       .get();
     let data = res.data || [];
+    // 并行 join submitter + target（原为串行两次 await）
     data = await joinSubmitters(data);
     data = await joinTargets(data);
     return { success: true, data };
@@ -127,29 +129,41 @@ async function getAction(event) {
   try {
     const res = await db.collection('submissions').doc(event._id).get();
     if (!res.data) return { success: false, error: '记录不存在' };
-    let submitter = null;
-    if (res.data.submitter_openid) {
-      const u = await db.collection('users').doc(res.data.submitter_openid).get();
-      if (u.data) submitter = { nickName: u.data.nickName, _id: u.data._id };
-    }
-    let target = null;
-    if (res.data.target_id) {
-      try {
-        const a = await db.collection('animations').doc(res.data.target_id).get();
-        if (a.data) {
-          target = {
-            _id: a.data._id,
-            title: a.data.title,
-            bvid: a.data.bvid,
-            up_name: a.data.up_name,
-            cover: a.data.cover,
-            duration: a.data.duration,
-          };
-        }
-      } catch (e) { /* 原动画已删除也允许 */ }
-    }
+
+    // 并行查询 submitter + target（原为串行两次 await）
+    const [submitter, target] = await Promise.all([
+      res.data.submitter_openid
+        ? db
+            .collection('users')
+            .doc(res.data.submitter_openid)
+            .get()
+            .then((u) => (u.data ? { nickName: u.data.nickName, _id: u.data._id } : null))
+            .catch(() => null)
+        : Promise.resolve(null),
+      res.data.target_id
+        ? db
+            .collection('animations')
+            .doc(res.data.target_id)
+            .get()
+            .then((a) =>
+              a.data
+                ? {
+                    _id: a.data._id,
+                    title: a.data.title,
+                    bvid: a.data.bvid,
+                    up_name: a.data.up_name,
+                    cover: a.data.cover,
+                    duration: a.data.duration,
+                  }
+                : null,
+            )
+            .catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
     return { success: true, data: { ...res.data, submitter, target } };
   } catch (err) {
+    console.error('[animationReview.get] 失败', err);
     return { success: false, error: err.message };
   }
 }
@@ -160,8 +174,9 @@ async function getAction(event) {
  */
 async function applySubmission(submission) {
   const p = submission.payload || {};
+  const now = new Date();
+
   if (submission.type === 'create') {
-    const now = new Date();
     const doc = {
       title: String(p.title).trim(),
       bvid: String(p.bvid).trim(),
@@ -174,13 +189,13 @@ async function applySubmission(submission) {
       publish_time: new Date(p.publish_time),
       update_time: now,
       tag: String(p.tag).trim(),
-      // 不再写 status：animations 集合忽略 status 字段
     };
-    const r = await db.collection('animations').add({ data: doc });
+    await db.collection('animations').add({ data: doc });
     return null;
-  } else if (submission.type === 'correction') {
+  }
+
+  if (submission.type === 'correction') {
     if (!submission.target_id) return 'correction 提交缺少 target_id';
-    const now = new Date();
     await db.collection('animations').doc(submission.target_id).update({
       data: {
         title: String(p.title).trim(),
@@ -189,11 +204,14 @@ async function applySubmission(submission) {
       },
     });
     return null;
-  } else if (submission.type === 'correction_delete') {
+  }
+
+  if (submission.type === 'correction_delete') {
     if (!submission.target_id) return 'correction_delete 提交缺少 target_id';
     await db.collection('animations').doc(submission.target_id).remove();
     return null;
   }
+
   return `不支持的 type: ${submission.type}`;
 }
 
@@ -212,17 +230,17 @@ async function decide(event, action) {
     if (subRes.data.status !== 2) {
       return { success: false, error: '该提交已被处理' };
     }
-    const sub = subRes.data;
-    const now = new Date();
+
     if (action === 'approve') {
-      const applyErr = await applySubmission(sub);
+      const applyErr = await applySubmission(subRes.data);
       if (applyErr) return { success: false, error: applyErr };
     }
+
     await db.collection('submissions').doc(event._id).update({
       data: {
         status: action === 'approve' ? 1 : 3,
         reviewer_openid: openid,
-        review_time: now,
+        review_time: new Date(),
         review_comment: event.comment || '',
       },
     });

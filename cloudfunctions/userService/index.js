@@ -1,37 +1,27 @@
 // cloudfunctions/userService/index.js
 // 用户业务统一入口。
 // 入参：{ action, ...payload }
-//   - action: 'getInfo'
-//       读用户档案；不存在则按 openid upsert 一条空档案后返回
-//       返回：{ success, data: User }  （data 含 is_admin 字段）
-//   - action: 'upsert'      payload: { profile: { nickName, avatarUrl } }
-//       upsert 用户档案（doc(openid).set()），已存在不报错
-//       返回：{ success, data: User }
-//   - action: 'updateProfile' payload: { profile: { nickName, avatarUrl } }
-//       局部更新用户档案
-//       返回：{ success }
-//   - action: 'loadStats'
-//       返回用户的 ratingCount / collectCount
-//       返回：{ success, ratingCount, collectCount }
-//   - action: 'setAdmin'     payload: { target_openid, is_admin }
-//       鉴权：调用方必须当前已是 is_admin=true
-//       设置目标用户的 is_admin 字段（true/false）
-//       返回：{ success }
+//   - action: 'getInfo'          读用户档案；不存在则 upsert 空档案
+//   - action: 'upsert'           upsert 用户档案（不允许借机提权）
+//   - action: 'updateProfile'    局部更新用户档案
+//   - action: 'loadStats'        返回 ratingCount / collectCount
+//   - action: 'setAdmin'         管理员设置目标用户 is_admin（需鉴权）
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-function ensureOpenid(openid) {
-  if (!openid) return { success: false, error: '未登录' };
-  return null;
+/** 获取当前调用方 openid */
+function getOpenid() {
+  return cloud.getWXContext().OPENID || null;
 }
+
+/** 未登录错误响应 */
+const NOT_LOGIN = { success: false, error: '未登录' };
 
 /** 读取完整用户档案（含 is_admin 字段，没有则补 false） */
 async function getInfo() {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
-  const guard = ensureOpenid(openid);
-  if (guard) return guard;
+  const openid = getOpenid();
+  if (!openid) return NOT_LOGIN;
   try {
     const res = await db.collection('users').doc(openid).get();
     if (res.data) {
@@ -62,10 +52,8 @@ async function getInfo() {
 }
 
 async function upsert(profile) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
-  const guard = ensureOpenid(openid);
-  if (guard) return guard;
+  const openid = getOpenid();
+  if (!openid) return NOT_LOGIN;
   const now = new Date();
   const data = {
     _id: openid,
@@ -85,24 +73,17 @@ async function upsert(profile) {
 }
 
 async function updateProfile(profile) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
-  const guard = ensureOpenid(openid);
-  if (guard) return guard;
+  const openid = getOpenid();
+  if (!openid) return NOT_LOGIN;
   if (!profile || (profile.nickName == null && profile.avatarUrl == null)) {
     return { success: false, error: 'profile 为空' };
   }
+  // 只更新非 null 字段，避免覆盖未传的字段
+  const updateData = { updated_at: new Date() };
+  if (profile.nickName != null) updateData.nickName = profile.nickName;
+  if (profile.avatarUrl != null) updateData.avatarUrl = profile.avatarUrl;
   try {
-    await db
-      .collection('users')
-      .doc(openid)
-      .update({
-        data: {
-          ...(profile.nickName != null ? { nickName: profile.nickName } : {}),
-          ...(profile.avatarUrl != null ? { avatarUrl: profile.avatarUrl } : {}),
-          updated_at: new Date(),
-        },
-      });
+    await db.collection('users').doc(openid).update({ data: updateData });
     return { success: true };
   } catch (err) {
     console.error('[userService.updateProfile] 失败', err);
@@ -111,11 +92,10 @@ async function updateProfile(profile) {
 }
 
 async function loadStats() {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
-  const guard = ensureOpenid(openid);
-  if (guard) return guard;
+  const openid = getOpenid();
+  if (!openid) return NOT_LOGIN;
   try {
+    // 并行查询评分数 + 收藏数
     const [ratingRes, collectRes] = await Promise.all([
       db.collection('ratings').where({ user_id: openid }).count(),
       db.collection('collections').where({ user_id: openid, type: 'collect' }).count(),
@@ -137,10 +117,8 @@ async function loadStats() {
  * 首个管理员需要在云开发控制台手动加 is_admin=true（避免任意用户自封管理员）
  */
 async function setAdmin(payload) {
-  const wxContext = cloud.getWXContext();
-  const callerOpenid = wxContext.OPENID;
-  const guard = ensureOpenid(callerOpenid);
-  if (guard) return guard;
+  const callerOpenid = getOpenid();
+  if (!callerOpenid) return NOT_LOGIN;
   const targetOpenid = payload && payload.target_openid;
   const isAdmin = !!(payload && payload.is_admin);
   if (!targetOpenid) {

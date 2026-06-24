@@ -1,33 +1,39 @@
 // cloudfunctions/collection/index.js
 // 收藏 / 看过 业务统一入口。
 // 入参：{ action, ...payload }
-//   - action: 'getStatus'   payload: { animation_id }
-//       返回：{ success, isCollected, isWatched }
-//   - action: 'toggle'      payload: { animation_id, type: 'collect'|'watched', add: boolean }
-//       返回：{ success, isCollected, isWatched }（最新状态）
+//   - action: 'getStatus'   payload: { animation_id }       → { success, isCollected, isWatched }
+//   - action: 'toggle'      payload: { animation_id, type, add } → { success, isCollected, isWatched }
 //   - action: 'listMy'      payload: { type, limit?, offset?, include_anim? }
-//       include_anim=true 时，附带返回动画基础信息（title/up_name/cover），
-//       一次性回传，客户端无需再 N+1 调 getAnimationById
+//       include_anim=true 时，附带返回动画基础信息（title/up_name/cover）
 //       返回：{ success, data: Collection[], total }
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
+/** 解析分页参数：limit 限制 1~100，offset >= 0 */
+function parsePagination(limit, offset) {
+  return {
+    limit: Math.min(Math.max(Number(limit) || 20, 1), 100),
+    offset: Math.max(Number(offset) || 0, 0),
+  };
+}
+
+/** 校验 type 合法性 */
 function ensureType(t) {
   return t === 'collect' || t === 'watched' ? t : null;
 }
 
 async function getStatus(animationId) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
   if (!animationId) return { success: false, error: '缺少 animation_id' };
   try {
+    // 每个动画对同一用户最多 2 条记录（collect + watched），limit(2) 足够
     const res = await db
       .collection('collections')
       .where({ user_id: openid, animation_id: String(animationId) })
-      .limit(10)
+      .limit(2)
       .get();
     let isCollected = false;
     let isWatched = false;
@@ -43,8 +49,7 @@ async function getStatus(animationId) {
 }
 
 async function toggle(animationId, type, add) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
   const t = ensureType(type);
   if (!animationId || !t) {
@@ -79,13 +84,11 @@ async function toggle(animationId, type, add) {
 }
 
 async function listMy(type, limit, offset, includeAnim) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
   const t = ensureType(type);
   if (!t) return { success: false, error: 'type 非法' };
-  const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
-  const off = Math.max(Number(offset) || 0, 0);
+  const { limit: lim, offset: off } = parsePagination(limit, offset);
   try {
     // 1) 先 count 出总数
     const cnt = await db
@@ -102,7 +105,7 @@ async function listMy(type, limit, offset, includeAnim) {
       .limit(lim)
       .get();
     const data = res.data || [];
-    // 3) include_anim=true 时，一次性查所有关联动画
+    // 3) include_anim=true 时，一次性查所有关联动画（去掉 N+1）
     if (includeAnim && data.length > 0) {
       const ids = Array.from(new Set(data.map((c) => String(c.animation_id))));
       const animRes = await db

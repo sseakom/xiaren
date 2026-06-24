@@ -1,24 +1,32 @@
 // cloudfunctions/rating/index.js
 // 评分相关操作统一入口。
 // 入参：{ action, ...payload }
-//   - action: 'get'         payload: { animation_id }
-//       返回：{ success, score }
-//   - action: 'submit'      payload: { animation_id, score }
-//       写入/更新用户对动画的评分，返回：{ success, newRating }
+//   - action: 'get'         payload: { animation_id }       → { success, score }
+//   - action: 'submit'      payload: { animation_id, score } → { success, newRating }
 //       评分落库后异步触发 calcScore 更新贝叶斯聚合
 //   - action: 'listMy'      payload: { limit?, offset?, include_anim? }
-//       include_anim=true 时，附带返回动画基础信息（title/cover），
-//       一次性回传，客户端无需再 N+1 调 getAnimationById
+//       include_anim=true 时，附带返回动画基础信息（title/cover）
 //       返回：{ success, data: Rating[], total }
-// 出参统一 { success, error?, ... }
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 
+/** 解析分页参数：limit 限制 1~100，offset >= 0 */
+function parsePagination(limit, offset) {
+  return {
+    limit: Math.min(Math.max(Number(limit) || 20, 1), 100),
+    offset: Math.max(Number(offset) || 0, 0),
+  };
+}
+
+/** 获取当前调用方 openid */
+function getOpenid() {
+  return cloud.getWXContext().OPENID || null;
+}
+
 async function get(animationId) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = getOpenid();
   if (!openid) return { success: false, error: '未登录' };
   if (!animationId) return { success: false, error: '缺少 animation_id' };
   try {
@@ -36,8 +44,7 @@ async function get(animationId) {
 }
 
 async function submit(animationId, score) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = getOpenid();
   if (!openid) return { success: false, error: '未登录' };
   if (!animationId) return { success: false, error: '缺少 animation_id' };
   const n = Number(score);
@@ -69,7 +76,7 @@ async function submit(animationId, score) {
       });
       newRating = true;
     }
-    // 异步触发评分聚合；不再 await，避免阻塞返回
+    // 异步触发评分聚合；不 await，避免阻塞返回
     cloud
       .callFunction({ name: 'calcScore', data: { animation_id: String(animationId) } })
       .catch((err) => console.error('[rating.submit] calcScore failed', err));
@@ -81,17 +88,12 @@ async function submit(animationId, score) {
 }
 
 async function listMy(limit, offset, includeAnim) {
-  const wxContext = cloud.getWXContext();
-  const openid = wxContext.OPENID;
+  const openid = getOpenid();
   if (!openid) return { success: false, error: '未登录' };
-  const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
-  const off = Math.max(Number(offset) || 0, 0);
+  const { limit: lim, offset: off } = parsePagination(limit, offset);
   try {
     // 1) count 总数
-    const cnt = await db
-      .collection('ratings')
-      .where({ user_id: openid })
-      .count();
+    const cnt = await db.collection('ratings').where({ user_id: openid }).count();
     const total = cnt.total || 0;
     // 2) 分页取 ratings
     const res = await db
@@ -102,7 +104,7 @@ async function listMy(limit, offset, includeAnim) {
       .limit(lim)
       .get();
     const data = res.data || [];
-    // 3) include_anim=true 时，一次性查所有关联动画
+    // 3) include_anim=true 时，一次性查所有关联动画（去掉 N+1）
     if (includeAnim && data.length > 0) {
       const ids = Array.from(new Set(data.map((r) => String(r.animation_id))));
       const animRes = await db
