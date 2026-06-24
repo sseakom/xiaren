@@ -107,6 +107,10 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
   // correction / delete 模式：备注（可选，给审核管理员的补充说明）
   const [note, setNote] = useState('');
 
+  // correction 模式：标签选择弹窗
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagPickerDraft, setTagPickerDraft] = useState<string[]>([]);
+
   // correction 模式下"申请删除"子面板控制
   const [deletePhase, setDeletePhase] = useState<'reason' | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
@@ -355,45 +359,37 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
           <Text className={styles.label}>
             标签<Text className={styles.required}>*</Text>
           </Text>
-          <View className={styles.tagGroups}>
-            {CATEGORY_GROUPS.map((group) => (
-              <View key={group.title} className={styles.tagGroup}>
-                <Text className={styles.tagGroupTitle}>{group.title}</Text>
-                <View className={styles.tagList}>
-                  {group.items.map((it) => {
-                    const active = tags.includes(it);
-                    return (
-                      <View
-                        key={it}
-                        className={`${styles.tagChip} ${active ? styles.tagChipActive : ''}`}
-                        onClick={() => {
-                          setTags((prev) =>
-                            prev.includes(it)
-                              ? prev.filter((t) => t !== it)
-                              : [...prev, it],
-                          );
-                          clearErr('tag');
-                        }}
-                      >
-                        <Text
-                          className={`${styles.tagChipText} ${active ? styles.tagChipTextActive : ''}`}
-                        >
-                          {it}
-                        </Text>
-                      </View>
-                    );
-                  })}
+          {/* 已选标签：每个带 × 按钮 */}
+          {tags.length > 0 ? (
+            <View className={styles.selectedTags}>
+              {tags.map((t) => (
+                <View key={t} className={styles.selectedTagChip}>
+                  <Text className={styles.selectedTagText}>{t}</Text>
+                  <View
+                    className={styles.selectedTagRemove}
+                    onClick={() => {
+                      setTags((prev) => prev.filter((x) => x !== t));
+                      clearErr('tag');
+                    }}
+                  >
+                    <Text className={styles.selectedTagRemoveIcon}>×</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
-          {tags.length > 0 && (
-            <View className={styles.selectedHint}>
-              <Text className={styles.selectedHintText}>
-                已选 {tags.length} 个：{tags.join('、')}
-              </Text>
+              ))}
             </View>
+          ) : (
+            <Text className={styles.tagEmptyHint}>尚未选择标签</Text>
           )}
+          {/* 选择标签 按钮 */}
+          <Button
+            className={styles.pickTagBtn}
+            onClick={() => {
+              setTagPickerDraft([...tags]);
+              setTagPickerOpen(true);
+            }}
+          >
+            + 选择标签
+          </Button>
           {errors.tag && <Text className={styles.error}>{errors.tag}</Text>}
         </View>
 
@@ -466,6 +462,77 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
             >
               {submitText}
             </Button>
+          </View>
+        )}
+
+        {/* 标签选择弹窗 */}
+        {tagPickerOpen && (
+          <View
+            className={styles.tagPickerMask}
+            onClick={() => setTagPickerOpen(false)}
+          >
+            <View
+              className={styles.tagPickerPanel}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <View className={styles.tagPickerHeader}>
+                <Text className={styles.tagPickerTitle}>选择标签</Text>
+                <Text className={styles.tagPickerSub}>
+                  已选 {tagPickerDraft.length} 个
+                </Text>
+              </View>
+              <View className={styles.tagPickerBody}>
+                {CATEGORY_GROUPS.map((group) => (
+                  <View key={group.title} className={styles.tagPickerGroup}>
+                    <Text className={styles.tagPickerGroupTitle}>
+                      {group.title}
+                    </Text>
+                    <View className={styles.tagPickerItems}>
+                      {group.items.map((it) => {
+                        const active = tagPickerDraft.includes(it);
+                        return (
+                          <View
+                            key={it}
+                            className={`${styles.tagPickerItem} ${active ? styles.tagPickerItemActive : ''}`}
+                            onClick={() => {
+                              setTagPickerDraft((prev) =>
+                                prev.includes(it)
+                                  ? prev.filter((x) => x !== it)
+                                  : [...prev, it],
+                              );
+                            }}
+                          >
+                            <Text
+                              className={`${styles.tagPickerItemText} ${active ? styles.tagPickerItemTextActive : ''}`}
+                            >
+                              {it}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View className={styles.tagPickerActions}>
+                <Button
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  onClick={() => setTagPickerOpen(false)}
+                >
+                  取消
+                </Button>
+                <Button
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  onClick={() => {
+                    setTags(tagPickerDraft);
+                    clearErr('tag');
+                    setTagPickerOpen(false);
+                  }}
+                >
+                  确定
+                </Button>
+              </View>
+            </View>
           </View>
         )}
       </View>
