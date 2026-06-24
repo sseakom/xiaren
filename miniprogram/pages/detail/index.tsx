@@ -90,8 +90,14 @@ const DetailPage: React.FC = () => {
     }
   };
 
+  const ensureLogin = () => {
+    if (UserService.hasLogin) return true;
+    Taro.showToast({ title: '请先登录', icon: 'none' });
+    return false;
+  };
+
   const toggleCollect = async () => {
-    if (!UserService.hasLogin) return;
+    if (!ensureLogin()) return;
     const next = !isCollected;
     setIsCollected(next);
     try {
@@ -107,7 +113,7 @@ const DetailPage: React.FC = () => {
   };
 
   const toggleWatched = async () => {
-    if (!UserService.hasLogin) return;
+    if (!ensureLogin()) return;
     const next = !isWatched;
     setIsWatched(next);
     try {
@@ -118,14 +124,12 @@ const DetailPage: React.FC = () => {
   };
 
   const onOpenBili = () => {
+    if (!ensureLogin()) return;
     if (anim?.bvid) openBilibili(anim.bvid);
   };
 
   const onCorrect = () => {
-    if (!UserService.hasLogin) {
-      Taro.showToast({ title: '请先登录', icon: 'none' });
-      return;
-    }
+    if (!ensureLogin()) return;
     if (!id) return;
     Taro.navigateTo({
       url: `/pages/animation-form/index?mode=correction&correction_of=${id}`,
@@ -245,12 +249,10 @@ const DetailPage: React.FC = () => {
             <Text className={styles.actionText}>复制BVID</Text>
           </View>
 
-          {UserService.hasLogin && (
-            <View className={styles.actionBtn} onClick={onCorrect}>
-              <AppIcon name="edit" size="40rpx" className={styles.actionIcon} />
-              <Text className={styles.actionText}>勘误</Text>
-            </View>
-          )}
+          <View className={styles.actionBtn} onClick={onCorrect}>
+            <AppIcon name="edit" size="40rpx" className={styles.actionIcon} />
+            <Text className={styles.actionText}>勘误</Text>
+          </View>
         </View>
 
         <View className={styles.bottomSafe} />
