@@ -41,17 +41,6 @@ function formatDurationText(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** 把任意日期/字符串转成 YYYY-MM-DDTHH:mm 字符串（供 picker 显示） */
-// function toPickerDate(value: any): string {
-//   if (!value) {
-//     const now = new Date();
-//     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-//   }
-//   const d = new Date(value);
-//   if (isNaN(d.getTime())) return '';
-//   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-// }
-
 /** 解析逗号分隔的标签字符串 */
 function parseTags(str: string | undefined | null): string[] {
   if (!str) return [];
