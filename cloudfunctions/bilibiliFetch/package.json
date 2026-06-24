@@ -1,0 +1,9 @@
+{
+  "name": "bilibiliFetch",
+  "version": "1.0.0",
+  "description": "从 B 站拉取视频元信息（title/cover/up_name/duration/play/like/pubdate）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

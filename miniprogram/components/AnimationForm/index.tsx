@@ -6,12 +6,12 @@ import {
   Input,
   Textarea,
   Button,
-  Picker,
   Image as TaroImage,
 } from '@tarojs/components';
-import { SubmissionService } from '@/services/business';
+import { SubmissionService, BilibiliService, BilibiliVideoInfo } from '@/services/business';
 import { Animation } from '@/types';
 import { CATEGORY_GROUPS } from '@/constants/categories';
+import { formatNumber } from '@/utils/util';
 import styles from './index.module.scss';
 
 export type AnimationFormMode = 'create' | 'correction' | 'delete';
@@ -101,6 +101,12 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     publishTimeText: '',
   });
 
+  // create 模式：B 站拉取（bvid/URL 输入 + 拉取结果 + 拉取状态）
+  const [bvidInput, setBvidInput] = useState('');
+  const [bilibiliInfo, setBilibiliInfo] = useState<BilibiliVideoInfo | null>(null);
+  const [bilibiliLoading, setBilibiliLoading] = useState(false);
+  const [bilibiliError, setBilibiliError] = useState<string | null>(null);
+
   // delete 模式：删除理由
   const [reason, setReason] = useState('');
 
@@ -174,15 +180,10 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     } else if (mode === 'delete') {
       if (reason.trim().length < 4) errs.reason = '删除理由至少 4 个字';
     } else {
-      if (!form.bvid.trim()) errs.bvid = '请输入 bvid';
-      else if (!/^BV1[A-Za-z0-9]{8,}$/.test(form.bvid.trim())) errs.bvid = 'bvid 格式不正确';
-      if (!form.up_name.trim()) errs.up_name = '请输入 UP 主名称';
-      if (!form.cover.trim()) errs.cover = '请输入封面 URL';
-      else if (!/^https?:\/\//.test(form.cover.trim())) errs.cover = '封面 URL 必须以 http(s) 开头';
-      const dur = parseDuration(form.durationText);
-      if (dur <= 0) errs.durationText = '请输入有效的时长（mm:ss 或 h:mm:ss）';
-      if (!form.tag.trim()) errs.tag = '请输入标签（逗号分隔）';
-      if (!form.publishTimeText) errs.publishTimeText = '请选择发布时间';
+      // create 模式：必须先拉取到 B 站信息，title 和 tag 都必填
+      if (!bilibiliInfo) errs.bvid = '请先输入 bvid 并拉取信息';
+      if (!title.trim()) errs.title = '请输入动画标题';
+      if (tags.length === 0) errs.tag = '请至少选择一个标签';
       if (bvidUnique === false) errs.bvid = 'bvid 已被占用';
     }
     return { ok: Object.keys(errs).length === 0, errs };
@@ -204,29 +205,66 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     }
   };
 
+  /** create 模式：从 B 站拉取视频信息 */
+  const onFetchBilibili = async () => {
+    const raw = bvidInput.trim();
+    if (!raw) {
+      Taro.showToast({ title: '请输入 bvid 或视频链接', icon: 'none' });
+      return;
+    }
+    setBilibiliLoading(true);
+    setBilibiliError(null);
+    setBilibiliInfo(null);
+    try {
+      const info = await BilibiliService.fetchByBvid(raw);
+      setBilibiliInfo(info);
+      // 拉取成功：把 bvid 同步到 form 用于唯一性校验 + 提交 payload
+      setForm((prev) => ({ ...prev, bvid: info.bvid }));
+      // 默认填入 title（如用户没改过）
+      setTitle((prev) => prev || info.title);
+      // 用 B 站官方 tag 回填 chips（用户可调整/清空）
+      if (Array.isArray(info.tags) && info.tags.length > 0) {
+        setTags(info.tags);
+        clearErr('tag');
+      }
+      // 触发 bvid 唯一性校验
+      checkBvid(info.bvid);
+    } catch (err: any) {
+      console.error('[AnimationForm] B 站拉取失败', err);
+      setBilibiliError(err?.message || 'B 站信息拉取失败');
+    } finally {
+      setBilibiliLoading(false);
+    }
+  };
+
   const onSubmit = async () => {
     const v = validate();
     setErrors(v.errs);
     if (!v.ok) {
-      Taro.showToast({ title: '请完善表单', icon: 'none' });
+      Taro.showToast({ title: Object.values(v.errs).join('\n'), icon: 'none' });
       return;
     }
 
     setSubmitting(true);
     try {
       if (mode === 'create') {
-        const duration = parseDuration(form.durationText);
+        if (!bilibiliInfo) {
+          throw new Error('请先拉取 B 站视频信息');
+        }
+        if (bvidUnique === false) {
+          throw new Error('该 bvid 已被占用');
+        }
         const ret = await SubmissionService.create({
-          title: title.trim() || initialValues?.title || '',
-          bvid: form.bvid.trim(),
-          up_name: form.up_name.trim(),
-          cover: form.cover.trim(),
-          duration,
-          tag: form.tag.trim(),
-          url: form.url?.trim() || undefined,
-          play_count: form.play_count || 0,
-          like_count: form.like_count || 0,
-          publish_time: new Date(form.publishTimeText).toISOString(),
+          title: title.trim(),
+          bvid: bilibiliInfo.bvid,
+          up_name: bilibiliInfo.up_name,
+          cover: bilibiliInfo.cover,
+          duration: bilibiliInfo.duration,
+          tag: tags.join(','),
+          url: bilibiliInfo.url,
+          play_count: bilibiliInfo.play_count,
+          like_count: bilibiliInfo.like_count,
+          publish_time: bilibiliInfo.publish_time,
         });
         Taro.showToast({ title: '提交成功，等待审核', icon: 'success' });
         if (ret?._id) onSuccess?.(ret._id);
@@ -615,154 +653,244 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     );
   }
 
-  // ============== create 模式：完整录入表单 ==============
+  // ============== create 模式：从 B 站拉取信息，仅 title + tag 可编辑 ==============
   return (
     <View className={styles.form}>
       <View className={styles.tip}>
-        提交后进入审核队列，管理员通过后才会出现在首页。
+        输入 bvid 或包含 bvid 的 B 站链接，系统自动拉取视频信息。标题和标签可手动调整，其他字段不可编辑。
       </View>
 
-      {/* bvid */}
+      {/* bvid/URL 输入 + 拉取按钮 */}
       <View className={styles.field}>
         <Text className={styles.label}>
-          bvid<Text className={styles.required}>*</Text>
+          bvid 或视频链接<Text className={styles.required}>*</Text>
         </Text>
-        <Input
-          className={styles.input}
-          placeholder="BV1xx411c7xx"
-          value={form.bvid}
-          maxlength={16}
-          onInput={(e) => setField('bvid', e.detail.value)}
-          onBlur={(e) => checkBvid(e.detail.value)}
-        />
+        <View className={styles.bvidInputRow}>
+          <Input
+            className={`${styles.input} ${styles.bvidInputField}`}
+            placeholder="BV1xx... 或 https://www.bilibili.com/video/BV1xx..."
+            value={bvidInput}
+            maxlength={200}
+            onInput={(e) => {
+              setBvidInput(e.detail.value);
+              setBilibiliError(null);
+            }}
+          />
+          <Button
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.fetchBtn}`}
+            loading={bilibiliLoading}
+            disabled={bilibiliLoading || !bvidInput.trim()}
+            onClick={onFetchBilibili}
+          >
+            拉取信息
+          </Button>
+        </View>
+        {bilibiliError && <Text className={styles.error}>{bilibiliError}</Text>}
+        {bilibiliInfo && (
+          <Text className={styles.ok}>已识别 bvid：{bilibiliInfo.bvid}</Text>
+        )}
         {bvidChecking && <Text className={styles.hint}>校验中…</Text>}
         {bvidUnique === false && (
           <Text className={styles.error}>该 bvid 已被使用或正在审核中</Text>
         )}
-        {bvidUnique === true && (
-          <Text className={styles.ok}>bvid 可用</Text>
-        )}
-        {errors.bvid && <Text className={styles.error}>{errors.bvid}</Text>}
+        {bvidUnique === true && <Text className={styles.ok}>bvid 可用</Text>}
       </View>
 
-      {/* UP 主 */}
-      <View className={styles.field}>
-        <Text className={styles.label}>
-          UP 主<Text className={styles.required}>*</Text>
-        </Text>
-        <Input
-          className={styles.input}
-          placeholder="UP 主名称"
-          value={form.up_name}
-          maxlength={60}
-          onInput={(e) => setField('up_name', e.detail.value)}
-        />
-        {errors.up_name && <Text className={styles.error}>{errors.up_name}</Text>}
-      </View>
+      {/* 拉取成功：只读信息卡片 */}
+      {bilibiliInfo && (
+        <>
+          <View className={styles.infoCard}>
+            {bilibiliInfo.cover ? (
+              <TaroImage
+                className={styles.infoCover}
+                src={bilibiliInfo.cover}
+                mode="aspectFill"
+              />
+            ) : (
+              <View className={styles.infoCoverPlaceholder}>无封面</View>
+            )}
+            <View className={styles.infoRows}>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>UP 主</Text>
+                <Text className={styles.infoValue} numberOfLines={1}>
+                  {bilibiliInfo.up_name || '未知'}
+                </Text>
+              </View>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>时长</Text>
+                <Text className={styles.infoValue}>
+                  {formatDurationText(bilibiliInfo.duration) || '-'}
+                </Text>
+              </View>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>播放 / 点赞</Text>
+                <Text className={styles.infoValue}>
+                  {formatNumber(bilibiliInfo.play_count)} / {formatNumber(bilibiliInfo.like_count)}
+                </Text>
+              </View>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>发布时间</Text>
+                <Text className={styles.infoValue}>{bilibiliInfo.publish_time || '-'}</Text>
+              </View>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>原链接</Text>
+                <Text className={styles.infoValue} numberOfLines={1}>
+                  {bilibiliInfo.url}
+                </Text>
+              </View>
+            </View>
+          </View>
 
-      {/* 封面 */}
-      <View className={styles.field}>
-        <Text className={styles.label}>
-          封面 URL<Text className={styles.required}>*</Text>
-        </Text>
-        <Input
-          className={styles.input}
-          placeholder="https://…"
-          value={form.cover}
-          onInput={(e) => setField('cover', e.detail.value)}
-        />
-        {errors.cover && <Text className={styles.error}>{errors.cover}</Text>}
-        {form.cover && /^https?:\/\//.test(form.cover) && (
-          <View className={styles.coverPreviewWrap}>
-            <TaroImage
-              className={styles.coverPreview}
-              src={form.cover}
-              mode="aspectFill"
+          {/* 标题：可编辑 */}
+          <View className={styles.field}>
+            <Text className={styles.label}>
+              标题<Text className={styles.required}>*</Text>
+            </Text>
+            <Input
+              className={styles.input}
+              placeholder="动画标题"
+              value={title}
+              maxlength={120}
+              onInput={(e) => {
+                setTitle(e.detail.value);
+                clearErr('title');
+              }}
+            />
+            {errors.title && <Text className={styles.error}>{errors.title}</Text>}
+          </View>
+
+          {/* 标签：chips 多选（与 correction 模式同款） */}
+          <View className={styles.field}>
+            <Text className={styles.label}>
+              标签<Text className={styles.required}>*</Text>
+            </Text>
+            {tags.length > 0 ? (
+              <View className={styles.selectedTags}>
+                {tags.map((t) => (
+                  <View key={t} className={styles.selectedTagChip}>
+                    <Text className={styles.selectedTagText}>{t}</Text>
+                    <View
+                      className={styles.selectedTagRemove}
+                      onClick={() => {
+                        setTags((prev) => prev.filter((x) => x !== t));
+                        clearErr('tag');
+                      }}
+                    >
+                      <Text className={styles.selectedTagRemoveIcon}>×</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className={styles.tagEmptyHint}>尚未选择标签</Text>
+            )}
+            <Button
+              className={styles.pickTagBtn}
+              onClick={() => {
+                setTagPickerDraft([...tags]);
+                setTagPickerOpen(true);
+              }}
+            >
+              + 选择标签
+            </Button>
+            {errors.tag && <Text className={styles.error}>{errors.tag}</Text>}
+          </View>
+
+          {/* 备注（可选） */}
+          <View className={styles.field}>
+            <Text className={styles.label}>
+              备注<Text className={styles.optional}>(可选)</Text>
+            </Text>
+            <Textarea
+              className={styles.textarea}
+              placeholder="给审核管理员的补充说明（最多 200 字）"
+              value={note}
+              maxlength={200}
+              onInput={(e) => setNote(e.detail.value)}
             />
           </View>
-        )}
-      </View>
 
-      {/* 时长 */}
-      <View className={styles.field}>
-        <Text className={styles.label}>
-          时长 (mm:ss)<Text className={styles.required}>*</Text>
-        </Text>
-        <Input
-          className={styles.input}
-          placeholder="例：3:42 或 1:02:08"
-          value={form.durationText}
-          onInput={(e) => setField('durationText', e.detail.value)}
-        />
-        {errors.durationText && <Text className={styles.error}>{errors.durationText}</Text>}
-      </View>
+          <Button
+            className={styles.submitBtn}
+            loading={submitting}
+            disabled={submitting}
+            onClick={onSubmit}
+          >
+            {submitText}
+          </Button>
+        </>
+      )}
 
-      {/* 标签（录入模式保持自由输入） */}
-      <View className={styles.field}>
-        <Text className={styles.label}>
-          标签<Text className={styles.required}>*</Text>
-        </Text>
-        <Textarea
-          className={styles.textarea}
-          placeholder="逗号分隔，如：沙雕,修仙,爆笑"
-          value={form.tag}
-          maxlength={200}
-          onInput={(e) => setField('tag', e.detail.value)}
-        />
-        {errors.tag && <Text className={styles.error}>{errors.tag}</Text>}
-      </View>
-
-      {/* 播放/点赞（可选） */}
-      <View className={styles.row}>
-        <View className={styles.col}>
-          <Text className={styles.label}>播放数</Text>
-          <Input
-            className={styles.input}
-            type="number"
-            placeholder="0"
-            value={String(form.play_count || '')}
-            onInput={(e) => setField('play_count', Number(e.detail.value) || 0)}
-          />
-        </View>
-        <View className={styles.col}>
-          <Text className={styles.label}>点赞数</Text>
-          <Input
-            className={styles.input}
-            type="number"
-            placeholder="0"
-            value={String(form.like_count || '')}
-            onInput={(e) => setField('like_count', Number(e.detail.value) || 0)}
-          />
-        </View>
-      </View>
-
-      {/* 发布时间 */}
-      <View className={styles.field}>
-        <Text className={styles.label}>
-          发布时间<Text className={styles.required}>*</Text>
-        </Text>
-        <Picker
-          mode="date"
-          value={form.publishTimeText}
-          onChange={(e: any) => setField('publishTimeText', e.detail.value)}
+      {/* 标签选择弹窗（create 模式复用） */}
+      {tagPickerOpen && (
+        <View
+          className={styles.tagPickerMask}
+          onClick={() => setTagPickerOpen(false)}
         >
-          <View className={styles.pickerInput}>
-            {form.publishTimeText || '点击选择日期'}
+          <View
+            className={styles.tagPickerPanel}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <View className={styles.tagPickerHeader}>
+              <Text className={styles.tagPickerTitle}>选择标签</Text>
+              <Text className={styles.tagPickerSub}>
+                已选 {tagPickerDraft.length} 个
+              </Text>
+            </View>
+            <View className={styles.tagPickerBody}>
+              {CATEGORY_GROUPS.map((group) => (
+                <View key={group.title} className={styles.tagPickerGroup}>
+                  <Text className={styles.tagPickerGroupTitle}>
+                    {group.title}
+                  </Text>
+                  <View className={styles.tagPickerItems}>
+                    {group.items.map((it) => {
+                      const active = tagPickerDraft.includes(it);
+                      return (
+                        <View
+                          key={it}
+                          className={`${styles.tagPickerItem} ${active ? styles.tagPickerItemActive : ''}`}
+                          onClick={() => {
+                            setTagPickerDraft((prev) =>
+                              prev.includes(it)
+                                ? prev.filter((x) => x !== it)
+                                : [...prev, it],
+                            );
+                          }}
+                        >
+                          <Text
+                            className={`${styles.tagPickerItemText} ${active ? styles.tagPickerItemTextActive : ''}`}
+                          >
+                            {it}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </View>
+            <View className={styles.tagPickerActions}>
+              <Button
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => setTagPickerOpen(false)}
+              >
+                取消
+              </Button>
+              <Button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  setTags(tagPickerDraft);
+                  clearErr('tag');
+                  setTagPickerOpen(false);
+                }}
+              >
+                确定
+              </Button>
+            </View>
           </View>
-        </Picker>
-        {errors.publishTimeText && (
-          <Text className={styles.error}>{errors.publishTimeText}</Text>
-        )}
-      </View>
-
-      <Button
-        className={styles.submitBtn}
-        loading={submitting}
-        disabled={submitting}
-        onClick={onSubmit}
-      >
-        {submitText}
-      </Button>
+        </View>
+      )}
     </View>
   );
 };

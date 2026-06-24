@@ -260,6 +260,51 @@ export const ScoreService = {
   },
 };
 
+/**
+ * B 站视频信息抓取服务
+ *  - fetchByBvid: 从云函数 bilibiliFetch 拉取视频元信息
+ *  - 不直接调 B 站 API（避免 CORS、UA/Referer、限流等），由云端代理
+ */
+export interface BilibiliVideoInfo {
+  bvid: string;
+  title: string;
+  cover: string;
+  up_name: string;
+  duration: number; // 秒
+  play_count: number;
+  like_count: number;
+  publish_time: string; // YYYY-MM-DDTHH:mm:ss
+  url: string;
+  /** B 站官方 tag（来自 /x/tag/archive/tags） */
+  tags?: string[];
+}
+
+export const BilibiliService = {
+  /**
+   * 拉取 B 站视频元信息（云端代理请求 api.bilibili.com）
+   * @param input bvid 字符串 / 完整 B 站视频 URL / b23.tv 短链
+   */
+  async fetchByBvid(input: string): Promise<BilibiliVideoInfo> {
+    const raw = (input || '').trim();
+    if (!raw) throw new Error('请输入 bvid 或包含 bvid 的链接');
+    try {
+      const res = (await CloudService.callFunction('bilibiliFetch', {
+        bvid: raw,
+      })) as any;
+      const result = res?.result as
+        | { success?: boolean; data?: BilibiliVideoInfo; error?: string }
+        | undefined;
+      if (!result?.success || !result.data) {
+        throw new Error(result?.error || 'B 站信息拉取失败');
+      }
+      return result.data;
+    } catch (err: any) {
+      console.error('[Bilibili] fetchByBvid 失败', err);
+      throw new Error(err?.message || 'B 站信息拉取失败');
+    }
+  },
+};
+
 /** 动画提交表单字段（录入/勘误共用） */
 export interface AnimationFormPayload {
   title: string;
