@@ -241,6 +241,14 @@ const ReviewDetailPage: React.FC = () => {
         </>
       )}
 
+      {/* 提交人备注（correction / correction_delete 共用） */}
+      {payload.note && (
+        <View className={styles.card}>
+          <Text className={styles.sectionTitle}>提交人备注</Text>
+          <Text className={styles.reason}>{payload.note}</Text>
+        </View>
+      )}
+
       {/* 提交信息 */}
       <View className={styles.card}>
         <Text className={styles.sectionTitle}>提交信息</Text>
