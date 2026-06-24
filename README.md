@@ -11,11 +11,14 @@
 | 模块 | 说明 |
 |---|---|
 | 🏠 首页 | 动画列表（按发布时间倒序），下拉刷新、触底加载、转发分享 |
-| 📊 详情 | 0~5 星评分、**贝叶斯平均分（WR）**、评分分布、收藏 / 看过、跳转 B 站 |
+| 📊 详情 | 0~5 星评分、**贝叶斯平均分（WR）**、评分分布、收藏 / 看过、**勘误**、跳转 B 站 |
 | 🔍 搜索 | 热门词 + 历史词、**中文/英文模糊匹配**（容错字、容乱序） |
-| 👤 我的 | 登录（手机号一键）、统计（评分/收藏数）、菜单（我的评分/收藏/看过）、退出登录 |
+| 👤 我的 | 登录（手机号一键）、统计（评分/收藏数）、**录入动画**、**我的提交**、**审核中心（仅管理员）**、菜单、退出登录 |
 | 📚 我的评分 | 列出我给所有动画打过的分 |
 | ⭐ 我的收藏 | 列出我收藏 / 标记看过的动画 |
+| 📝 录入动画 | 用户向社区贡献新动画（审核中 → 管理员通过后上线） |
+| 🛡 审核中心 | 管理员审核待审 / 驳回记录，记录审核人和时间 |
+| 📋 我的提交 | 用户查看自己的提交 / 勘误记录及审核结果 |
 
 ---
 
@@ -47,17 +50,23 @@ sha-diao-taro/
 │   │   ├── detail/             # 详情
 │   │   ├── user/               # 我的
 │   │   ├── my-ratings/         # 我的评分
-│   │   └── my-collections/     # 我的收藏
+│   │   ├── my-collections/     # 我的收藏
+│   │   ├── animation-form/     # 录入 / 勘误表单
+│   │   ├── my-submissions/     # 我的提交记录
+│   │   ├── review-list/        # 审核列表（仅管理员）
+│   │   └── review-detail/      # 审核详情（仅管理员）
 │   ├── components/             # 复用组件
 │   │   ├── StarRating/         # 星级评分
 │   │   ├── ScoreChart/         # 评分分布图
 │   │   ├── Skeleton/           # 骨架屏
 │   │   ├── EmptyState/         # 空状态
+│   │   ├── CategoryFilter/     # 类别筛选
+│   │   ├── AnimationForm/      # 录入 / 勘误共用表单
 │   │   └── CustomTabbar/       # 自定义底部 tabbar
 │   ├── services/               # 业务层（与云开发解耦）
-│   │   ├── cloud.ts            # CloudService：db + callFunction + 超时控制
-│   │   ├── user.ts             # UserService：静默登录、用户档案、统计
-│   │   └── business.ts         # 业务服务：AnimationService / RatingService / CollectionService
+│   │   ├── cloud.ts            # CloudService：callFunction + 超时控制
+│   │   ├── user.ts             # UserService：静默登录、用户档案、统计、isAdmin()
+│   │   └── business.ts         # 业务服务：AnimationService / RatingService / CollectionService / ScoreService / SubmissionService / ReviewService
 │   ├── types/                  # 全局 TS 类型
 │   ├── utils/                  # 工具函数
 │   │   ├── fuzzy.ts            # 模糊匹配算法
@@ -190,6 +199,55 @@ yarn build:weapp
 - `calcScore`
 - `search`
 
+> 上面四个是基础版云函数；如果你启用了录入 / 审核 / 管理员功能，还需要上传：`userService` `listAnimations` `getAnimationById` `rating` `collection` `animationSubmit` `animationReview` `animationMySubmissions`。
+
+## 🆕 录入 / 审核 / 勘误 流程
+
+### 录入动画（用户）
+
+1. 用户在《我的》点 **录入动画** → 跳转到 `pages/animation-form/index?mode=create`
+2. 填写表单（标题 / bvid / UP 主 / 封面 / 时长 / 标签 / 发布日期 / 播放数 / 点赞数）
+3. bvid 输入框 `onBlur` 时实时校验唯一性（action=checkBvidUnique）
+4. 提交 → `SubmissionService.create(payload)` → 云函数 `animationSubmit` mode=create
+5. 云函数校验：必填项、bvid 格式、bvid 唯一（与 status ∈ {1,2} 的记录冲突即拒）
+6. 写入 `animations` 集合，`status=2`、`submitter_openid=openid`、`submitted_at=now`
+7. 用户收到 `提交成功，等待审核` 提示，并可在《我的提交》查看进度
+
+### 勘误（用户）
+
+1. 在《视频详情》底部点 **勘误** → 跳转到 `pages/animation-form/index?mode=correction&correction_of={id}`
+2. 表单组件 `AnimationForm` 接收 `initialValues`，回填所有字段（封面预览、时长、标签等）
+3. 校验规则同录入（包含 bvid 唯一性，但允许 bvid 与原动画一致）
+4. 提交 → `SubmissionService.correct(correctionOf, payload)` → 云函数 mode=correction
+5. 云函数校验 `correction_of` 指向 `status=1` 的原记录，写入新记录并 `correction_of` 指向原 _id
+6. 用户收到 `勘误已提交，等待审核` 提示
+
+### 审核（管理员）
+
+1. 管理员在《我的》点 **审核中心** → `pages/review-list/index`
+2. 默认列出 `status=2` 的待审记录，可切换到「驳回 / 全部」
+3. 点击记录 → `pages/review-detail/index?id={id}` 查看详情 + 提交人信息
+4. 通过 / 驳回需填备注（驳回必填原因）→ `ReviewService.approve/reject`
+5. 云函数 `animationReview` action=approve/reject：管理员鉴权 + 写 `status=1/3`、`reviewer_openid`、`review_time`、`review_comment`
+6. 提交人可在《我的提交》即时看到最新状态和驳回原因
+
+### 初始化管理员
+
+首次使用没有管理员，需要先用云开发控制台手动把目标用户的 `is_admin` 设为 `true`：
+
+```js
+// 云开发控制台 → 数据库 → users → 找到目标用户 → 修改 is_admin: true
+```
+
+或者从云函数 `userService` 调 `setAdmin`（先有一个管理员）：
+
+```js
+await cloud.callFunction({
+  name: 'userService',
+  data: { action: 'setAdmin', target_openid: '...', is_admin: true },
+});
+```
+
 ### 修改云开发环境
 
 `miniprogram/services/cloud.ts` 第 3 行：
@@ -296,3 +354,6 @@ await CloudService.callFunction('search', { keyword }, { timeoutMs: 15_000 });
 | 评分是 0 | `config` 集合没有 `global_avg_score` | 手动加一条 `{ key: 'global_avg_score', value: 3.5 }` |
 | TS 报错"找不到名称 X" | alias 没生效 | 确认 `tsconfig.json` 里的 `paths` 是 `miniprogram/*` |
 | 构建报 `@/...` 路径错误 | 构建缓存了旧 alias | `rm -rf dist && yarn build:weapp` |
+| 提交时提示 "bvid 已存在" | 数据库里有同 bvid 的 status=1/2 记录 | 改 bvid（每个动画只能提交一次） |
+| 《审核中心》入口不显示 | 当前用户不是管理员 | 在云开发控制台给该用户 `users.is_admin = true`（仅一次） |
+| 驳回后用户看不到原因 | 通知功能未做 | 用户需主动打开《我的提交》查看 |

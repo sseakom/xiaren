@@ -120,6 +120,17 @@ const DetailPage: React.FC = () => {
     if (anim?.bvid) openBilibili(anim.bvid);
   };
 
+  const onCorrect = () => {
+    if (!UserService.hasLogin) {
+      Taro.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
+    if (!id) return;
+    Taro.navigateTo({
+      url: `/pages/animation-form/index?mode=correction&correction_of=${id}`,
+    });
+  };
+
   if (loading) {
     return (
       <View className={styles.pageDetail}>
@@ -244,6 +255,13 @@ const DetailPage: React.FC = () => {
             <Text className={styles.actionIcon}>🔗</Text>
             <Text className={styles.actionText}>复制BVID</Text>
           </View>
+
+          {UserService.hasLogin && (
+            <View className={styles.actionBtn} onClick={onCorrect}>
+              <Text className={styles.actionIcon}>✎</Text>
+              <Text className={styles.actionText}>勘误</Text>
+            </View>
+          )}
         </View>
 
         <View className={styles.bottomSafe} />

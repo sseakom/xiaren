@@ -1,0 +1,9 @@
+{
+  "name": "animationMySubmissions",
+  "version": "1.0.0",
+  "description": "用户查看自己的提交/勘误记录（status in 2,3）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -6,6 +6,10 @@ export default defineAppConfig({
     'pages/user/index',
     'pages/my-ratings/index',
     'pages/my-collections/index',
+    'pages/animation-form/index',
+    'pages/my-submissions/index',
+    'pages/review-list/index',
+    'pages/review-detail/index',
   ],
   window: {
     backgroundTextStyle: 'light',

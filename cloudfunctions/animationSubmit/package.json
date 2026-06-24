@@ -1,0 +1,9 @@
+{
+  "name": "animationSubmit",
+  "version": "1.0.0",
+  "description": "动画提交入口（用户录入/勘误 + bvid 唯一性校验）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

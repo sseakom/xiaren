@@ -1,5 +1,5 @@
 import { CloudService } from './cloud';
-import { Rating, Collection, ScoreDistribution } from '@/types';
+import { Rating, Collection, ScoreDistribution, AnimationSubmission } from '@/types';
 import { UserService } from './user';
 
 /**
@@ -251,5 +251,166 @@ export const ScoreService = {
       console.warn('[Score] calcScore failed', err);
     }
     return { WR: 0, R: 0, v: 0, C: 3.5, distribution: {} };
+  },
+};
+
+/** 动画提交表单字段（录入/勘误共用） */
+export interface AnimationFormPayload {
+  title: string;
+  bvid: string;
+  up_name: string;
+  cover: string;
+  duration: number;
+  tag: string;
+  url?: string;
+  play_count?: number;
+  like_count?: number;
+  publish_time: string | Date;
+}
+
+/**
+ * 用户提交动画（录入/勘误）—— 走云函数 animationSubmit
+ */
+export const SubmissionService = {
+  /**
+   * 提交前实时校验 bvid 是否已被占用
+   * 用于输入框 onBlur 时给反馈
+   */
+  async checkBvidUnique(bvid: string): Promise<boolean> {
+    if (!bvid || !bvid.trim()) return true;
+    try {
+      const res = (await CloudService.callFunction('animationSubmit', {
+        action: 'checkBvidUnique',
+        bvid: bvid.trim(),
+      })) as any;
+      const result = res?.result as { success?: boolean; data?: { unique?: boolean } };
+      return !!(result?.success && result.data?.unique);
+    } catch (err) {
+      console.warn('[Submission] checkBvidUnique 失败', err);
+      // 网络异常时返回 true，由提交时再校一次
+      return true;
+    }
+  },
+
+  /**
+   * 提交一条新动画（mode=create）
+   */
+  async create(payload: AnimationFormPayload) {
+    if (!UserService.openid) throw new Error('未登录');
+    const res = (await CloudService.callFunction('animationSubmit', {
+      mode: 'create',
+      payload,
+    })) as any;
+    const result = res?.result as
+      | { success?: boolean; data?: { _id: string; status: number }; error?: string }
+      | undefined;
+    if (!result?.success) {
+      throw new Error(result?.error || '提交失败');
+    }
+    return result.data;
+  },
+
+  /**
+   * 勘误：保留原 bvid，写入新 status=2 记录
+   * correction 模式下只能传 title + tag，其他字段从原动画拷贝
+   */
+  async correct(
+    correctionOf: string,
+    payload: { title: string; tag: string },
+  ) {
+    if (!UserService.openid) throw new Error('未登录');
+    if (!correctionOf) throw new Error('缺少原动画 id');
+    if (!payload.title?.trim()) throw new Error('标题不能为空');
+    if (!payload.tag?.trim()) throw new Error('标签不能为空');
+    const res = (await CloudService.callFunction('animationSubmit', {
+      mode: 'correction',
+      correction_of: correctionOf,
+      payload: {
+        title: payload.title.trim(),
+        tag: payload.tag.trim(),
+      },
+    })) as any;
+    const result = res?.result as
+      | { success?: boolean; data?: { _id: string; status: number }; error?: string }
+      | undefined;
+    if (!result?.success) {
+      throw new Error(result?.error || '提交失败');
+    }
+    return result.data;
+  },
+
+  /** 我的提交/勘误记录（status in 2,3） */
+  async listMySubmissions(): Promise<AnimationSubmission[]> {
+    if (!UserService.openid) return [];
+    try {
+      const res = (await CloudService.callFunction('animationMySubmissions', {})) as any;
+      const result = res?.result as { success?: boolean; data?: AnimationSubmission[] };
+      return result?.data || [];
+    } catch (err) {
+      console.error('[Submission] listMySubmissions 失败', err);
+      return [];
+    }
+  },
+};
+
+/**
+ * 管理员审核 —— 走云函数 animationReview
+ */
+export const ReviewService = {
+  /** 列出待审记录（默认 status=2） */
+  async list(statusFilter: number[] = [2]): Promise<AnimationSubmission[]> {
+    if (!UserService.openid) return [];
+    try {
+      const res = (await CloudService.callFunction('animationReview', {
+        action: 'list',
+        statusFilter,
+      })) as any;
+      const result = res?.result as { success?: boolean; data?: AnimationSubmission[] };
+      return result?.data || [];
+    } catch (err) {
+      console.error('[Review] list 失败', err);
+      return [];
+    }
+  },
+
+  /** 单条详情 */
+  async get(id: string): Promise<AnimationSubmission | null> {
+    if (!UserService.openid || !id) return null;
+    try {
+      const res = (await CloudService.callFunction('animationReview', {
+        action: 'get',
+        _id: id,
+      })) as any;
+      const result = res?.result as { success?: boolean; data?: AnimationSubmission };
+      return result?.data || null;
+    } catch (err) {
+      console.error('[Review] get 失败', err);
+      return null;
+    }
+  },
+
+  /** 通过 */
+  async approve(id: string, comment = '') {
+    if (!UserService.openid) throw new Error('未登录');
+    const res = (await CloudService.callFunction('animationReview', {
+      action: 'approve',
+      _id: id,
+      comment,
+    })) as any;
+    const result = res?.result as { success?: boolean; error?: string };
+    if (!result?.success) throw new Error(result?.error || '审核通过失败');
+  },
+
+  /** 驳回（必须填原因） */
+  async reject(id: string, comment: string) {
+    if (!UserService.openid) throw new Error('未登录');
+    if (!comment || !comment.trim()) throw new Error('请填写驳回原因');
+    const res = (await CloudService.callFunction('animationReview', {
+      action: 'reject',
+      _id: id,
+      comment: comment.trim(),
+    })) as any;
+    const result = res?.result as { success?: boolean; error?: string };
+    if (!result?.success) throw new Error(result?.error || '驳回失败');
   },
 };

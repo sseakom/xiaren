@@ -145,3 +145,12 @@ export function openBilibili(bvid: string): void {
     },
   });
 }
+
+/** 格式化为完整日期时间 "YYYY-MM-DD HH:mm" */
+export function formatDateTime(input: string | Date | number | undefined | null): string {
+  if (input == null) return '';
+  const d = new Date(input);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

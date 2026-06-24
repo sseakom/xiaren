@@ -1,0 +1,154 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.coverWrap {
+  width: 100%;
+  height: 360rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #f0f0f0;
+  margin-bottom: 20rpx;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.coverPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #bbb;
+  font-size: 28rpx;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #222;
+  line-height: 1.4;
+}
+
+.meta {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.tags {
+  font-size: 26rpx;
+  color: $color-primary;
+}
+
+.link {
+  font-size: 24rpx;
+  color: #3498db;
+  word-break: break-all;
+}
+
+.sectionTitle {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 12rpx;
+}
+
+.statusTag {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+}
+
+.statusPending {
+  background: #fff5ec;
+  color: $color-primary;
+}
+
+.statusApproved {
+  background: #e9f7ef;
+  color: #2aaf6a;
+}
+
+.statusRejected {
+  background: #ffecec;
+  color: #d23a3a;
+}
+
+.reviewComment {
+  margin-top: 12rpx;
+  padding: 16rpx;
+  background: #faf5f0;
+  color: #5c3a1e;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.label {
+  font-size: 26rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 160rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  background: #fafafa;
+}
+
+.actionRow {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 24rpx;
+}
+
+.btn {
+  flex: 1;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  color: #fff;
+
+  &::after {
+    border: none;
+  }
+}
+
+.btnApprove {
+  background: #2aaf6a;
+}
+
+.btnReject {
+  background: #d23a3a;
+}

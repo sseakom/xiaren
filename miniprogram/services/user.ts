@@ -258,6 +258,15 @@ class UserServiceImpl {
     });
   }
 
+  /**
+   * 是否管理员
+   * 注意：userInfo 必须在调用前就绪（waitForReady 之后），
+   * 否则会被误判为 false
+   */
+  isAdmin(): boolean {
+    return !!this.userInfo?.is_admin;
+  }
+
   on(fn: () => void) {
     this.listeners.push(fn);
   }

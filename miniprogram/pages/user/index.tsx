@@ -235,11 +235,39 @@ const UserPage: React.FC = () => {
           <Text className={styles.menuArrow}>›</Text>
         </View>
         {user ? (
-          <View className={styles.menuItem} onClick={onLogout}>
-            <Text className={`${styles.menuIcon} ${styles.menuIconDanger}`}>⏻</Text>
-            <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
-            <Text className={styles.menuArrow}>›</Text>
-          </View>
+          <>
+            <View
+              className={styles.menuItem}
+              onClick={() => Taro.navigateTo({ url: '/pages/animation-form/index?mode=create' })}
+            >
+              <Text className={styles.menuIcon}>＋</Text>
+              <Text className={styles.menuText}>录入动画</Text>
+              <Text className={styles.menuArrow}>›</Text>
+            </View>
+            <View
+              className={styles.menuItem}
+              onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
+            >
+              <Text className={styles.menuIcon}>≡</Text>
+              <Text className={styles.menuText}>我的提交</Text>
+              <Text className={styles.menuArrow}>›</Text>
+            </View>
+            {UserService.isAdmin() && (
+              <View
+                className={styles.menuItem}
+                onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
+              >
+                <Text className={styles.menuIcon}>审</Text>
+                <Text className={styles.menuText}>审核中心</Text>
+                <Text className={styles.menuArrow}>›</Text>
+              </View>
+            )}
+            <View className={styles.menuItem} onClick={onLogout}>
+              <Text className={`${styles.menuIcon} ${styles.menuIconDanger}`}>⏻</Text>
+              <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
+              <Text className={styles.menuArrow}>›</Text>
+            </View>
+          </>
         ) : null}
       </View>
 

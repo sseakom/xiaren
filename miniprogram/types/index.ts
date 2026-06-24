@@ -22,6 +22,33 @@ export interface Animation {
   tags?: string[];
 }
 
+/**
+ * 动画状态机
+ *  - 0 草稿（预留，暂未使用）
+ *  - 1 已发布（默认；首页/搜索能查到）
+ *  - 2 审核中（用户提交的新动画/勘误；首页/搜索不可见）
+ *  - 3 驳回（首页/搜索不可见；用户可在《我的提交》看到）
+ */
+export type AnimationStatus = 0 | 1 | 2 | 3;
+
+/** 动画提交记录（在 animations 集合中带审核相关字段） */
+export interface AnimationSubmission extends Animation {
+  /** 状态：2 审核中 / 3 驳回 / 1 已发布 */
+  status: AnimationStatus;
+  /** 提交人 openid */
+  submitter_openid?: string;
+  /** 提交时间 */
+  submitted_at?: string | Date;
+  /** 审核人 openid */
+  reviewer_openid?: string;
+  /** 审核时间 */
+  review_time?: string | Date;
+  /** 审核/驳回备注（如驳回原因） */
+  review_comment?: string;
+  /** 勘误来源：如果是勘误记录，指向原动画的 _id */
+  correction_of?: string;
+}
+
 /** 评分实体 - 对应 ratings 集合 */
 export interface Rating {
   _id: string;
@@ -57,6 +84,8 @@ export interface User {
   avatarUrl: string;
   created_at: string | Date;
   updated_at: string | Date;
+  /** 是否管理员；通过云函数 userService.setAdmin 设为 true */
+  is_admin?: boolean;
 }
 
 /** 用户统计 */
