@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, Input, ScrollView } from '@tarojs/components';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
+import { SearchBar } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
 import { Animation } from '@/types';
 import { AnimationService } from '@/services/business';
 import { goDetail } from '@/utils/nav';
@@ -31,7 +33,6 @@ const SearchPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [autoFocus, setAutoFocus] = useState(true);
   const [category, setCategory] = useState('');
-  const inputRef = useRef<any>(null);
 
   useShareAppMessage(() => ({
     title: '来虾仁宇宙搜点好玩的',
@@ -44,8 +45,6 @@ const SearchPage: React.FC = () => {
     setAutoFocus(false);
     Taro.nextTick(() => {
       setAutoFocus(true);
-      // 双保险：直接调原生 focus
-      if (inputRef.current?.focus) inputRef.current.focus();
     });
   });
 
@@ -146,27 +145,21 @@ const SearchPage: React.FC = () => {
   return (
     <View className={styles.pageSearch}>
       <View className={styles.searchHeader}>
-        <View className={styles.searchInputWrap}>
-          <AppIcon name="search" size="28rpx" className={styles.searchIcon} />
-          <Input
-            ref={inputRef}
-            className={styles.searchInput}
-            placeholder="搜索动画名称、UP主..."
-            value={keyword}
-            onInput={(e) => setKeyword(e.detail.value)}
-            onConfirm={onSearch}
-            focus={autoFocus}
-            confirmType="search"
-          />
-          {keyword ? (
-            <View className={styles.searchClear} onClick={onClear}>
-              <AppIcon name="close" size="22rpx" />
-            </View>
-          ) : null}
-        </View>
-        <Text className={styles.searchBtn} onClick={onSearch}>
-          搜索
-        </Text>
+        <SearchBar
+          className={styles.searchBar}
+          shape="round"
+          value={keyword}
+          placeholder="搜索动画名称、UP主..."
+          autoFocus={autoFocus}
+          clearable
+          right={<Text className={styles.searchBtn} onClick={onSearch}>搜索</Text>}
+          inputProps={{
+            confirmType: 'search',
+          }}
+          onChange={(value) => setKeyword(value)}
+          onClear={onClear}
+          onSearch={onSearch}
+        />
       </View>
 
       <View className={styles.filterBar}>

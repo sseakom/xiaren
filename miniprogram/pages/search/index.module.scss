@@ -9,42 +9,34 @@
 }
 
 .searchHeader {
-  display: flex;
-  align-items: center;
   padding: $spacing-sm $spacing-sm;
   background: $color-bg-card;
-  gap: $spacing-sm;
 }
 
-.searchInputWrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background: $color-bg-page;
-  border-radius: $radius-button;
-  padding: $spacing-xs + 4rpx $spacing-sm + 4rpx;
-  gap: $spacing-xs + 4rpx;
+.searchBar {
+  --nutui-searchbar-padding: 0;
+  --nutui-searchbar-gap: 12rpx;
+  --nutui-searchbar-background: transparent;
+  --nutui-searchbar-content-background: #{$color-bg-page};
+  --nutui-searchbar-content-border-radius: #{$radius-button};
+  --nutui-searchbar-input-height: 72rpx;
+  --nutui-searchbar-icon-size: 28rpx;
+  --nutui-searchbar-font-size: #{$font-size-md - 2rpx};
+  --nutui-searchbar-input-text-color: #{$color-text-primary};
+  --nutui-searchbar-input-curror-color: #{$color-primary};
+  --nutui-searchbar-content-border: 0;
 }
 
-.searchIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.searchBar :global(.nut-searchbar-content) {
+  border: none;
+}
+
+.searchBar :global(.nut-searchbar-leftin) {
   color: $color-text-tertiary;
 }
 
-.searchInput {
-  flex: 1;
-  font-size: $font-size-md - 2rpx;
-  color: $color-text-primary;
-}
-
-.searchClear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.searchBar :global(.nut-searchbar-clear.nut-searchbar-icon .nut-icon) {
   color: $color-text-tertiary;
-  padding: 4rpx 8rpx;
 }
 
 .searchBtn {

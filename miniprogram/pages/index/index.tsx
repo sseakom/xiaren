@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
+import { SearchBar } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
 import { Animation } from '@/types';
 import { AnimationService, ListSort } from '@/services/business';
 import { goDetail, goSearch } from '@/utils/nav';
@@ -87,11 +89,16 @@ const IndexPage: React.FC = () => {
   return (
     <View className={styles.pageIndex}>
       {/* 搜索入口 */}
-      <View className={styles.searchBar} onClick={goSearch}>
-        <View className={styles.searchInput}>
-          <AppIcon name="search" size="30rpx" className={styles.searchIcon} />
-          <Text className={styles.searchPlaceholder}>搜索动画片源...</Text>
-        </View>
+      <View className={styles.searchBar}>
+        <SearchBar
+          className={styles.searchEntry}
+          shape="round"
+          placeholder="搜索动画片源..."
+          readOnly
+          clearable={false}
+          right=""
+          onInputClick={goSearch}
+        />
       </View>
 
       {/* 排序 Tab 栏 */}

@@ -13,24 +13,22 @@
   background: $color-bg-card;
 }
 
-.searchInput {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs + 4rpx;
-  background: $color-bg-page;
-  border-radius: $radius-button;
-  padding: $spacing-sm $spacing-md;
+.searchEntry {
+  --nutui-searchbar-padding: 0;
+  --nutui-searchbar-background: transparent;
+  --nutui-searchbar-content-background: #{$color-bg-page};
+  --nutui-searchbar-content-border-radius: #{$radius-button};
+  --nutui-searchbar-input-height: 76rpx;
+  --nutui-searchbar-icon-size: 30rpx;
+  --nutui-searchbar-font-size: #{$font-size-md - 2rpx};
+  --nutui-searchbar-input-text-color: #{$color-text-tertiary};
 }
 
-.searchIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: $color-text-tertiary;
+.searchEntry :global(.nut-searchbar-content) {
+  border: none;
 }
 
-.searchPlaceholder {
-  font-size: $font-size-md - 2rpx;
+.searchEntry :global(.nut-searchbar-leftin) {
   color: $color-text-tertiary;
 }
 
