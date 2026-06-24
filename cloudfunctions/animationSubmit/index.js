@@ -84,6 +84,12 @@ async function submit(event) {
   const openid = wxContext.OPENID;
   if (!openid) return { success: false, error: '未登录' };
 
+  // 防御性拦截：exports.main 应已处理，但若主入口 action 分发被漏掉，
+  // 防止 action 字段被忽略、type 默认 create 而误报 "缺少必填字段：title"
+  if (event.action) {
+    return { success: false, error: `submit 不处理 action: ${event.action}` };
+  }
+
   const type = event.type || (event.mode === 'correction' ? 'correction' : 'create');
   const payload = event.payload || {};
 
