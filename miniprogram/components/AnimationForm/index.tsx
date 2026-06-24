@@ -41,29 +41,16 @@ function formatDurationText(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** 把 "1:23" / "1:23:45" / "285" 解析成秒数 */
-function parseDuration(str: string): number {
-  const s = String(str || '').trim();
-  if (!s) return 0;
-  if (/^\d+(:\d+){1,2}$/.test(s)) {
-    const parts = s.split(':').map(Number);
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  if (/^\d+(\.\d+)?$/.test(s)) return Number(s);
-  return 0;
-}
-
 /** 把任意日期/字符串转成 YYYY-MM-DDTHH:mm 字符串（供 picker 显示） */
-function toPickerDate(value: any): string {
-  if (!value) {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  }
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
+// function toPickerDate(value: any): string {
+//   if (!value) {
+//     const now = new Date();
+//     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+//   }
+//   const d = new Date(value);
+//   if (isNaN(d.getTime())) return '';
+//   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+// }
 
 /** 解析逗号分隔的标签字符串 */
 function parseTags(str: string | undefined | null): string[] {
@@ -87,19 +74,6 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
   // correction 模式：仅 title + tags
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-
-  // create 模式：完整字段
-  const [form, setForm] = useState({
-    bvid: '',
-    up_name: '',
-    cover: '',
-    durationText: '',
-    tag: '',
-    url: '',
-    play_count: 0,
-    like_count: 0,
-    publishTimeText: '',
-  });
 
   // create 模式：B 站拉取（bvid/URL 输入 + 拉取结果 + 拉取状态）
   const [bvidInput, setBvidInput] = useState('');
@@ -131,18 +105,6 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     if (initialValues) {
       setTitle(initialValues.title || '');
       setTags(parseTags(initialValues.tag));
-      const dur = Number(initialValues.duration) || 0;
-      setForm({
-        bvid: initialValues.bvid || '',
-        up_name: initialValues.up_name || '',
-        cover: initialValues.cover || '',
-        durationText: formatDurationText(dur),
-        tag: initialValues.tag || '',
-        url: initialValues.url || '',
-        play_count: Number(initialValues.play_count) || 0,
-        like_count: Number(initialValues.like_count) || 0,
-        publishTimeText: toPickerDate(initialValues.publish_time),
-      });
     }
   }, [initialValues]);
 
@@ -151,16 +113,6 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     if (mode === 'correction') return '提交勘误';
     return '提交删除申请';
   }, [mode]);
-
-  const setField = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
-    setForm((prev) => ({ ...prev, [k]: v }));
-    setErrors((prev) => {
-      if (!prev[k as string]) return prev;
-      const next = { ...prev };
-      delete next[k as string];
-      return next;
-    });
-  };
 
   const clearErr = (key: string) => {
     setErrors((prev) => {
@@ -218,8 +170,6 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     try {
       const info = await BilibiliService.fetchByBvid(raw);
       setBilibiliInfo(info);
-      // 拉取成功：把 bvid 同步到 form 用于唯一性校验 + 提交 payload
-      setForm((prev) => ({ ...prev, bvid: info.bvid }));
       // 默认填入 title（如用户没改过）
       setTitle((prev) => prev || info.title);
       // 用 B 站官方 tag 回填 chips（用户可调整/清空）
