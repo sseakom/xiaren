@@ -14,6 +14,7 @@ class UserServiceImpl {
   hasLogin = false;
   userInfo: User | null = null;
   userInfoReady = false;
+  private initReady = false;
   private listeners: Array<() => void> = [];
 
   /**
@@ -21,10 +22,22 @@ class UserServiceImpl {
    * 会话失效时才回退到 wxLogin 换新 openid
    */
   async bootstrap() {
+    this.initReady = false;
+    this.userInfoReady = false;
+    this.emit();
     try {
       await this.silentLogin();
     } catch (err) {
       console.warn('[User] 静默登录失败，等待用户主动登录', err);
+      this.openid = '';
+      this.hasLogin = false;
+      this.userInfo = null;
+    } finally {
+      this.initReady = true;
+      if (!this.hasLogin) {
+        this.userInfoReady = true;
+      }
+      this.emit();
     }
   }
 
@@ -112,7 +125,8 @@ class UserServiceImpl {
     this.openid = '';
     this.hasLogin = false;
     this.userInfo = null;
-    this.userInfoReady = false;
+    this.userInfoReady = true;
+    this.initReady = true;
     Taro.removeStorageSync(OPENID_CACHE_KEY);
     Taro.removeStorageSync('user_phone_cache');
     this.emit();
@@ -241,14 +255,14 @@ class UserServiceImpl {
 
   /** 等待 userInfo 就绪 */
   waitForReady(timeoutMs = 5000): Promise<void> {
-    if (this.userInfoReady) return Promise.resolve();
+    if (this.userInfoReady || this.initReady) return Promise.resolve();
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.off(check);
         resolve();
       }, timeoutMs);
       const check = () => {
-        if (this.userInfoReady) {
+        if (this.userInfoReady || this.initReady) {
           clearTimeout(timer);
           resolve();
         }
