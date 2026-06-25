@@ -225,7 +225,7 @@ const UserPage: React.FC = () => {
               </Text>
               <Text className={styles.profileHint}>
                 {user
-                  ? '点击头像更新头像，昵称失焦后自动保存'
+                  ? '点击头像更新，昵称失焦后自动保存'
                   : '登录后可同步评分、收藏和看过记录'}
               </Text>
             </View>
@@ -239,21 +239,6 @@ const UserPage: React.FC = () => {
             </View>
           </View>
 
-          {!user ? (
-            <View className={styles.loginPanel}>
-              <Button
-                className={styles.phoneLoginBtn}
-                openType="getPhoneNumber"
-                onGetPhoneNumber={onGetPhoneNumber}
-              >
-                <AppIcon name="phone" size="28rpx" className={styles.phoneLoginIcon} />
-                <Text>手机号一键登录</Text>
-              </Button>
-              <Text className={styles.loginTip}>
-                授权后自动同步个人资料与互动记录
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         {/* 统计卡片 */}
@@ -356,13 +341,6 @@ const UserPage: React.FC = () => {
         </View>
       </View>
 
-      <View className={styles.about}>
-        <View className={styles.aboutBadge}>
-          <AppIcon name="movie" size="28rpx" className={styles.aboutBadgeIcon} />
-        </View>
-        <Text className={styles.aboutText}>虾仁宇宙 v1.0.0</Text>
-        <Text className={styles.aboutDesc}>记录你的每一次爆笑时刻</Text>
-      </View>
       <CustomTabbar currentPath="/pages/user/index" />
     </View>
   );
