@@ -5,7 +5,7 @@
   background: $color-bg-page;
   display: flex;
   flex-direction: column;
-  padding-bottom: 120rpx; // 预留底部 TabBar 高度
+  padding-bottom: $spacing-md;
 }
 
 .searchHeader {

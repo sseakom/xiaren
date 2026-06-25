@@ -5,6 +5,7 @@ import AppIcon from '@/components/AppIcon';
 import TagRow from '@/components/TagRow';
 import { formatNumber } from '@/utils/util';
 import styles from './index.module.scss';
+import { parseTags } from '@/utils/util';
 
 export interface AnimCardFooterProps {
   item: Animation;
@@ -12,7 +13,7 @@ export interface AnimCardFooterProps {
 
 const AnimCardFooter: React.FC<AnimCardFooterProps> = ({ item }) => (
   <>
-    <TagRow tags={item.tags || []} />
+    <TagRow tags={parseTags(item.tags ?? item.tag) || []} />
     <View className={styles.animMeta}>
       <Text className={styles.metaAuthor} numberOfLines={1}>
         {item.up_name}

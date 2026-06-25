@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
-import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useReachBottom } from '@tarojs/taro';
 import { SearchBar } from '@nutui/nutui-react-taro';
 import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
 import { Animation } from '@/types';
@@ -11,7 +11,6 @@ import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CategoryFilter from '@/components/CategoryFilter';
-import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
 import AnimCardFooter from '@/components/AnimCardFooter';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
@@ -31,7 +30,6 @@ const SearchPage: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [autoFocus, setAutoFocus] = useState(true);
   const [category, setCategory] = useState('');
 
   useShareAppMessage(() => ({
@@ -39,14 +37,6 @@ const SearchPage: React.FC = () => {
     path: '/pages/search/index',
   }));
 
-  // 页面每次显示时（包括从其他页面返回）都重新聚焦
-  // 单纯靠 focus 属性只在首次挂载生效，useDidShow 解决"返回搜索页不聚焦"
-  useDidShow(() => {
-    setAutoFocus(false);
-    Taro.nextTick(() => {
-      setAutoFocus(true);
-    });
-  });
 
   useEffect(() => {
     const h = Taro.getStorageSync(STORAGE_KEY) || [];
@@ -150,7 +140,6 @@ const SearchPage: React.FC = () => {
           shape="round"
           value={keyword}
           placeholder="搜索动画名称、UP主..."
-          autoFocus={autoFocus}
           clearable
           right={<Text className={styles.searchBtn} onClick={onSearch}>搜索</Text>}
           inputProps={{
@@ -236,7 +225,6 @@ const SearchPage: React.FC = () => {
           </Skeleton>
         </View>
       )}
-      <CustomTabbar currentPath="/pages/search/index" />
     </View>
   );
 };

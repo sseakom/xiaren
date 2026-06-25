@@ -155,3 +155,15 @@ export function formatDateTime(input: string | Date | number | undefined | null)
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/** 统一处理逗号分隔的标签字符串，返回去空格、去空值后的数组 */
+export function parseTags(tag: string | string[] | undefined | null): string[] {
+  if (Array.isArray(tag)) {
+    return tag.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (!tag) return [];
+  return String(tag)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}

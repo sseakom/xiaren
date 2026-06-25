@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
-import { SearchBar } from '@nutui/nutui-react-taro';
 import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
 import { Animation } from '@/types';
 import { AnimationService, ListSort } from '@/services/business';
-import { goDetail, goSearch } from '@/utils/nav';
+import { goDetail } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
 import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
-import CustomTabbar from '@/components/CustomTabbar';
 import AnimCard from '@/components/AnimCard';
 import AnimCardFooter from '@/components/AnimCardFooter';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
@@ -36,10 +34,7 @@ const IndexPage: React.FC = () => {
   const { list, loading, loadingMore, hasMore, load, handleLoadMore } = usePagination<Animation>(
     async (p) => {
       const res = await AnimationService.list(p, PAGE_SIZE, sortBy, category);
-      const enriched = (res.list || []).map((a: any) => ({
-        ...a,
-        tags: a.tag ? a.tag.split(',').filter(Boolean) : [],
-      }));
+      const enriched = (res.list || []);
       return { list: enriched, total: res.total };
     },
     [sortBy, category],
@@ -92,18 +87,6 @@ const IndexPage: React.FC = () => {
 
   return (
     <View className={styles.pageIndex}>
-      {/* 搜索入口 */}
-      <View className={styles.searchBar}>
-        <SearchBar
-          className={styles.searchEntry}
-          shape="round"
-          placeholder="搜索动画片源..."
-          readOnly
-          clearable={false}
-          right=""
-          onInputClick={goSearch}
-        />
-      </View>
 
       {/* 排序 Tab 栏 */}
       <View className={styles.sortBar}>
@@ -160,7 +143,6 @@ const IndexPage: React.FC = () => {
           )
         )}
       </Skeleton>
-      <CustomTabbar currentPath="/pages/index/index" />
     </View>
   );
 };

@@ -10,7 +10,7 @@
   --user-theme-primary-border: rgba(255, 107, 53, 0.18);
   min-height: 100vh;
   background: $color-bg-page;
-  padding-bottom: 136rpx;
+  padding-bottom: $spacing-md;
 }
 
 .header {

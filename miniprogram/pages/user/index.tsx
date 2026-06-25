@@ -5,7 +5,6 @@ import { UserService } from '@/services/user';
 import { User, UserStats } from '@/types';
 import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
-import CustomTabbar from '@/components/CustomTabbar';
 import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 import styles from './index.module.scss';
 
@@ -363,8 +362,6 @@ const UserPage: React.FC = () => {
           ) : null}
         </View>
       </View>
-
-      <CustomTabbar currentPath="/pages/user/index" />
     </View>
   );
 };

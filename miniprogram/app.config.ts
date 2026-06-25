@@ -20,5 +20,25 @@ export default defineAppConfig({
     navigationBarTextStyle: 'white',
     backgroundColor: '#f5f5f5',
   },
+  tabBar: {
+    color: '#999999',
+    selectedColor: THEME_PRIMARY_COLOR,
+    backgroundColor: '#ffffff',
+    borderStyle: 'black',
+    list: [
+      {
+        pagePath: 'pages/index/index',
+        text: '首页',
+      },
+      {
+        pagePath: 'pages/search/index',
+        text: '搜索',
+      },
+      {
+        pagePath: 'pages/user/index',
+        text: '我的',
+      },
+    ],
+  },
   lazyCodeLoading: 'requiredComponents',
 });

@@ -2,16 +2,16 @@
 
 .tagRow {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6rpx;
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  // overflow-x: auto;
+  // overflow-y: hidden;
+  // -webkit-overflow-scrolling: touch;
+  // scrollbar-width: none;
+  // &::-webkit-scrollbar {
+  //   display: none;
+  // }
 }
 
 .nutTag {
