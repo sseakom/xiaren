@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text } from '@tarojs/components';
 import { ScoreDistribution } from '@/types';
+import AppIcon from '@/components/AppIcon';
 import styles from './index.module.scss';
 
 export interface ScoreChartProps {
@@ -56,7 +57,11 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution, compact = false }
       {!compact ? <View className={styles.chartTitle}>评分分布</View> : null}
       {data.levels.length === 0 ? (
         <View className={styles.empty}>
-          <Text className={styles.emptyIcon}>📊</Text>
+          <AppIcon
+            name="rating"
+            size="48rpx"
+            className={styles.emptyIcon}
+          />
           <Text className={styles.emptyText}>暂无评分数据</Text>
           {!compact ? (
             <Text className={styles.emptyHint}>做第一个评分的人吧～</Text>

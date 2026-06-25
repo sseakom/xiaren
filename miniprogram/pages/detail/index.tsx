@@ -11,15 +11,14 @@ import {
 import { UserService } from '@/services/user';
 import {
   formatNumber,
-  formatTime,
-  openBilibili,
+  formatDuration,
+  // openBilibili,
 } from '@/utils/util';
 import { toastError } from '@/utils/error';
 import AppIcon from '@/components/AppIcon';
 import RatingRow from '@/components/RatingRow';
 import ScoreChart from '@/components/ScoreChart';
 import Skeleton from '@/components/Skeleton';
-import StatItem from '@/components/StatItem';
 import styles from './index.module.scss';
 
 const DetailPage: React.FC = () => {
@@ -123,10 +122,10 @@ const DetailPage: React.FC = () => {
     }
   };
 
-  const onOpenBili = () => {
-    if (!ensureLogin()) return;
-    if (anim?.bvid) openBilibili(anim.bvid);
-  };
+  // const onOpenBili = () => {
+  //   if (!ensureLogin()) return;
+  //   if (anim?.bvid) openBilibili(anim.bvid);
+  // };
 
   const onCorrect = () => {
     if (!ensureLogin()) return;
@@ -154,108 +153,166 @@ const DetailPage: React.FC = () => {
     );
   }
 
+  const tagList = (anim.tags && anim.tags.length > 0
+    ? anim.tags
+    : (anim.tag || '').split(',')
+  )
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const displayDuration = formatDuration(
+    anim.duration ?? anim.durationText ?? null,
+  );
+
   return (
     <View className={styles.pageDetail}>
       <ScrollView scrollY className={styles.detailScroll}>
-        {/* 封面区 */}
-        <View className={styles.coverSection}>
-          <Image className={styles.cover} src={anim.cover} mode="aspectFill" />
-          <View className={styles.coverMask}>
-            <Text className={styles.coverDuration}>{anim.durationText}</Text>
-          </View>
-        </View>
-
-        {/* 基本信息 */}
-        <View className={styles.infoSection}>
-          <Text className={styles.title}>{anim.title}</Text>
-          <View className={styles.metaRow}>
-            <Text className={styles.metaCreator}>UP: {anim.up_name}</Text>
-            <Text className={styles.metaTime}>
-              {formatTime(anim.publish_time)}
-            </Text>
-          </View>
-
-          <View className={styles.statsRow}>
-            <StatItem
-              value={formatNumber(anim.play_count || 0)}
-              label="播放"
-            />
-            <StatItem
-              value={formatNumber(anim.like_count || 0)}
-              label="点赞"
-            />
-          </View>
-        </View>
-
-        {/* 评分 + 评分分布（左右两列） */}
-        <View className={styles.scoreSection}>
-          <View className={styles.scoreLayout}>
-            {/* 左：WR 综合分 */}
-            <View className={styles.scoreColLeft}>
-              <View className={styles.scoreMain}>
-                <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
-                <Text className={styles.scoreUnit}>/10</Text>
+        <View className={styles.content}>
+          {/* 头图概览 */}
+          <View className={styles.heroSection}>
+            <View className={styles.coverSection}>
+              <Image className={styles.cover} src={anim.cover} mode="aspectFill" />
+              <View className={styles.coverMask}>
+                <Text className={styles.coverDuration}>{displayDuration}</Text>
               </View>
-              <Text className={styles.scorePeople}>{R} 人参与</Text>
             </View>
 
-            {/* 中：竖线分隔 */}
-            <View className={styles.scoreDivider} />
+            <View className={styles.summaryCard}>
+              <Text className={styles.title}>{anim.title}</Text>
+              <View className={styles.metaRow}>
+                <Text className={styles.metaBadge}>UP: {anim.up_name}</Text>
+              </View>
+              {tagList.length > 0 ? (
+                <View className={styles.tagRow}>
+                  {tagList.map((tag) => (
+                    <Text key={tag} className={styles.tagItem}>
+                      {tag}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
 
-            {/* 右：评分分布 */}
-            <View className={styles.scoreColRight}>
-              <ScoreChart distribution={distribution} compact />
+              <View className={styles.statsGrid}>
+                <View className={styles.statCard}>
+                  <View className={styles.statIconWrap}>
+                    <AppIcon name="movie" size="28rpx" className={styles.statIcon} />
+                  </View>
+                  <Text className={styles.statValue}>
+                    {formatNumber(anim.play_count || 0)}
+                  </Text>
+                </View>
+                <View className={styles.statCard}>
+                  <View className={styles.statIconWrap}>
+                    <AppIcon
+                      name="collection"
+                      size="26rpx"
+                      className={styles.statIcon}
+                    />
+                  </View>
+                  <Text className={styles.statValue}>
+                    {formatNumber(anim.like_count || 0)}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
+
+          {/* 评分区 */}
+          <View className={styles.scoreSection}>
+            <View className={styles.sectionHeader}>
+              <View className={styles.sectionHeaderMain}>
+                <Text className={styles.sectionTitle}>综合评分</Text>
+                <Text className={styles.sectionDesc}>
+                  基于全部用户评分计算的 WR 综合分
+                </Text>
+              </View>
+              <Text className={styles.sectionAside}>{R} 人参与</Text>
+            </View>
+
+            <View className={styles.scoreLayout}>
+              {/* 左：WR 综合分 */}
+              <View className={styles.scoreColLeft}>
+                <View className={styles.scoreMain}>
+                  <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
+                  <Text className={styles.scoreUnit}>/10</Text>
+                </View>
+                <Text className={styles.scoreMeta}>当前作品综合评分</Text>
+              </View>
+
+              {/* 右：评分分布 */}
+              <View className={styles.scoreColRight}>
+                <ScoreChart distribution={distribution} compact />
+              </View>
+            </View>
+          </View>
+
+          {/* 我的评分 */}
+          <View className={styles.myRatingSection}>
+            <View className={styles.sectionHeader}>
+              <View className={styles.sectionHeaderMain}>
+                <Text className={styles.sectionTitle}>我的评分</Text>
+                <Text className={styles.sectionDesc}>
+                  点击星级即可提交或更新你的评分
+                </Text>
+              </View>
+            </View>
+            <View className={styles.myRatingCard}>
+              <RatingRow value={myScore} onChange={onRate} size={40} />
+            </View>
+          </View>
+
+          {/* 操作区 */}
+          <View className={styles.actionSection}>
+            <View className={styles.sectionHeader}>
+              <View className={styles.sectionHeaderMain}>
+                <Text className={styles.sectionTitle}>快捷操作</Text>
+                <Text className={styles.sectionDesc}>
+                  收藏、标记看过、复制 B 站链接或提交勘误
+                </Text>
+              </View>
+            </View>
+            <View className={styles.actionRow}>
+              <View
+                className={`${styles.actionBtn} ${isCollected ? styles.actionActive : ''}`}
+                onClick={toggleCollect}
+              >
+                <AppIcon
+                  name={isCollected ? 'collectionFilled' : 'collection'}
+                  size="40rpx"
+                  className={styles.actionIcon}
+                />
+                <Text className={styles.actionText}>
+                  {isCollected ? '已收藏' : '收藏'}
+                </Text>
+              </View>
+
+              <View
+                className={`${styles.actionBtn} ${isWatched ? styles.actionActive : ''}`}
+                onClick={toggleWatched}
+              >
+                <AppIcon
+                  name={isWatched ? 'watchedFilled' : 'watched'}
+                  size="40rpx"
+                  className={styles.actionIcon}
+                />
+                <Text className={styles.actionText}>
+                  {isWatched ? '已看过' : '已看过'}
+                </Text>
+              </View>
+
+              {/* <View className={styles.actionBtn} onClick={onOpenBili}>
+                <AppIcon name="link" size="40rpx" className={styles.actionIcon} />
+                <Text className={styles.actionText}>复制链接</Text>
+              </View> */}
+
+              <View className={styles.actionBtn} onClick={onCorrect}>
+                <AppIcon name="edit" size="40rpx" className={styles.actionIcon} />
+                <Text className={styles.actionText}>勘误</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className={styles.bottomSafe} />
         </View>
-
-        {/* 我的评分（横排） */}
-        <View className={styles.myRatingSection}>
-          <RatingRow value={myScore} onChange={onRate} size={40} />
-        </View>
-
-        {/* 操作区 */}
-        <View className={styles.actionRow}>
-          <View
-            className={`${styles.actionBtn} ${isCollected ? styles.actionActive : ''}`}
-            onClick={toggleCollect}
-          >
-            <AppIcon
-              name={isCollected ? 'collectionFilled' : 'collection'}
-              size="40rpx"
-              className={styles.actionIcon}
-            />
-            <Text className={styles.actionText}>
-              {isCollected ? '已收藏' : '收藏'}
-            </Text>
-          </View>
-
-          <View
-            className={`${styles.actionBtn} ${isWatched ? styles.actionActive : ''}`}
-            onClick={toggleWatched}
-          >
-            <AppIcon
-              name={isWatched ? 'watchedFilled' : 'watched'}
-              size="40rpx"
-              className={styles.actionIcon}
-            />
-            <Text className={styles.actionText}>
-              {isWatched ? '已看过' : '已看过'}
-            </Text>
-          </View>
-
-          <View className={styles.actionBtn} onClick={onOpenBili}>
-            <AppIcon name="link" size="40rpx" className={styles.actionIcon} />
-            <Text className={styles.actionText}>复制BVID</Text>
-          </View>
-
-          <View className={styles.actionBtn} onClick={onCorrect}>
-            <AppIcon name="edit" size="40rpx" className={styles.actionIcon} />
-            <Text className={styles.actionText}>勘误</Text>
-          </View>
-        </View>
-
-        <View className={styles.bottomSafe} />
       </ScrollView>
     </View>
   );

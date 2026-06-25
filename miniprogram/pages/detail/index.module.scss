@@ -3,19 +3,39 @@
 .pageDetail {
   min-height: 100vh;
   background: $color-bg-page;
-  display: flex;
-  flex-direction: column;
 }
 
 .detailScroll {
-  flex: 1;
+  min-height: 100vh;
+}
+
+.content {
+  padding: $spacing-md $page-padding $spacing-lg;
+}
+
+.heroSection {
+  margin-bottom: $spacing-md;
 }
 
 .coverSection {
   width: 100%;
-  height: 440rpx;
+  height: 420rpx;
   position: relative;
   background: $color-bg-hover;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-card;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 120rpx;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.42));
+    pointer-events: none;
+  }
 }
 
 .cover {
@@ -25,29 +45,37 @@
 
 .coverMask {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 80rpx;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 0 $spacing-sm $spacing-sm;
+  right: $spacing-md;
+  bottom: $spacing-md;
+  z-index: 1;
 }
 
 .coverDuration {
+  display: inline-flex;
+  align-items: center;
   color: $color-text-white;
   font-size: $font-size-xs;
-  background: $color-bg-mask;
-  padding: 4rpx 12rpx;
-  border-radius: $radius-xs;
+  background: rgba(0, 0, 0, 0.58);
+  padding: 8rpx 14rpx;
+  border-radius: $radius-round;
+  line-height: 1;
 }
 
-.infoSection {
+.summaryCard,
+.scoreSection,
+.myRatingSection,
+.infoSection,
+.actionSection {
   background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
   padding: $spacing-md;
-  margin-bottom: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.summaryCard {
+  margin: $spacing-md 0 0;
+  position: relative;
 }
 
 .title {
@@ -57,59 +85,112 @@
   line-height: $line-height-normal;
   display: block;
   margin-bottom: $spacing-sm;
+  @include text-ellipsis-multi(2);
 }
 
 .metaRow {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: $spacing-sm;
   margin-bottom: $spacing-sm;
 }
 
-.metaCreator {
+.metaBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44rpx;
+  padding: 0 $spacing-sm;
+  border-radius: $radius-round;
+  background: $color-bg-page;
   font-size: $font-size-sm;
   color: $color-text-secondary;
 }
 
-.metaTime {
-  font-size: $font-size-xs;
-  color: $color-text-tertiary;
-}
-
-.statsRow {
+.tagRow {
   display: flex;
-  gap: $spacing-lg;
-  padding: $spacing-sm 0;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-md;
 }
 
-.scoreSection {
-  background: $color-bg-card;
-  padding: $spacing-md;
-  margin-bottom: $spacing-sm;
-  box-shadow: $shadow-card;
+.tagItem {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40rpx;
+  padding: 0 $spacing-sm;
+  border-radius: $radius-round;
+  background: $color-primary-bg;
+  color: $color-primary;
+  font-size: $font-size-xs;
+  line-height: 1.2;
+}
+
+.statsGrid {
+  display: flex;
+  gap: $spacing-sm;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 0;
+  min-height: 120rpx;
+  padding: $spacing-sm $spacing-md;
   border-radius: $radius-md;
+  background: linear-gradient(180deg, rgba(255, 107, 53, 0.08) 0%, rgba(255, 107, 53, 0.02) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8rpx;
+  box-sizing: border-box;
+}
+
+.statIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: $radius-round;
+  background: rgba(255, 107, 53, 0.12);
+}
+
+.statIcon {
+  color: $color-primary;
+  line-height: 1;
+}
+
+.statValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.1;
 }
 
 .scoreLayout {
   display: flex;
-  align-items: stretch;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: $spacing-md;
 }
 
 .scoreColLeft {
-  flex: 1;
+  flex: 0 0 200rpx;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6rpx;
+  gap: $spacing-xs;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
+  padding: $spacing-md;
+  border-radius: $radius-md;
+  background: linear-gradient(180deg, rgba(255, 107, 53, 0.12) 0%, rgba(255, 107, 53, 0.04) 100%);
 }
 
 .scoreMain {
   display: flex;
   align-items: baseline;
-  flex-shrink: 0;
 }
 
 .scoreBig {
@@ -127,150 +208,128 @@
   font-weight: $font-weight-medium;
 }
 
-.scoreLevel {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  flex-wrap: wrap;
-  margin-top: 4rpx;
-}
-
-.scoreLevelTag {
-  display: inline-block;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-bold;
-  color: $color-primary;
-  background: $color-primary-bg;
-  padding: 4rpx 14rpx;
-  border-radius: $radius-xs;
-  line-height: 1.2;
-  flex-shrink: 0;
-}
-
-.scoreLevelDesc {
-  font-size: $font-size-xs;
-  color: $color-text-secondary;
-  @include text-ellipsis;
-  flex: 1;
-  min-width: 0;
-}
-
 .scoreMeta {
   font-size: $font-size-xs;
-  color: $color-text-primary;
-  font-weight: $font-weight-medium;
-}
-
-.scorePeople {
-  font-size: $font-size-xs;
-  color: $color-text-tertiary;
-}
-
-.scoreDivider {
-  width: 1rpx;
-  background: $color-divider;
-  align-self: stretch;
-  flex-shrink: 0;
+  color: $color-text-secondary;
+  line-height: $line-height-normal;
 }
 
 .scoreColRight {
-  flex: 2;
-  min-width: 0;
+  flex: 1;
+  min-width: 280rpx;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.myRatingSection {
-  background: $color-bg-card;
-  padding: $spacing-md;
-  margin-bottom: $spacing-sm;
-  box-shadow: $shadow-card;
-  border-radius: $radius-md;
-}
-
-.myRatingRow {
+.sectionHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: $spacing-md;
-  padding: $spacing-sm 0;
+  margin-bottom: $spacing-md;
 }
 
-.myRatingTitle {
+.sectionHeaderMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionTitle {
   font-size: $font-size-md;
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
-  flex-shrink: 0;
+  line-height: 1.3;
+  display: block;
 }
 
-.myRatingStars {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.myRatingBadge {
-  display: inline-flex;
-  align-items: baseline;
-  background: $color-primary-bg;
-  padding: 4rpx 12rpx;
-  border-radius: $radius-button;
-  gap: 2rpx;
-  flex-shrink: 0;
-}
-
-.myRatingBadgeIcon {
-  font-size: $font-size-xs;
-  color: $color-primary;
-  margin-right: 2rpx;
-}
-
-.myRatingBadgeValue {
-  font-size: $font-size-md;
-  font-weight: $font-weight-bold;
-  color: $color-primary;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.myRatingBadgeUnit {
-  font-size: $font-size-xs;
-  color: $color-primary;
-  opacity: 0.7;
-}
-
-.myRatingHint {
+.sectionDesc {
   font-size: $font-size-xs;
   color: $color-text-tertiary;
-  flex-shrink: 0;
+  line-height: $line-height-normal;
+  margin-top: 6rpx;
+  display: block;
 }
 
+.sectionAside {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 52rpx;
+  padding: 0 $spacing-sm;
+  border-radius: $radius-round;
+  background: $color-primary-bg;
+  color: $color-primary;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.myRatingCard {
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+}
+
+.infoGrid,
 .actionRow {
   display: flex;
-  background: $color-bg-card;
-  padding: $spacing-sm;
-  margin-bottom: $spacing-sm;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.infoCard {
+  width: calc((100% - #{$spacing-sm}) / 2);
+  min-height: 128rpx;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8rpx;
+  box-sizing: border-box;
+}
+
+.infoLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: 1.2;
+}
+
+.infoValue {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: $line-height-normal;
+  word-break: break-all;
+  @include text-ellipsis-multi(2);
 }
 
 .actionBtn {
-  flex: 1;
+  width: calc((100% - #{$spacing-sm}) / 2);
+  min-height: 136rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4rpx;
-  padding: $spacing-xs;
-  border-radius: $radius-sm;
-  transition: background $transition-fast;
+  justify-content: center;
+  gap: $spacing-xs;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+  box-sizing: border-box;
+  transition: transform $transition-fast, background $transition-fast;
 
   &:active {
     background: $color-bg-hover;
+    transform: scale(0.98);
   }
 
   &.actionActive {
+    background: $color-primary-bg;
+
     .actionIcon {
       color: $color-primary;
     }
+
     .actionText {
       color: $color-primary;
       font-weight: $font-weight-medium;
@@ -289,10 +348,11 @@
 .actionText {
   font-size: $font-size-xs;
   color: $color-text-secondary;
+  line-height: 1.2;
 }
 
 .bottomSafe {
-  height: $spacing-lg;
+  height: $spacing-md;
 }
 
 .empty {

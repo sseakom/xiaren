@@ -122,9 +122,11 @@
 }
 
 .emptyIcon {
-  font-size: 56rpx;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+  color: $color-primary;
 }
 
 .emptyText {
