@@ -1,27 +1,24 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
+import { Tag } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/tag/style/style.css';
 import { Animation } from '@/types';
 import AppIcon from '@/components/AppIcon';
 import { formatNumber } from '@/utils/util';
+import styles from './index.module.scss';
 
 export interface AnimCardFooterProps {
   item: Animation;
-  /** 页面 CSS Modules 样式表（复用调用方 scss，避免样式迁移） */
-  styles: Record<string, string>;
 }
 
-/**
- * AnimCard 的默认底部内容：标签 + 作者·播放·评分
- * 消除 index / search 两个页面中完全相同的 footer JSX 重复。
- */
-const AnimCardFooter: React.FC<AnimCardFooterProps> = ({ item, styles }) => (
+const AnimCardFooter: React.FC<AnimCardFooterProps> = ({ item }) => (
   <>
     {item.tags?.length ? (
       <View className={styles.animtag}>
         {item.tags.map((tag: string) => (
-          <Text key={tag} className={styles.animTag}>
+          <Tag key={tag} background="#28b894" color="#28b894" className={styles.animNutTag}>
             {tag}
-          </Text>
+          </Tag>
         ))}
       </View>
     ) : null}

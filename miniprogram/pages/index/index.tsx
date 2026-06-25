@@ -141,7 +141,7 @@ const IndexPage: React.FC = () => {
                 item={item}
                 onClick={goDetail}
                 rank={idx}
-                footer={<AnimCardFooter item={item} styles={styles} />}
+                footer={<AnimCardFooter item={item} />}
               />
             ))}
 

@@ -139,4 +139,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
 .genie-flow
+.genie-flow/chore/

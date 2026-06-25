@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import { Popup } from '@nutui/nutui-react-taro';
 import '@nutui/nutui-react-taro/dist/es/packages/popup/style/style.css';
+import '@nutui/nutui-react-taro/dist/es/packages/overlay/style/style.css';
 import { CATEGORY_GROUPS } from '@/constants/categories';
 import AppIcon from '@/components/AppIcon';
 import styles from './index.module.scss';

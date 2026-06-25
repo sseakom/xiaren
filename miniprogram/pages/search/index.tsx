@@ -218,7 +218,7 @@ const SearchPage: React.FC = () => {
                     key={item._id}
                     item={item}
                     onClick={goDetail}
-                    footer={<AnimCardFooter item={item} styles={styles} />}
+                    footer={<AnimCardFooter item={item} />}
                   />
                 ))}
 
