@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 
 /**
  * 工具函数集合 - 迁移自原生小程序 utils/util.js
@@ -97,7 +98,7 @@ export function scoreToText(score: number): string {
 /** 评分转颜色（10 分制） */
 export function scoreToColor(score: number): string {
   if (score >= 9) return '#E74C3C';
-  if (score >= 8) return '#FF6B35';
+  if (score >= 8) return THEME_PRIMARY_COLOR;
   if (score >= 7) return '#F39C12';
   if (score >= 6) return '#27AE60';
   if (score >= 5) return '#3498DB';

@@ -52,7 +52,7 @@ const IndexPage: React.FC = () => {
 
   // 分享给朋友
   useShareAppMessage(() => ({
-    title: '虾仁宇宙 - 发现最沙雕的番剧',
+    title: '虾仁宇宙',
     path: '/pages/index/index',
   }));
 

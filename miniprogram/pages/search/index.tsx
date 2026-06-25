@@ -19,7 +19,7 @@ import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
 const STORAGE_KEY = 'search_history';
-const HOT_KEYWORDS = ['沙雕动画', '虾仁动画', '搞笑短剧', '沙雕修仙', '沙雕末日', '沙雕短剧'];
+const HOT_KEYWORDS = ['沙雕', '虾仁', '搞笑', '修仙', '末日'];
 
 const SearchPage: React.FC = () => {
   const [keyword, setKeyword] = useState('');

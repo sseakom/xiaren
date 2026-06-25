@@ -1,3 +1,5 @@
+import { THEME_PRIMARY_COLOR } from '@/constants/theme';
+
 export default defineAppConfig({
   pages: [
     'pages/index/index',
@@ -13,7 +15,7 @@ export default defineAppConfig({
   ],
   window: {
     backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#FF6B35',
+    navigationBarBackgroundColor: THEME_PRIMARY_COLOR,
     navigationBarTitleText: '虾仁宇宙',
     navigationBarTextStyle: 'white',
     backgroundColor: '#f5f5f5',

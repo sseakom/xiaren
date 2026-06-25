@@ -4,6 +4,7 @@ import { Tabbar } from '@nutui/nutui-react-taro';
 import '@nutui/nutui-react-taro/dist/es/packages/tabbar/style/style.css';
 import '@nutui/nutui-react-taro/dist/es/packages/tabbaritem/style/style.css';
 import AppIcon from '@/components/AppIcon';
+import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 import styles from './index.module.scss';
 
 export interface TabBarItem {
@@ -69,7 +70,7 @@ const CustomTabbar: React.FC<CustomTabbarProps> = (props) => {
       fixed
       safeArea
       value={activeIndex}
-      activeColor="#ff6b35"
+      activeColor={THEME_PRIMARY_COLOR}
       inactiveColor="#999999"
       onSwitch={onSwitch}
     >

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text } from '@tarojs/components';
 import { ScoreDistribution } from '@/types';
 import AppIcon from '@/components/AppIcon';
+import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 import styles from './index.module.scss';
 
 export interface ScoreChartProps {
@@ -31,7 +32,7 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ distribution, compact = false }
       // 5→10 分高对比，1→5 分低对比，色阶渐变
       color:
         parseFloat(s) >= 8
-          ? '#FF6B35'
+          ? THEME_PRIMARY_COLOR
           : parseFloat(s) >= 6
             ? '#F39C12'
             : parseFloat(s) >= 4

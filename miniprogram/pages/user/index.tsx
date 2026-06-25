@@ -6,7 +6,32 @@ import { User, UserStats } from '@/types';
 import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import CustomTabbar from '@/components/CustomTabbar';
+import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 import styles from './index.module.scss';
+
+const hexToRgb = (hex: string) => {
+  const normalized = hex.replace('#', '');
+  const safeHex = normalized.length === 3
+    ? normalized.split('').map((char) => char + char).join('')
+    : normalized;
+
+  return {
+    r: parseInt(safeHex.slice(0, 2), 16),
+    g: parseInt(safeHex.slice(2, 4), 16),
+    b: parseInt(safeHex.slice(4, 6), 16),
+  };
+};
+
+const withAlpha = (hex: string, alpha: number) => {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const mixWithWhite = (hex: string, weight: number) => {
+  const { r, g, b } = hexToRgb(hex);
+  const mix = (channel: number) => Math.round(channel + (255 - channel) * weight);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+};
 
 const UserPage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -15,6 +40,15 @@ const UserPage: React.FC = () => {
     collectCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const themeStyle = {
+    '--user-theme-primary': THEME_PRIMARY_COLOR,
+    '--user-theme-primary-light': mixWithWhite(THEME_PRIMARY_COLOR, 0.2),
+    '--user-theme-primary-soft': withAlpha(THEME_PRIMARY_COLOR, 0.12),
+    '--user-theme-primary-shadow': withAlpha(THEME_PRIMARY_COLOR, 0.26),
+    '--user-theme-primary-glass': withAlpha(THEME_PRIMARY_COLOR, 0.16),
+    '--user-theme-primary-glass-strong': withAlpha(THEME_PRIMARY_COLOR, 0.24),
+    '--user-theme-primary-border': withAlpha(THEME_PRIMARY_COLOR, 0.18),
+  } as React.CSSProperties;
 
   useShareAppMessage(() => ({
     title: '我在玩「虾仁宇宙」，一起来吧',
@@ -149,55 +183,76 @@ const UserPage: React.FC = () => {
 
 
   return (
-    <View className={styles.pageUser}>
+    <View className={styles.pageUser} style={themeStyle}>
       {/* 头部 */}
       <View className={styles.header}>
-        <View className={styles.userInfo}>
-          {user ? (
-            // 已登录：button 才能调起 chooseAvatar
-            <Button
-              className={styles.avatarBtn}
-              openType="chooseAvatar"
-              onChooseAvatar={onChooseAvatar}
-            >
+        <View className={styles.headerCard}>
+          <View className={styles.userInfo}>
+            {user ? (
+              // 已登录：button 才能调起 chooseAvatar
+              <Button
+                className={styles.avatarBtn}
+                openType="chooseAvatar"
+                onChooseAvatar={onChooseAvatar}
+              >
+                <Image
+                  className={styles.avatar}
+                  src={user.avatarUrl || 'https://picsum.photos/id/64/200/200'}
+                  mode="aspectFill"
+                />
+              </Button>
+            ) : (
               <Image
                 className={styles.avatar}
-                src={user.avatarUrl || 'https://picsum.photos/id/64/200/200'}
+                src="https://picsum.photos/id/64/200/200"
                 mode="aspectFill"
               />
-            </Button>
-          ) : (
-            <Image
-              className={styles.avatar}
-              src="https://picsum.photos/id/64/200/200"
-              mode="aspectFill"
-            />
-          )}
-          <View className={styles.userMeta}>
-            {user ? (
-              <Input
-                className={styles.nickNameInput}
-                type="nickname"
-                value={user.nickName}
-                placeholder="点击设置昵称"
-                onBlur={onNicknameBlur}
-              />
-            ) : (
-              <Text className={styles.nickName}>点击登录</Text>
             )}
-            <Text className={styles.userId}>
-              ID: {user?._id?.slice(-6) || '未登录'}
-            </Text>
+            <View className={styles.userMeta}>
+              {user ? (
+                <Input
+                  className={styles.nickNameInput}
+                  type="nickname"
+                  value={user.nickName}
+                  placeholder="点击设置昵称"
+                  onBlur={onNicknameBlur}
+                />
+              ) : (
+                <Text className={styles.nickName}>点击登录</Text>
+              )}
+              <Text className={styles.userId}>
+                ID: {user?._id?.slice(-6) || '未登录'}
+              </Text>
+              <Text className={styles.profileHint}>
+                {user
+                  ? '点击头像更新头像，昵称失焦后自动保存'
+                  : '登录后可同步评分、收藏和看过记录'}
+              </Text>
+            </View>
+            <View className={styles.statusBadge}>
+              <AppIcon
+                name={user ? 'user' : 'phone'}
+                size="24rpx"
+                className={styles.statusBadgeIcon}
+              />
+              <Text>{user ? '已登录' : '待登录'}</Text>
+            </View>
           </View>
+
           {!user ? (
-            <Button
-              className={styles.phoneLoginBtn}
-              openType="getPhoneNumber"
-              onGetPhoneNumber={onGetPhoneNumber}
-            >
-              <AppIcon name="phone" size="28rpx" className={styles.phoneLoginIcon} />
-              <Text>手机号一键登录</Text>
-            </Button>
+            <View className={styles.loginPanel}>
+              <Button
+                className={styles.phoneLoginBtn}
+                openType="getPhoneNumber"
+                onGetPhoneNumber={onGetPhoneNumber}
+              >
+                <AppIcon name="phone" size="28rpx" className={styles.phoneLoginIcon} />
+                <Text>手机号一键登录</Text>
+              </Button>
+              <Text className={styles.loginTip}>
+                授权后自动同步个人资料与互动记录
+              </Text>
+            </View>
           ) : null}
         </View>
 
@@ -205,11 +260,17 @@ const UserPage: React.FC = () => {
         <Skeleton type="custom" loading={loading} height={120} width={100}>
           <View className={styles.statsCard}>
             <View className={styles.statItem} onClick={goMyRatings}>
+              <View className={styles.statIconBadge}>
+                <AppIcon name="rating" size="28rpx" className={styles.statIcon} />
+              </View>
               <Text className={styles.statNum}>{stats.ratingCount}</Text>
               <Text className={styles.statLabel}>我的评分</Text>
             </View>
             <View className={styles.statDivider} />
             <View className={styles.statItem} onClick={goMyCollections}>
+              <View className={styles.statIconBadge}>
+                <AppIcon name="collectionFilled" size="28rpx" className={styles.statIcon} />
+              </View>
               <Text className={styles.statNum}>{stats.collectCount}</Text>
               <Text className={styles.statLabel}>我的收藏</Text>
             </View>
@@ -218,64 +279,87 @@ const UserPage: React.FC = () => {
       </View>
 
       {/* 功能列表 */}
-      <View className={styles.menuList}>
-        <View className={styles.menuItem} onClick={goMyRatings}>
-          <AppIcon name="rating" size="36rpx" className={styles.menuIcon} />
-          <Text className={styles.menuText}>我的评分</Text>
-          <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+      <View className={styles.section}>
+        <View className={styles.sectionHeading}>
+          <Text className={styles.sectionTitle}>我的服务</Text>
+          <Text className={styles.sectionDesc}>查看记录、管理投稿与账号操作</Text>
         </View>
-        <View className={styles.menuItem} onClick={goMyCollections}>
-          <AppIcon name="collectionFilled" size="36rpx" className={styles.menuIcon} />
-          <Text className={styles.menuText}>我的收藏</Text>
-          <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-        </View>
-        <View className={styles.menuItem} onClick={goWatched}>
-          <AppIcon name="watchedFilled" size="36rpx" className={styles.menuIcon} />
-          <Text className={styles.menuText}>我看过的</Text>
-          <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-        </View>
-        {user ? (
-          <>
-            <View
-              className={styles.menuItem}
-              onClick={() => Taro.navigateTo({ url: '/pages/animation-form/index?mode=create' })}
-            >
-              <AppIcon name="add" size="36rpx" className={styles.menuIcon} />
-              <Text className={styles.menuText}>录入动画</Text>
-              <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+        <View className={styles.menuList}>
+          <View className={styles.menuItem} onClick={goMyRatings}>
+            <View className={styles.menuIconWrap}>
+              <AppIcon name="rating" size="36rpx" className={styles.menuIcon} />
             </View>
-            <View
-              className={styles.menuItem}
-              onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
-            >
-              <AppIcon name="submission" size="36rpx" className={styles.menuIcon} />
-              <Text className={styles.menuText}>我的提交</Text>
-              <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+            <Text className={styles.menuText}>我的评分</Text>
+            <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+          </View>
+          <View className={styles.menuItem} onClick={goMyCollections}>
+            <View className={styles.menuIconWrap}>
+              <AppIcon name="collectionFilled" size="36rpx" className={styles.menuIcon} />
             </View>
-            {UserService.isAdmin() && (
+            <Text className={styles.menuText}>我的收藏</Text>
+            <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+          </View>
+          <View className={styles.menuItem} onClick={goWatched}>
+            <View className={styles.menuIconWrap}>
+              <AppIcon name="watchedFilled" size="36rpx" className={styles.menuIcon} />
+            </View>
+            <Text className={styles.menuText}>我看过的</Text>
+            <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+          </View>
+          {user ? (
+            <>
               <View
                 className={styles.menuItem}
-                onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
+                onClick={() => Taro.navigateTo({ url: '/pages/animation-form/index?mode=create' })}
               >
-                <AppIcon name="review" size="36rpx" className={styles.menuIcon} />
-                <Text className={styles.menuText}>审核中心</Text>
+                <View className={styles.menuIconWrap}>
+                  <AppIcon name="add" size="36rpx" className={styles.menuIcon} />
+                </View>
+                <Text className={styles.menuText}>录入动画</Text>
                 <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
               </View>
-            )}
-            <View className={styles.menuItem} onClick={onLogout}>
-              <AppIcon
-                name="logout"
-                size="36rpx"
-                className={`${styles.menuIcon} ${styles.menuIconDanger}`}
-              />
-              <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
-              <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-            </View>
-          </>
-        ) : null}
+              <View
+                className={styles.menuItem}
+                onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
+              >
+                <View className={styles.menuIconWrap}>
+                  <AppIcon name="submission" size="36rpx" className={styles.menuIcon} />
+                </View>
+                <Text className={styles.menuText}>我的提交</Text>
+                <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+              </View>
+              {UserService.isAdmin() && (
+                <View
+                  className={styles.menuItem}
+                  onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
+                >
+                  <View className={styles.menuIconWrap}>
+                    <AppIcon name="review" size="36rpx" className={styles.menuIcon} />
+                  </View>
+                  <Text className={styles.menuText}>审核中心</Text>
+                  <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+                </View>
+              )}
+              <View className={styles.menuItem} onClick={onLogout}>
+                <View className={`${styles.menuIconWrap} ${styles.menuIconWrapDanger}`}>
+                  <AppIcon
+                    name="logout"
+                    size="36rpx"
+                    className={`${styles.menuIcon} ${styles.menuIconDanger}`}
+                  />
+                </View>
+                <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
+                <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+              </View>
+            </>
+          ) : null}
+        </View>
       </View>
 
       <View className={styles.about}>
+        <View className={styles.aboutBadge}>
+          <AppIcon name="movie" size="28rpx" className={styles.aboutBadgeIcon} />
+        </View>
         <Text className={styles.aboutText}>虾仁宇宙 v1.0.0</Text>
         <Text className={styles.aboutDesc}>记录你的每一次爆笑时刻</Text>
       </View>
