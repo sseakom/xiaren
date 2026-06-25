@@ -3,6 +3,44 @@
 .wrap {
   position: relative;
   z-index: 100;
+  --filter-primary: #{$color-primary};
+  --filter-primary-soft: #{$color-primary-bg};
+  --filter-primary-border: rgba(40, 184, 148, 0.2);
+  --filter-panel-shadow: 0 12rpx 32rpx rgba(31, 155, 125, 0.12);
+}
+
+.triggerBtn {
+  --nutui-button-mini-padding: 0 20rpx;
+  --nutui-button-default-height: 60rpx;
+  --nutui-button-default-font-size: #{$font-size-sm};
+  min-width: 156rpx;
+  border-radius: $radius-round;
+  border-color: var(--filter-primary-border);
+  background: $color-bg-card;
+  color: $color-text-secondary;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.triggerBtnActive {
+  box-shadow: 0 8rpx 20rpx rgba(31, 155, 125, 0.14);
+}
+
+.triggerInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  max-width: 100%;
+}
+
+.triggerIcon {
+  color: var(--filter-primary);
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  @include text-ellipsis;
+  max-width: 180rpx;
+  line-height: 1.2;
 }
 
 .panel {
@@ -10,17 +48,65 @@
   flex-direction: column;
   height: 100vh;
   background: $color-bg-card;
+  box-shadow: var(--filter-panel-shadow);
 }
 
-.panelHeader {
-  padding: $spacing-md;
-  border-bottom: 1rpx solid $color-divider;
+.currentBadge {
+  margin-top: $spacing-sm;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  min-height: 48rpx;
+  padding: 0 $spacing-sm;
+  border-radius: $radius-round;
+  background: var(--filter-primary-soft);
 }
 
-.panelTitle {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+.triggerBadge {
+  margin-top: 0;
+  min-height: 60rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid var(--filter-primary-border);
+  background: $color-bg-card;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+}
+
+.triggerBadgeActive {
+  box-shadow: 0 8rpx 20rpx rgba(31, 155, 125, 0.14);
+}
+
+.tagBadge {
+  width: 100%;
+  justify-content: center;
+  min-height: 60rpx;
+  margin-top: 0;
+  padding: 0 12rpx;
+  border: 1rpx solid var(--filter-primary-border);
+  background: $color-bg-card;
+  box-sizing: border-box;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.tagBadgeActive {
+  background: var(--filter-primary-soft);
+  border-color: var(--filter-primary);
+  box-shadow: 0 8rpx 18rpx rgba(31, 155, 125, 0.14);
+}
+
+.currentBadgeIcon {
+  color: var(--filter-primary);
+  flex-shrink: 0;
+}
+
+.currentBadgeText {
+  font-size: $font-size-xs;
+  color: var(--filter-primary);
+  font-weight: $font-weight-medium;
+  line-height: 1.2;
 }
 
 .scroll {
