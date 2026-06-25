@@ -24,3 +24,10 @@ button {
     opacity: 0.85;
   }
 }
+
+// NutUI 主题变量覆盖
+page {
+  --nutui-brand-color: #{$color-primary};
+  --nutui-brand-color-light: #{$color-primary-light};
+  --nutui-brand-color-dark: #{$color-primary-dark};
+}

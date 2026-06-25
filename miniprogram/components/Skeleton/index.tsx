@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from '@tarojs/components';
-import classnames from 'classnames';
+import { Skeleton as NutSkeleton } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/skeleton/style/style.css';
 import styles from './index.module.scss';
 
 export interface SkeletonProps {
@@ -27,11 +28,35 @@ const Skeleton: React.FC<SkeletonProps> = ({
       <View className={styles.skeleton}>
         {[1, 2, 3].map((i) => (
           <View key={i} className={styles.skeletonCard}>
-            <View className={classnames(styles.skeletonRow, styles.skeletonCover)} />
+            <NutSkeleton
+              width="100%"
+              height="340rpx"
+              animated
+              shape="square"
+            />
             <View className={styles.skeletonCardBody}>
-              <View className={classnames(styles.skeletonRow, styles.skeletonTitle)} />
-              <View className={classnames(styles.skeletonRow, styles.skeletonText, styles.short)} />
-              <View className={classnames(styles.skeletonRow, styles.skeletonText)} />
+              <NutSkeleton
+                width="80%"
+                height="36rpx"
+                animated
+                shape="round"
+              />
+              <View style={{ marginTop: '16rpx' }}>
+                <NutSkeleton
+                  width="60%"
+                  height="24rpx"
+                  animated
+                  shape="round"
+                />
+              </View>
+              <View style={{ marginTop: '16rpx' }}>
+                <NutSkeleton
+                  width="100%"
+                  height="24rpx"
+                  animated
+                  shape="round"
+                />
+              </View>
             </View>
           </View>
         ))}
@@ -42,11 +67,35 @@ const Skeleton: React.FC<SkeletonProps> = ({
   if (type === 'detail') {
     return (
       <View className={styles.skeleton}>
-        <View className={styles.skeletonDetail}>
-          <View className={classnames(styles.skeletonRow, styles.skeletonCoverLarge)} />
-          <View className={classnames(styles.skeletonRow, styles.skeletonTitle)} />
-          <View className={classnames(styles.skeletonRow, styles.skeletonText)} />
-          <View className={classnames(styles.skeletonRow, styles.skeletonText, styles.short)} />
+        <NutSkeleton
+          width="100%"
+          height="400rpx"
+          animated
+          shape="square"
+        />
+        <View style={{ marginTop: '24rpx' }}>
+          <NutSkeleton
+            width="100%"
+            height="36rpx"
+            animated
+            shape="round"
+          />
+        </View>
+        <View style={{ marginTop: '16rpx' }}>
+          <NutSkeleton
+            width="100%"
+            height="24rpx"
+            animated
+            shape="round"
+          />
+        </View>
+        <View style={{ marginTop: '16rpx' }}>
+          <NutSkeleton
+            width="60%"
+            height="24rpx"
+            animated
+            shape="round"
+          />
         </View>
       </View>
     );
@@ -57,10 +106,27 @@ const Skeleton: React.FC<SkeletonProps> = ({
       <View className={styles.skeleton}>
         {[1, 2, 3, 4, 5].map((i) => (
           <View key={i} className={styles.skeletonListItem}>
-            <View className={classnames(styles.skeletonRow, styles.skeletonAvatar)} />
+            <NutSkeleton
+              width="80rpx"
+              height="80rpx"
+              animated
+              shape="circle"
+            />
             <View className={styles.skeletonListContent}>
-              <View className={classnames(styles.skeletonRow, styles.skeletonTitle, styles.short)} />
-              <View className={classnames(styles.skeletonRow, styles.skeletonText)} />
+              <NutSkeleton
+                width="60%"
+                height="36rpx"
+                animated
+                shape="round"
+              />
+              <View style={{ marginTop: '16rpx' }}>
+                <NutSkeleton
+                  width="100%"
+                  height="24rpx"
+                  animated
+                  shape="round"
+                />
+              </View>
             </View>
           </View>
         ))}
@@ -70,13 +136,11 @@ const Skeleton: React.FC<SkeletonProps> = ({
 
   return (
     <View className={styles.skeleton}>
-      <View
-        className={styles.skeletonRow}
-        style={{
-          height: `${height}rpx`,
-          width: `${width}%`,
-          borderRadius: `${radius}rpx`,
-        }}
+      <NutSkeleton
+        width={`${width}%`}
+        height={`${height}rpx`}
+        animated
+        shape={radius > 50 ? 'circle' : 'round'}
       />
     </View>
   );

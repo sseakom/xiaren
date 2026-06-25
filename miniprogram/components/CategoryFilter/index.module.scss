@@ -5,92 +5,38 @@
   z-index: 100;
 }
 
-/* ===== 触发条（视觉与 .tag 对齐：8rpx 圆角矩形 + 描边式选中态） ===== */
-.trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6rpx;
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
-  background: $color-bg-page;
-  padding: 14rpx $spacing-xs;
-  border-radius: $radius-sm;
-  border: 1rpx solid transparent;
-  box-sizing: border-box;
-  transition: color $transition-fast, background $transition-fast,
-    border-color $transition-fast;
-  white-space: nowrap;
-
-  &:active {
-    opacity: 0.7;
-  }
-}
-
-.triggerActive {
-  color: $color-primary;
-  background: $color-primary-bg;
-  border-color: $color-primary;
-  font-weight: $font-weight-medium;
-}
-
-.triggerIcon {
-  font-size: $font-size-xs;
-  line-height: 1;
-}
-
-.triggerLabel {
-  max-width: 160rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-.triggerArrow {
-  font-size: $font-size-xs;
-  line-height: 1;
-  transition: transform $transition-fast;
-}
-
-.arrowUp {
-  transform: rotate(180deg);
-}
-
-.triggerOpen {
-  color: $color-primary;
-  background: $color-primary-bg;
-  border-color: $color-primary;
-}
-
-/* ===== 展开面板 ===== */
 .panel {
-  position: absolute;
-  top: calc(100% + 8rpx);
-  right: 0;
-  width: 620rpx;
-  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: $color-bg-card;
-  border-radius: $radius-lg;
-  box-shadow: $shadow-popup;
-  overflow: hidden;
-  z-index: 110;
-  border: 1rpx solid $color-divider;
+}
+
+.panelHeader {
+  padding: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.panelTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
 }
 
 .scroll {
-  max-height: 1000rpx;
+  flex: 1;
   padding: $spacing-md;
-  box-sizing: border-box;
-  margin-bottom: $spacing-md;
+  max-height: calc(100vh - 120rpx);
 }
 
 .group {
   padding: $spacing-xs 0;
-}
 
-.group + .group {
-  margin-top: $spacing-xs;
-  padding-top: $spacing-sm;
-  border-top: 1rpx solid $color-divider;
+  & + .group {
+    margin-top: $spacing-xs;
+    padding-top: $spacing-sm;
+    border-top: 1rpx solid $color-divider;
+  }
 }
 
 .groupTitle {
@@ -106,43 +52,4 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: $spacing-xs;
-}
-
-.tag {
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
-  background: $color-bg-page;
-  padding: 14rpx $spacing-xs;
-  border-radius: $radius-sm;
-  text-align: center;
-  line-height: 1.2;
-  border: 1rpx solid transparent;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color $transition-fast, background $transition-fast,
-    border-color $transition-fast, transform $transition-fast;
-
-  &:active {
-    transform: scale(0.96);
-  }
-}
-
-.tagActive {
-  color: $color-primary;
-  background: $color-primary-bg;
-  border-color: $color-primary;
-  font-weight: $font-weight-medium;
-}
-
-/* ===== 遮罩（点击外部关闭） ===== */
-.mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: transparent;
-  z-index: 105;
 }

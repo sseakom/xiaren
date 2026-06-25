@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, Text, Button } from '@tarojs/components';
-import AppIcon from '@/components/AppIcon';
-import styles from './index.module.scss';
+import { Empty } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/empty/style/style.css';
 
 export interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -13,7 +12,7 @@ export interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = <AppIcon name="empty" size="100rpx" />,
+  icon,
   title = '暂无内容',
   description = '',
   showBtn = false,
@@ -21,24 +20,18 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   onAction,
 }) => {
   return (
-    <View className={styles.emptyState}>
-      <View className={styles.emptyIcon}>{icon}</View>
-      <Text className={styles.emptyTitle}>{title}</Text>
-      {description ? (
-        <Text className={styles.emptyDesc}>{description}</Text>
-      ) : null}
-      {showBtn ? (
-        <View className={styles.emptyAction}>
-          <Button
-            className={styles.btnPrimary}
-            onClick={onAction}
-            size="mini"
-          >
-            {btnText}
-          </Button>
-        </View>
-      ) : null}
-    </View>
+    <Empty
+      image={icon}
+      imageSize="100rpx"
+      title={title}
+      description={description}
+      status="empty"
+      actions={
+        showBtn
+          ? [{ text: btnText, onClick: onAction ? () => onAction : undefined }]
+          : undefined
+      }
+    />
   );
 };
 

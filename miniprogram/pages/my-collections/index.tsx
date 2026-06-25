@@ -25,7 +25,7 @@ const MyCollectionsPage: React.FC = () => {
       | 'watched') || 'collect';
   const [type, setType] = useState<'collect' | 'watched'>(initialType);
 
-  const { list, loading, loadingMore, hasMore } = usePagination<CollectionItem>(
+  const { list, loading, loadingMore, hasMore, handleLoadMore } = usePagination<CollectionItem>(
     async (p) => {
       const { list, total } = await CollectionService.listByUser(
         type,
@@ -75,7 +75,14 @@ const MyCollectionsPage: React.FC = () => {
 
       <Skeleton type="list" loading={loading}>
         {list.length > 0 ? (
-          <ScrollView scrollY className={styles.collList}>
+          <ScrollView
+            scrollY
+            lowerThreshold={80}
+            className={styles.collList}
+            onScrollToLower={() => {
+              void handleLoadMore();
+            }}
+          >
             {list.map((c) => (
               <View
                 key={c._id}

@@ -17,7 +17,7 @@ import styles from './index.module.scss';
 const PAGE_SIZE = 20;
 
 const MyRatingsPage: React.FC = () => {
-  const { list, loading, loadingMore, hasMore } = usePagination<Rating>(
+  const { list, loading, loadingMore, hasMore, handleLoadMore } = usePagination<Rating>(
     async (p) => {
       const { list, total } = await RatingService.listByUser(p, PAGE_SIZE, true);
       return { list, total };
@@ -35,7 +35,14 @@ const MyRatingsPage: React.FC = () => {
     <View className={styles.pageMyRatings}>
       <Skeleton type="list" loading={loading}>
         {list.length > 0 ? (
-          <ScrollView scrollY className={styles.ratingList}>
+          <ScrollView
+            scrollY
+            lowerThreshold={80}
+            className={styles.ratingList}
+            onScrollToLower={() => {
+              void handleLoadMore();
+            }}
+          >
             {list.map((r) => (
               <View
                 key={r._id}

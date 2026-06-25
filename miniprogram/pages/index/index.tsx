@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text } from '@tarojs/components';
-import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
 import { SearchBar } from '@nutui/nutui-react-taro';
 import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
 import { Animation } from '@/types';
@@ -33,7 +33,7 @@ const IndexPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<ListSort>('publish_time');
   const [category, setCategory] = useState('');
 
-  const { list, loading, loadingMore, hasMore, load } = usePagination<Animation>(
+  const { list, loading, loadingMore, hasMore, load, handleLoadMore } = usePagination<Animation>(
     async (p) => {
       const res = await AnimationService.list(p, PAGE_SIZE, sortBy, category);
       const enriched = (res.list || []).map((a: any) => ({
@@ -45,6 +45,10 @@ const IndexPage: React.FC = () => {
     [sortBy, category],
     (err) => toastError('[Index]', err),
   );
+
+  useReachBottom(() => {
+    void handleLoadMore();
+  });
 
   // 分享给朋友
   useShareAppMessage(() => ({
@@ -144,22 +148,21 @@ const IndexPage: React.FC = () => {
             <LoadMoreFooter
               hasMore={hasMore}
               loading={loadingMore}
-              prompt="上拉加载更多"
             />
           </View>
         ) : (
-            !loading && (
-              <EmptyState
-                icon={<AppIcon name="movie" size="100rpx" />}
-                title="暂无动画片源"
-                description="采集器正在努力收录中..."
-              />
-            )
-          )}
+          !loading && (
+            <EmptyState
+              icon={<AppIcon name="movie" size="100rpx" />}
+              title="暂无动画片源"
+              description="采集器正在努力收录中..."
+            />
+          )
+        )}
       </Skeleton>
-        <CustomTabbar currentPath="/pages/index/index" />
-      </View>
-    );
-  };
+      <CustomTabbar currentPath="/pages/index/index" />
+    </View>
+  );
+};
 
-  export default IndexPage;
+export default IndexPage;
