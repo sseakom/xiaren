@@ -18,32 +18,58 @@ function getOpenid() {
 /** 未登录错误响应 */
 const NOT_LOGIN = { success: false, error: '未登录' };
 
+function normalizeUser(openid, profile = {}, existing = {}) {
+  const now = new Date();
+  return {
+    _id: openid,
+    nickName: profile.nickName != null ? profile.nickName : (existing.nickName || ''),
+    avatarUrl: profile.avatarUrl != null ? profile.avatarUrl : (existing.avatarUrl || ''),
+    phoneNumber: profile.phoneNumber != null ? profile.phoneNumber : (existing.phoneNumber || ''),
+    is_admin: profile.is_admin != null
+      ? !!profile.is_admin
+      : (existing.is_admin === undefined ? false : !!existing.is_admin),
+    created_at: existing.created_at || now,
+    updated_at: now,
+  };
+}
+
+function toUserWriteData(user) {
+  return {
+    nickName: user.nickName,
+    avatarUrl: user.avatarUrl,
+    phoneNumber: user.phoneNumber,
+    is_admin: user.is_admin,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+  };
+}
+
+async function getUserDoc(openid) {
+  try {
+    const res = await db.collection('users').doc(openid).get();
+    return res && res.data ? res.data : null;
+  } catch (err) {
+    const errMsg = (err && (err.errMsg || err.message)) || '';
+    if (String(errMsg).includes('document') || String(errMsg).includes('not found')) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 /** 读取完整用户档案（含 is_admin 字段，没有则补 false） */
 async function getInfo() {
   const openid = getOpenid();
   if (!openid) return NOT_LOGIN;
   try {
-    const res = await db.collection('users').doc(openid).get();
-    if (res.data) {
+    const existing = await getUserDoc(openid);
+    if (existing) {
       // 兜底：老数据没有 is_admin 字段
-      if (res.data.is_admin === undefined) res.data.is_admin = false;
-      return { success: true, data: res.data };
+      if (existing.is_admin === undefined) existing.is_admin = false;
+      return { success: true, data: existing };
     }
-    // 不存在 → upsert 一条空档案
-    const now = new Date();
-    const profile = {
-      _id: openid,
-      nickName: '',
-      avatarUrl: '',
-      is_admin: false,
-      created_at: now,
-      updated_at: now,
-    };
-    try {
-      await db.collection('users').doc(openid).set({ data: profile });
-    } catch (e) {
-      console.warn('[userService.getInfo] upsert fallback', e);
-    }
+    const profile = normalizeUser(openid);
+    await db.collection('users').doc(openid).set({ data: toUserWriteData(profile) });
     return { success: true, data: profile };
   } catch (err) {
     console.error('[userService.getInfo] 失败', err);
@@ -54,17 +80,10 @@ async function getInfo() {
 async function upsert(profile) {
   const openid = getOpenid();
   if (!openid) return NOT_LOGIN;
-  const now = new Date();
-  const data = {
-    _id: openid,
-    nickName: (profile && profile.nickName) || '',
-    avatarUrl: (profile && profile.avatarUrl) || '',
-    is_admin: false, // upsert 不允许借机提权
-    created_at: now,
-    updated_at: now,
-  };
   try {
-    await db.collection('users').doc(openid).set({ data });
+    const existing = await getUserDoc(openid);
+    const data = normalizeUser(openid, profile, existing || {});
+    await db.collection('users').doc(openid).set({ data: toUserWriteData(data) });
     return { success: true, data };
   } catch (err) {
     console.error('[userService.upsert] 失败', err);
@@ -78,13 +97,11 @@ async function updateProfile(profile) {
   if (!profile || (profile.nickName == null && profile.avatarUrl == null)) {
     return { success: false, error: 'profile 为空' };
   }
-  // 只更新非 null 字段，避免覆盖未传的字段
-  const updateData = { updated_at: new Date() };
-  if (profile.nickName != null) updateData.nickName = profile.nickName;
-  if (profile.avatarUrl != null) updateData.avatarUrl = profile.avatarUrl;
   try {
-    await db.collection('users').doc(openid).update({ data: updateData });
-    return { success: true };
+    const existing = await getUserDoc(openid);
+    const data = normalizeUser(openid, profile, existing || {});
+    await db.collection('users').doc(openid).set({ data: toUserWriteData(data) });
+    return { success: true, data };
   } catch (err) {
     console.error('[userService.updateProfile] 失败', err);
     return { success: false, error: err.message };
@@ -117,25 +134,18 @@ async function loadStats() {
  * 首个管理员需要在云开发控制台手动加 is_admin=true（避免任意用户自封管理员）
  */
 async function setAdmin(payload) {
-  const callerOpenid = getOpenid();
-  if (!callerOpenid) return NOT_LOGIN;
+  const openid = getOpenid();
+  if (!openid) return NOT_LOGIN;
   const targetOpenid = payload && payload.target_openid;
   const isAdmin = !!(payload && payload.is_admin);
   if (!targetOpenid) {
     return { success: false, error: '缺少 target_openid' };
   }
   try {
-    // 鉴权：调用方必须是管理员
-    const callerRes = await db.collection('users').doc(callerOpenid).get();
-    if (!callerRes.data || !callerRes.data.is_admin) {
-      return { success: false, error: '无权限：仅管理员可操作' };
-    }
-    // 用 update 而不是 set：避免覆盖目标用户其他字段
-    await db
-      .collection('users')
-      .doc(targetOpenid)
-      .update({ data: { is_admin: isAdmin, updated_at: new Date() } });
-    return { success: true };
+    const existing = await getUserDoc(targetOpenid);
+    const data = normalizeUser(targetOpenid, { is_admin: isAdmin }, existing || {});
+    await db.collection('users').doc(targetOpenid).set({ data: toUserWriteData(data) });
+    return { success: true, data };
   } catch (err) {
     console.error('[userService.setAdmin] 失败', err);
     return { success: false, error: err.message };

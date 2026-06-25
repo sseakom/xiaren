@@ -35,6 +35,7 @@ const mixWithWhite = (hex: string, weight: number) => {
 
 const UserPage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [avatarSrc, setAvatarSrc] = useState('');
   const [stats, setStats] = useState<UserStats>({
     ratingCount: 0,
     collectCount: 0,
@@ -55,11 +56,28 @@ const UserPage: React.FC = () => {
     path: '/pages/user/index',
   }));
 
+  const getEffectiveUser = useCallback((): User | null => {
+    if (UserService.userInfo) return UserService.userInfo;
+    if (UserService.openid) {
+      const now = new Date();
+      return {
+        _id: UserService.openid,
+        nickName: '微信用户',
+        avatarUrl: '',
+        created_at: now,
+        updated_at: now,
+      };
+    }
+    return null;
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       await UserService.waitForReady();
-      setUser(UserService.userInfo);
+      const nextUser = getEffectiveUser();
+      setUser(nextUser);
+      setAvatarSrc(nextUser ? await UserService.resolveFileUrl(nextUser.avatarUrl) : '');
       const s = await UserService.loadStats();
       setStats(s);
     } catch (err) {
@@ -67,7 +85,7 @@ const UserPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getEffectiveUser]);
 
   useEffect(() => {
     load();
@@ -83,12 +101,17 @@ const UserPage: React.FC = () => {
       Taro.showLoading({ title: '登录中…', mask: true });
       await UserService.silentLogin();
       await load();
+      const effectiveUser = getEffectiveUser();
+      if (!effectiveUser) {
+        throw new Error('登录状态未就绪');
+      }
       Taro.hideLoading();
       Taro.showToast({ title: '登录成功', icon: 'success' });
     } catch (err) {
-      Taro.hideLoading();
       console.error('[User] 登录失败', err);
       Taro.showToast({ title: '登录失败，请重试', icon: 'none' });
+    } finally {
+      Taro.hideLoading();
     }
   };
 
@@ -103,7 +126,7 @@ const UserPage: React.FC = () => {
     if (detail.errMsg && !detail.errMsg.includes('ok')) {
       // 用户点了"不允许"或"使用其它号码" → 静默回退到微信登录
       console.log('[User] 用户取消手机号授权，回退到微信登录');
-      onLogin();
+      await onLogin();
       return;
     }
     if (!detail.cloudID && !detail.encryptedData) {
@@ -138,8 +161,9 @@ const UserPage: React.FC = () => {
         nickName: user?.nickName || '微信用户',
         avatarUrl: fileID,
       });
-      // 只同步本地 userInfo，不再全量 load()
-      setUser(UserService.userInfo);
+      const nextUser = getEffectiveUser();
+      setUser(nextUser);
+      setAvatarSrc(await UserService.resolveFileUrl(fileID));
       Taro.hideLoading();
       Taro.showToast({ title: '头像已更新', icon: 'success' });
     } catch (err) {
@@ -158,7 +182,9 @@ const UserPage: React.FC = () => {
         nickName,
         avatarUrl: user?.avatarUrl || '',
       });
-      setUser(UserService.userInfo);
+      const nextUser = getEffectiveUser();
+      setUser(nextUser);
+      setAvatarSrc(nextUser ? await UserService.resolveFileUrl(nextUser.avatarUrl) : '');
     } catch (err) {
       console.error('[User] 昵称更新失败', err);
     }
@@ -197,7 +223,7 @@ const UserPage: React.FC = () => {
               >
                 <Image
                   className={styles.avatar}
-                  src={user.avatarUrl || 'https://picsum.photos/id/64/200/200'}
+                  src={avatarSrc || user.avatarUrl || 'https://picsum.photos/id/64/200/200'}
                   mode="aspectFill"
                 />
               </Button>

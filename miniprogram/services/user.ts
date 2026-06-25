@@ -17,6 +17,18 @@ class UserServiceImpl {
   private initReady = false;
   private listeners: Array<() => void> = [];
 
+  private buildLocalUser(profile: Partial<User> = {}): User {
+    const now = new Date();
+    return {
+      _id: this.openid,
+      nickName: profile.nickName ?? this.userInfo?.nickName ?? '',
+      avatarUrl: profile.avatarUrl ?? this.userInfo?.avatarUrl ?? '',
+      created_at: profile.created_at ?? this.userInfo?.created_at ?? now,
+      updated_at: profile.updated_at ?? now,
+      is_admin: profile.is_admin ?? this.userInfo?.is_admin ?? false,
+    };
+  }
+
   /**
    * 启动时静默登录：优先复用已缓存的 openid + 有效微信会话，避免每次都重走 wxLogin
    * 会话失效时才回退到 wxLogin 换新 openid
@@ -144,35 +156,29 @@ class UserServiceImpl {
       })) as any;
       const result = res?.result as { success?: boolean; data?: User; error?: string };
       if (result?.success && result.data) {
-        this.userInfo = result.data;
+        this.userInfo = this.buildLocalUser(result.data);
         this.userInfoReady = true;
         this.emit();
         return;
       }
       // getInfo 没成功 → 主动 upsert 一条空档案（不抛错）
-      await this.upsertUser({ nickName: '', avatarUrl: '' });
+      const user = await this.upsertUser({ nickName: '', avatarUrl: '' });
+      if (user) return;
     } catch (err) {
       console.error('[User] fetchUserInfo failed', err);
-      // 兜底：避免无 userInfo 卡死 UI
-      const now = new Date();
-      this.userInfo = {
-        _id: this.openid,
-        nickName: '',
-        avatarUrl: '',
-        created_at: now,
-        updated_at: now,
-      };
-      this.userInfoReady = true;
-      this.emit();
     }
+    // 最后兜底：即使云端建档失败，也保持前端登录态不丢
+    this.userInfo = this.buildLocalUser();
+    this.userInfoReady = true;
+    this.emit();
   }
 
   /**
    * 用云函数 userService.action='upsert' 创建/更新用户档案
    * 避免客户端 add() 撞主键的问题（E11000 duplicate key）
    */
-  private async upsertUser(profile: { nickName: string; avatarUrl: string }) {
-    if (!this.openid) return;
+  private async upsertUser(profile: { nickName: string; avatarUrl: string }): Promise<User | null> {
+    if (!this.openid) return null;
     try {
       const res = (await CloudService.callFunction('userService', {
         action: 'upsert',
@@ -180,13 +186,15 @@ class UserServiceImpl {
       })) as any;
       const result = res?.result as { success?: boolean; data?: User; error?: string };
       if (result?.success && result.data) {
-        this.userInfo = result.data;
+        this.userInfo = this.buildLocalUser(result.data);
         this.userInfoReady = true;
         this.emit();
+        return this.userInfo;
       }
     } catch (err) {
       console.error('[User] upsertUser failed', err);
     }
+    return null;
   }
 
   /** 局部更新用户档案（昵称 / 头像） */
@@ -202,9 +210,7 @@ class UserServiceImpl {
         console.error('[User] updateProfile failed', result?.error);
         return;
       }
-      if (this.userInfo) {
-        this.userInfo = { ...this.userInfo, ...profile };
-      }
+      this.userInfo = this.buildLocalUser({ ...this.userInfo, ...profile });
       this.emit();
     } catch (err) {
       console.error('[User] updateProfile failed', err);
@@ -227,6 +233,24 @@ class UserServiceImpl {
       throw new Error('云存储 uploadFile 未返回 fileID');
     }
     return res.fileID;
+  }
+
+  async resolveFileUrl(fileUrl: string): Promise<string> {
+    if (!fileUrl) return '';
+    if (!fileUrl.startsWith('cloud://')) return fileUrl;
+    try {
+      const res = await Taro.cloud.getTempFileURL({
+        fileList: [fileUrl],
+      });
+      const tempFile = Array.isArray(res.fileList) ? res.fileList[0] : null;
+      if (typeof tempFile === 'string') {
+        return tempFile;
+      }
+      return tempFile?.tempFileURL || fileUrl;
+    } catch (err) {
+      console.error('[User] resolveFileUrl failed', err);
+      return fileUrl;
+    }
   }
 
   /** 加载统计（评分数/收藏数）—— 走云函数 userService.action='loadStats' */
