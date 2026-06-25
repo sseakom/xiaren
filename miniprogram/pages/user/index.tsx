@@ -218,7 +218,7 @@ const UserPage: React.FC = () => {
                   onBlur={onNicknameBlur}
                 />
               ) : (
-                <Text className={styles.nickName}>点击登录</Text>
+                <Text className={styles.nickName}>未登录</Text>
               )}
               <Text className={styles.userId}>
                 ID: {user?._id?.slice(-6) || '未登录'}
@@ -229,14 +229,17 @@ const UserPage: React.FC = () => {
                   : '登录后可同步评分、收藏和看过记录'}
               </Text>
             </View>
-            <View className={styles.statusBadge}>
-              <AppIcon
-                name={user ? 'user' : 'phone'}
-                size="24rpx"
-                className={styles.statusBadgeIcon}
-              />
-              <Text>{user ? '已登录' : '待登录'}</Text>
-            </View>
+            {
+              user ? null : (
+                <Button
+                  className={styles.phoneLoginBtn}
+                  openType="getPhoneNumber"
+                  onGetPhoneNumber={onGetPhoneNumber}
+                >
+                  点击登录
+                </Button>
+              )
+            }
           </View>
 
         </View>
@@ -245,17 +248,11 @@ const UserPage: React.FC = () => {
         <Skeleton type="custom" loading={loading} height={120} width={100}>
           <View className={styles.statsCard}>
             <View className={styles.statItem} onClick={goMyRatings}>
-              <View className={styles.statIconBadge}>
-                <AppIcon name="rating" size="28rpx" className={styles.statIcon} />
-              </View>
               <Text className={styles.statNum}>{stats.ratingCount}</Text>
               <Text className={styles.statLabel}>我的评分</Text>
             </View>
             <View className={styles.statDivider} />
             <View className={styles.statItem} onClick={goMyCollections}>
-              <View className={styles.statIconBadge}>
-                <AppIcon name="collectionFilled" size="28rpx" className={styles.statIcon} />
-              </View>
               <Text className={styles.statNum}>{stats.collectCount}</Text>
               <Text className={styles.statLabel}>我的收藏</Text>
             </View>
