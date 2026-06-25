@@ -19,6 +19,7 @@ import AppIcon from '@/components/AppIcon';
 import RatingRow from '@/components/RatingRow';
 import ScoreChart from '@/components/ScoreChart';
 import Skeleton from '@/components/Skeleton';
+import TagRow from '@/components/TagRow';
 import styles from './index.module.scss';
 
 const DetailPage: React.FC = () => {
@@ -181,15 +182,7 @@ const DetailPage: React.FC = () => {
               <View className={styles.metaRow}>
                 <Text className={styles.metaBadge}>UP: {anim.up_name}</Text>
               </View>
-              {tagList.length > 0 ? (
-                <View className={styles.tagRow}>
-                  {tagList.map((tag) => (
-                    <Text key={tag} className={styles.tagItem}>
-                      {tag}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
+              <TagRow tags={tagList} />
 
               <View className={styles.statsGrid}>
                 <View className={styles.statCard}>

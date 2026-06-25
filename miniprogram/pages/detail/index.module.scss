@@ -106,25 +106,6 @@
   color: $color-text-secondary;
 }
 
-.tagRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $spacing-xs;
-  margin-bottom: $spacing-md;
-}
-
-.tagItem {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40rpx;
-  padding: 0 $spacing-sm;
-  border-radius: $radius-round;
-  background: $color-primary-bg;
-  color: $color-primary;
-  font-size: $font-size-xs;
-  line-height: 1.2;
-}
-
 .statsGrid {
   display: flex;
   gap: $spacing-sm;

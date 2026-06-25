@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
-import { Tag } from '@nutui/nutui-react-taro';
-import '@nutui/nutui-react-taro/dist/es/packages/tag/style/style.css';
 import { Animation } from '@/types';
 import AppIcon from '@/components/AppIcon';
+import TagRow from '@/components/TagRow';
 import { formatNumber } from '@/utils/util';
 import styles from './index.module.scss';
 
@@ -13,15 +12,7 @@ export interface AnimCardFooterProps {
 
 const AnimCardFooter: React.FC<AnimCardFooterProps> = ({ item }) => (
   <>
-    {item.tags?.length ? (
-      <View className={styles.animtag}>
-        {item.tags.map((tag: string) => (
-          <Tag key={tag} background="#28b894" color="#28b894" className={styles.animNutTag}>
-            {tag}
-          </Tag>
-        ))}
-      </View>
-    ) : null}
+    <TagRow tags={item.tags || []} />
     <View className={styles.animMeta}>
       <Text className={styles.metaAuthor} numberOfLines={1}>
         {item.up_name}

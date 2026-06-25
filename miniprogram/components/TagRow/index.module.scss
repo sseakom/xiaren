@@ -1,0 +1,26 @@
+@use '@/styles/variables.scss' as *;
+
+.tagRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6rpx;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.nutTag {
+  --nutui-tag-font-size: #{$font-size-xs};
+  --nutui-tag-padding: 2rpx 10rpx;
+  --nutui-tag-primary-background-color: #{$color-primary-bg};
+  background: #{$color-primary-bg} !important;
+  border-color: #{$color-primary} !important;
+  color: #{$color-primary} !important;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
