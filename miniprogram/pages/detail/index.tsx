@@ -29,7 +29,7 @@ const DetailPage: React.FC = () => {
   const [isCollected, setIsCollected] = useState(false);
   const [isWatched, setIsWatched] = useState(false);
   const [WR, setWR] = useState(0);
-  const [R, setR] = useState(0);
+  const [v, setV] = useState(0);
   const [distribution, setDistribution] = useState<ScoreDistribution>({});
 
   const loadAll = useCallback(async () => {
@@ -48,7 +48,7 @@ const DetailPage: React.FC = () => {
       setIsCollected(status.isCollected);
       setIsWatched(status.isWatched);
       setWR(sc.WR);
-      setR(sc.R);
+      setV(sc.v);
       setDistribution(sc.distribution || {});
     } catch (err) {
       toastError('[Detail]', err);
@@ -82,7 +82,7 @@ const DetailPage: React.FC = () => {
       // 重新拉取分布
       const sc = await ScoreService.calc(id);
       setWR(sc.WR);
-      setR(sc.R);
+      setV(sc.v);
       setDistribution(sc.distribution || {});
     } catch (err) {
       Taro.showToast({ title: '评分失败', icon: 'none' });
@@ -225,7 +225,7 @@ const DetailPage: React.FC = () => {
                   基于全部用户评分计算的 WR 综合分
                 </Text>
               </View>
-              <Text className={styles.sectionAside}>{R} 人参与</Text>
+              <Text className={styles.sectionAside}>{v} 人参与</Text>
             </View>
 
             <View className={styles.scoreLayout}>
