@@ -34,15 +34,20 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({ value, onChange }) => {
       <Popup
         visible={open}
         position="right"
-        closeable
         onClose={() => setOpen(false)}
         onOverlayClick={() => setOpen(false)}
         destroyOnClose
         lockScroll={true}
         overlay={true}
-        style={{ width: '90vw' }}
+        style={{ width: '80vw' }}
       >
         <View className={styles.panel}>
+          <View className={styles.panelHeader}>
+            <Text className={styles.panelTitle}>全部分类</Text>
+            <View className={styles.closeBtn} onClick={() => setOpen(false)}>
+              <AppIcon name="close" size="24rpx" className={styles.closeIcon} />
+            </View>
+          </View>
 
           <ScrollView scrollY className={styles.scroll}>
             <View className={styles.group}>
@@ -67,11 +72,6 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({ value, onChange }) => {
                       className={`${styles.currentBadge} ${styles.tagBadge} ${value === cat ? styles.tagBadgeActive : ''}`}
                       onClick={() => handlePick(cat)}
                     >
-                      <AppIcon
-                        name={value === cat ? 'watchedFilled' : 'list'}
-                        size="22rpx"
-                        className={styles.currentBadgeIcon}
-                      />
                       <Text className={styles.currentBadgeText}>{cat}</Text>
                     </View>
                   ))}

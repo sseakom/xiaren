@@ -47,8 +47,45 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100%;
   background: $color-bg-card;
   box-shadow: var(--filter-panel-shadow);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-md $spacing-sm;
+  border-bottom: 1rpx solid $color-divider;
+  box-sizing: border-box;
+}
+
+.panelTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.closeBtn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: $radius-round;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.closeIcon {
+  color: $color-text-tertiary;
 }
 
 .currentBadge {
@@ -112,7 +149,8 @@
 .scroll {
   flex: 1;
   padding: $spacing-md;
-  max-height: calc(100vh - 120rpx);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .group {
@@ -136,6 +174,6 @@
 
 .groupTags {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: $spacing-xs;
 }
