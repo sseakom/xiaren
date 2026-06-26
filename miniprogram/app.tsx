@@ -1,6 +1,7 @@
 import { PropsWithChildren } from 'react';
-import Taro, { useLaunch } from '@tarojs/taro';
+import Taro, { useDidHide, useDidShow, useLaunch } from '@tarojs/taro';
 import { CloudService } from './services/cloud';
+import { RequestCacheService } from './services/requestCache';
 import { UserService } from './services/user';
 import './app.scss';
 
@@ -19,8 +20,21 @@ function App({ children }: PropsWithChildren) {
 
     // 初始化云开发
     CloudService.init();
+    RequestCacheService.runScheduledCleanup('launch');
+    RequestCacheService.startPeriodicCleanup();
     // 异步获取 openid 并拉取用户信息
     UserService.bootstrap();
+  });
+
+  useDidShow(() => {
+    RequestCacheService.startPeriodicCleanup();
+    RequestCacheService.runScheduledCleanup('show');
+  });
+
+  useDidHide(() => {
+    // 小程序退后台时先主动扫一轮，再停止定时器，避免空转。
+    RequestCacheService.cleanup('hide');
+    RequestCacheService.stopPeriodicCleanup();
   });
 
   return children;

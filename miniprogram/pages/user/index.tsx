@@ -292,7 +292,7 @@ const UserPage: React.FC = () => {
         </View>
 
         {/* 统计卡片 */}
-        <Skeleton type="custom" loading={loading} height={120} width={100}>
+        <Skeleton type="custom" height={120} width={100}>
           <View className={styles.statsCard}>
             <View className={styles.statItem} onClick={goMyRatings}>
               <Text className={styles.statNum}>{stats.ratingCount}</Text>

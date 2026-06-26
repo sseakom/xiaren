@@ -190,8 +190,13 @@ async function applySubmission(submission) {
       update_time: now,
       tag: String(p.tag).trim(),
     };
-    await db.collection('animations').add({ data: doc });
-    return null;
+    const res = await db.collection('animations').add({ data: doc });
+    return {
+      type: submission.type,
+      targetId: '',
+      animationId: res._id,
+      bvid: String(p.bvid).trim(),
+    };
   }
 
   if (submission.type === 'correction') {
@@ -203,13 +208,23 @@ async function applySubmission(submission) {
         update_time: now,
       },
     });
-    return null;
+    return {
+      type: submission.type,
+      targetId: String(submission.target_id),
+      animationId: String(submission.target_id),
+      bvid: String(p.bvid || '').trim(),
+    };
   }
 
   if (submission.type === 'correction_delete') {
     if (!submission.target_id) return 'correction_delete 提交缺少 target_id';
     await db.collection('animations').doc(submission.target_id).remove();
-    return null;
+    return {
+      type: submission.type,
+      targetId: String(submission.target_id),
+      animationId: '',
+      bvid: String(p.bvid || '').trim(),
+    };
   }
 
   return `不支持的 type: ${submission.type}`;
@@ -231,9 +246,13 @@ async function decide(event, action) {
       return { success: false, error: '该提交已被处理' };
     }
 
+    const submission = subRes.data;
+    let appliedMeta = null;
+
     if (action === 'approve') {
-      const applyErr = await applySubmission(subRes.data);
-      if (applyErr) return { success: false, error: applyErr };
+      const applyRes = await applySubmission(submission);
+      if (typeof applyRes === 'string') return { success: false, error: applyRes };
+      appliedMeta = applyRes;
     }
 
     await db.collection('submissions').doc(event._id).update({
@@ -244,7 +263,17 @@ async function decide(event, action) {
         review_comment: event.comment || '',
       },
     });
-    return { success: true };
+    return {
+      success: true,
+      data: {
+        submissionId: String(event._id),
+        submitterOpenid: String(submission.submitter_openid || ''),
+        type: String(submission.type || ''),
+        targetId: String(submission.target_id || ''),
+        bvid: String(submission.payload?.bvid || ''),
+        ...(appliedMeta || {}),
+      },
+    };
   } catch (err) {
     console.error('[animationReview.decide] 失败', err);
     return { success: false, error: err.message };
