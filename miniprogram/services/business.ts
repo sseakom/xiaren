@@ -34,7 +34,7 @@ export type { AnimationFormPayload };
 /**
  * 动画业务服务
  *  - list       → 云函数 listAnimations
- *  - getById    → 云函数 getAnimationById
+ *  - getByBvid  → 云函数 getAnimationById
  *  - search     → 云函数 search
  */
 export const AnimationService = {
@@ -60,9 +60,9 @@ export const AnimationService = {
     return { list: r.data || [], total: r.total || 0 };
   },
 
-  /** 获取单个动画详情 */
-  async getById(id: string) {
-    const r = await CloudService.callCloudSafe('getAnimationById', { id });
+  /** 获取单个动画详情（按 bvid） */
+  async getByBvid(bvid: string) {
+    const r = await CloudService.callCloudSafe('getAnimationById', { bvid });
     return r?.data ?? null;
   },
 
@@ -93,21 +93,21 @@ export const AnimationService = {
  */
 export const RatingService = {
   /** 获取用户对某动画的评分 */
-  async getMyRating(animationId: string): Promise<number> {
+  async getMyRating(animationBvid: string): Promise<number> {
     if (!UserService.openid) return 0;
     const r = await CloudService.callCloudSafe('rating', {
       action: 'get',
-      animation_id: animationId,
+      animation_bvid: animationBvid,
     });
     return r ? r.score || 0 : 0;
   },
 
   /** 提交评分；云函数内部会自动触发 calcScore 聚合 */
-  async submit(animationId: string, score: number): Promise<{ newRating: boolean }> {
+  async submit(animationBvid: string, score: number): Promise<{ newRating: boolean }> {
     if (!UserService.openid) throw new Error('未登录');
     const r = await CloudService.callCloud('rating', {
       action: 'submit',
-      animation_id: animationId,
+      animation_bvid: animationBvid,
       score,
     });
     return { newRating: !!r.newRating };
@@ -136,27 +136,25 @@ export const RatingService = {
  *  - 全部走云函数 collection（action: getStatus / toggle / listMy）
  */
 export const CollectionService = {
-  async getStatus(
-    animationId: string,
-  ): Promise<{ isCollected: boolean; isWatched: boolean }> {
+  async getStatus(animationBvid: string): Promise<{ isCollected: boolean; isWatched: boolean }> {
     if (!UserService.openid) return { isCollected: false, isWatched: false };
     const r = await CloudService.callCloudSafe('collection', {
       action: 'getStatus',
-      animation_id: animationId,
+      animation_bvid: animationBvid,
     });
     if (!r) return { isCollected: false, isWatched: false };
     return { isCollected: !!r.isCollected, isWatched: !!r.isWatched };
   },
 
   async toggle(
-    animationId: string,
+    animationBvid: string,
     type: 'collect' | 'watched',
     add: boolean,
   ): Promise<{ isCollected: boolean; isWatched: boolean }> {
     if (!UserService.openid) throw new Error('未登录');
     const r = await CloudService.callCloud('collection', {
       action: 'toggle',
-      animation_id: animationId,
+      animation_bvid: animationBvid,
       type,
       add,
     });
@@ -184,7 +182,7 @@ export const CollectionService = {
 
 /** 评分分布（贝叶斯计算）—— 走云函数 calcScore */
 export const ScoreService = {
-  async calc(animationId: string): Promise<{
+  async calc(animationBvid: string): Promise<{
     WR: number;
     R: number;
     v: number;
@@ -192,7 +190,7 @@ export const ScoreService = {
     distribution: ScoreDistribution;
   }> {
     const r = await CloudService.callCloudSafe('calcScore', {
-      animation_id: animationId,
+      animation_bvid: animationBvid,
     });
     if (!r) return { WR: 0, R: 0, v: 0, C: 3.5, distribution: {} };
     return {
@@ -281,17 +279,17 @@ export const SubmissionService = {
    * @param note 备注（可选，给审核管理员看的补充说明）
    */
   async correct(
-    targetId: string,
+    targetBvid: string,
     payload: { title: string; tag: string; note?: string },
   ) {
     if (!UserService.openid) throw new Error('未登录');
-    if (!targetId) throw new Error('缺少原动画 id');
+    if (!targetBvid) throw new Error('缺少原动画 bvid');
     if (!payload.title?.trim()) throw new Error('标题不能为空');
     if (!payload.tag?.trim()) throw new Error('标签不能为空');
     const note = (payload.note || '').trim().slice(0, 200);
     const r = await CloudService.callCloud('animationSubmit', {
       type: 'correction',
-      target_id: targetId,
+      target_bvid: targetBvid,
       payload: {
         title: payload.title.trim(),
         tag: payload.tag.trim(),
@@ -303,20 +301,20 @@ export const SubmissionService = {
 
   /**
    * 申请删除当前视频（type=correction_delete）
-   *  - 需传 target_id（原动画 _id）
+   *  - 需传 target_bvid（原动画 bvid）
    *  - 需传 reason（>= 4 字）
    *  - note 备注（可选）
    *  - 管理员通过后从 animations 集合删除
    */
-  async remove(targetId: string, reason: string, note?: string) {
+  async remove(targetBvid: string, reason: string, note?: string) {
     if (!UserService.openid) throw new Error('未登录');
-    if (!targetId) throw new Error('缺少原动画 id');
+    if (!targetBvid) throw new Error('缺少原动画 bvid');
     const trimmed = (reason || '').trim();
     if (trimmed.length < 4) throw new Error('请填写删除理由（至少 4 个字）');
     const noteTrim = (note || '').trim().slice(0, 200);
     const r = await CloudService.callCloud('animationSubmit', {
       type: 'correction_delete',
-      target_id: targetId,
+      target_bvid: targetBvid,
       payload: {
         reason: trimmed,
         ...(noteTrim ? { note: noteTrim } : {}),

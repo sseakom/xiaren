@@ -10,23 +10,19 @@ const _ = db.command;
 // DB where _.in() 单次上限
 const BATCH_SIZE = 50;
 
-/**
- * 批量按 _id 查询集合，返回 id→doc 的 Map
- *  - 自动分片，并行查询（原为串行 for...of await）
- */
-async function batchGetByIds(collection, ids, fieldFn) {
-  if (!ids || ids.length === 0) return new Map();
-  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
-  if (uniqueIds.length === 0) return new Map();
+async function batchGetAnimationsByBvids(bvids, fieldFn) {
+  if (!bvids || bvids.length === 0) return new Map();
+  const uniqueBvids = Array.from(new Set(bvids.filter(Boolean)));
+  if (uniqueBvids.length === 0) return new Map();
 
   const chunks = [];
-  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
-    chunks.push(uniqueIds.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < uniqueBvids.length; i += BATCH_SIZE) {
+    chunks.push(uniqueBvids.slice(i, i + BATCH_SIZE));
   }
 
   const results = await Promise.all(
     chunks.map((chunk) => {
-      let query = db.collection(collection).where({ _id: _.in(chunk) }).limit(BATCH_SIZE);
+      let query = db.collection('animations').where({ bvid: _.in(chunk) }).limit(BATCH_SIZE);
       if (fieldFn) query = query.field(fieldFn());
       return query.get();
     }),
@@ -35,7 +31,7 @@ async function batchGetByIds(collection, ids, fieldFn) {
   const map = new Map();
   results.forEach((res) => {
     (res.data || []).forEach((doc) => {
-      map.set(doc._id, doc);
+      map.set(doc.bvid, doc);
     });
   });
   return map;
@@ -68,9 +64,9 @@ exports.main = async (event /*, context*/) => {
     const data = res.data || [];
 
     // 联表：correction / correction_delete 带回原动画摘要
-    const targetIds = data.map((s) => s.target_id).filter(Boolean);
-    if (targetIds.length > 0) {
-      const animMap = await batchGetByIds('animations', targetIds, () => ({
+    const targetBvids = data.map((s) => s.target_bvid).filter(Boolean);
+    if (targetBvids.length > 0) {
+      const animMapByBvid = await batchGetAnimationsByBvids(targetBvids, () => ({
         _id: true,
         title: true,
         bvid: true,
@@ -78,7 +74,7 @@ exports.main = async (event /*, context*/) => {
         cover: true,
       }));
       data.forEach((s) => {
-        s.target = s.target_id ? animMap.get(s.target_id) || null : null;
+        s.target = s.target_bvid ? animMapByBvid.get(s.target_bvid) || null : null;
       });
     }
 

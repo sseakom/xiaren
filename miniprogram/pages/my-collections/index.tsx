@@ -87,7 +87,7 @@ const MyCollectionsPage: React.FC = () => {
               <View
                 key={c._id}
                 className={styles.collItem}
-                onClick={() => goDetail(c.animation_id)}
+                onClick={() => goDetail(c.animation_bvid || c.bvid || '')}
               >
                 <Image
                   className={styles.collCover}

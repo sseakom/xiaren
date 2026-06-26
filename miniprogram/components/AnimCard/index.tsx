@@ -8,7 +8,7 @@ export interface AnimCardProps {
   /** 动画数据 */
   item: Animation;
   /** 点击回调（不传则不响应） */
-  onClick?: (id: string) => void;
+  onClick?: (bvid: string) => void;
   /**
    * 自定义卡片底部内容（标题以下区域）
    * - 不传：什么都不显示
@@ -39,7 +39,8 @@ const AnimCard: React.FC<AnimCardProps> = ({
   coverFallback,
 }) => {
   const handleClick = () => {
-    if (onClick && item._id) onClick(item._id);
+    const target = item.bvid || item._id;
+    if (onClick && target) onClick(target);
   };
 
   return (

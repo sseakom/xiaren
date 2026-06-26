@@ -23,7 +23,8 @@ import TagRow from '@/components/TagRow';
 import styles from './index.module.scss';
 
 const DetailPage: React.FC = () => {
-  const id = (Taro.getCurrentInstance().router?.params as any)?.id || '';
+  const routerParams = (Taro.getCurrentInstance().router?.params as any) || {};
+  const bvid = routerParams.bvid || '';
   const [anim, setAnim] = useState<Animation | null>(null);
   const [loading, setLoading] = useState(true);
   const [myScore, setMyScore] = useState(0);
@@ -34,15 +35,15 @@ const DetailPage: React.FC = () => {
   const [distribution, setDistribution] = useState<ScoreDistribution>({});
 
   const loadAll = useCallback(async () => {
-    if (!id) return;
+    if (!bvid) return;
     setLoading(true);
     try {
-      // 4 个独立云函数，并行拉取：getById / getMyRating / getStatus / calcScore
+      // 4 个独立云函数，并行拉取：getByBvid / getMyRating / getStatus / calcScore
       const [a, ms, status, sc] = await Promise.all([
-        AnimationService.getById(id),
-        RatingService.getMyRating(id),
-        CollectionService.getStatus(id),
-        ScoreService.calc(id),
+        AnimationService.getByBvid(bvid),
+        RatingService.getMyRating(bvid),
+        CollectionService.getStatus(bvid),
+        ScoreService.calc(bvid),
       ]);
       setAnim(a as Animation);
       setMyScore(ms);
@@ -56,7 +57,7 @@ const DetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [bvid]);
 
   useEffect(() => {
     loadAll();
@@ -64,7 +65,7 @@ const DetailPage: React.FC = () => {
 
   useShareAppMessage(() => ({
     title: anim?.title ? `《${anim.title}》- 来看看评分` : '沙雕动画',
-    path: `/pages/detail/index?id=${id}`,
+    path: `/pages/detail/index?bvid=${encodeURIComponent(bvid)}`,
     imageUrl: anim?.cover || '',
   }));
 
@@ -75,13 +76,13 @@ const DetailPage: React.FC = () => {
     }
     setMyScore(v);
     try {
-      const { newRating } = await RatingService.submit(id, v);
+      const { newRating } = await RatingService.submit(bvid, v);
       Taro.showToast({
         title: newRating ? '感谢你的评分！' : '已更新评分',
         icon: 'success',
       });
       // 重新拉取分布
-      const sc = await ScoreService.calc(id);
+      const sc = await ScoreService.calc(bvid);
       setWR(sc.WR);
       setV(sc.v);
       setDistribution(sc.distribution || {});
@@ -101,7 +102,7 @@ const DetailPage: React.FC = () => {
     const next = !isCollected;
     setIsCollected(next);
     try {
-      await CollectionService.toggle(id, 'collect', next);
+      await CollectionService.toggle(bvid, 'collect', next);
       Taro.showToast({
         title: next ? '已加入收藏' : '已取消收藏',
         icon: 'success',
@@ -117,7 +118,7 @@ const DetailPage: React.FC = () => {
     const next = !isWatched;
     setIsWatched(next);
     try {
-      await CollectionService.toggle(id, 'watched', next);
+      await CollectionService.toggle(bvid, 'watched', next);
     } catch (err) {
       setIsWatched(!next);
     }
@@ -130,9 +131,9 @@ const DetailPage: React.FC = () => {
 
   const onCorrect = () => {
     if (!ensureLogin()) return;
-    if (!id) return;
+    if (!bvid) return;
     Taro.navigateTo({
-      url: `/pages/animation-form/index?mode=correction&correction_of=${id}`,
+      url: `/pages/animation-form/index?mode=correction&correction_of=${encodeURIComponent(bvid)}`,
     });
   };
 

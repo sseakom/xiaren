@@ -20,9 +20,9 @@ export type AnimationFormMode = 'create' | 'correction' | 'delete';
 export interface AnimationFormProps {
   /** 'create' 录入 / 'correction' 勘误 / 'delete' 申请删除 */
   mode: AnimationFormMode;
-  /** 勘误 / 删除 模式必传：原动画 _id */
+  /** 勘误 / 删除 模式必传：原动画 bvid */
   targetId?: string;
-  /** 兼容旧 prop 名（建议用 targetId） */
+  /** 兼容旧 prop 名（建议用 targetId，值同样是 bvid） */
   correctionOf?: string;
   /** 回填数据（勘误时使用；录入/删除时为空或可选） */
   initialValues?: Partial<Animation> | null;
@@ -337,7 +337,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         Taro.showToast({ title: '提交成功，等待审核', icon: 'success' });
         if (ret?._id) onSuccess?.(ret._id);
       } else if (mode === 'correction') {
-        if (!target) throw new Error('勘误模式缺少原动画 id');
+        if (!target) throw new Error('勘误模式缺少原动画 bvid');
         const ret = await SubmissionService.correct(target, {
           title: title.trim(),
           tag: tags.join(','),
@@ -347,7 +347,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         if (ret?._id) onSuccess?.(ret._id);
       } else {
         // delete
-        if (!target) throw new Error('删除申请缺少原动画 id');
+        if (!target) throw new Error('删除申请缺少原动画 bvid');
         const ret = await SubmissionService.remove(target, reason, note.trim());
         Taro.showToast({ title: '删除申请已提交，等待审核', icon: 'success' });
         if (ret?._id) onSuccess?.(ret._id);
@@ -362,7 +362,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
   /** correction 模式：展开"申请删除"子面板 */
   const onRequestDelete = () => {
     if (!target) {
-      Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
+      Taro.showToast({ title: '缺少原动画 bvid', icon: 'none' });
       return;
     }
     Taro.showModal({
@@ -387,7 +387,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
       return;
     }
     if (!target) {
-      Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
+      Taro.showToast({ title: '缺少原动画 bvid', icon: 'none' });
       return;
     }
     setSubmitting(true);

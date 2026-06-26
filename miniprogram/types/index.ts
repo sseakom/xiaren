@@ -49,14 +49,14 @@ export interface SubmitterInfo {
 /**
  * 用户提交记录 - 对应 submissions 集合
  *  - create：用户新增动画，payload 为完整动画字段；通过后写入 animations
- *  - correction：用户勘误，target_id 指向原动画，payload 为 { title, tag }；通过后合并
- *  - correction_delete：用户申请删除，target_id 指向原动画，payload 为 { reason }；通过后删除动画
+ *  - correction：用户勘误，target_bvid 指向原动画，payload 为 { title, tag }；通过后合并
+ *  - correction_delete：用户申请删除，target_bvid 指向原动画，payload 为 { reason }；通过后删除动画
  */
 export interface Submission {
   _id: string;
   type: SubmissionType;
-  /** correction / correction_delete 指向原动画 _id */
-  target_id?: string;
+  /** correction / correction_delete 指向原动画 bvid（业务主键） */
+  target_bvid?: string;
   /** create 模式为完整动画字段；correction 模式为 { title, tag }；correction_delete 模式为 { reason } */
   payload: Record<string, any>;
   status: SubmissionStatus;
@@ -90,7 +90,8 @@ export interface AnimationFormPayload {
 export interface Rating {
   _id: string;
   user_id: string;
-  animation_id: string;
+  /** 动画业务主键 */
+  animation_bvid: string;
   score: number; // 0-5
   created_at: string | Date;
   updated_at: string | Date;
@@ -98,13 +99,15 @@ export interface Rating {
   // 联表展示（云函数 include_anim=true 时回传）
   animTitle?: string;
   animCover?: string;
+  animBvid?: string;
 }
 
 /** 收藏实体 - 对应 collections 集合 */
 export interface Collection {
   _id: string;
   user_id: string;
-  animation_id: string;
+  /** 动画业务主键 */
+  animation_bvid: string;
   type: 'collect' | 'watched';
   created_at: string | Date;
   timeText?: string;
@@ -112,6 +115,7 @@ export interface Collection {
   title?: string;
   up_name?: string;
   cover?: string;
+  bvid?: string;
 }
 
 /** 用户实体 - 对应 users 集合 */

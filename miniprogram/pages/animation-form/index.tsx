@@ -21,11 +21,11 @@ const AnimationFormPage: React.FC = () => {
   const params = (router.params || {}) as {
     mode?: string;
     correction_of?: string;
-    target_id?: string;
-    id?: string;
+    target_bvid?: string;
+    bvid?: string;
   };
-  // 兼容多个参数名：correction_of / target_id / id
-  const target = params.correction_of || params.target_id || params.id;
+  // 兼容多个 bvid 参数名：correction_of / target_bvid / bvid
+  const target = params.correction_of || params.target_bvid || params.bvid;
   const mode: AnimationFormMode = parseMode(params.mode, !!target);
 
   const [initial, setInitial] = useState<Partial<Animation> | null>(null);
@@ -34,10 +34,10 @@ const AnimationFormPage: React.FC = () => {
   React.useEffect(() => {
     if (mode === 'create') return;
     if (!target) {
-      Taro.showToast({ title: '缺少原动画 id', icon: 'none' });
+      Taro.showToast({ title: '缺少原动画 bvid', icon: 'none' });
       return;
     }
-    AnimationService.getById(target)
+    AnimationService.getByBvid(target)
       .then((data) => {
         if (!data) {
           Taro.showToast({ title: '原动画不存在', icon: 'none' });

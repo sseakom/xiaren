@@ -6,7 +6,7 @@
 //   m = 最低评分阈值（默认 10）
 //   C = 全局平均分
 //
-// 入参：{ animation_id }
+// 入参：{ animation_bvid }
 // 出参：{ success, WR, R, v, C, distribution }
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -20,20 +20,18 @@ const DEFAULT_C = 3.5;
 const MAX_RATINGS = 10000;
 
 exports.main = async (event /*, context*/) => {
-  const { animation_id: animationId } = event;
+  const animationBvid = String(event.animation_bvid || '').trim();
 
-  if (!animationId) {
-    return { success: false, error: '缺少 animation_id' };
+  if (!animationBvid) {
+    return { success: false, error: '缺少 animation_bvid' };
   }
 
   try {
-    // 1. 获取该动画所有评分（显式提高上限，避免评分数 > 1000 时被静默截断）
     const ratingsRes = await db
       .collection('ratings')
-      .where({ animation_id: String(animationId) })
+      .where({ animation_bvid: animationBvid })
       .limit(MAX_RATINGS)
       .get();
-
     const ratings = ratingsRes.data || [];
     const v = ratings.length; // 评分人数
 

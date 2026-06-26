@@ -27,24 +27,19 @@ async function requireAdmin(openid) {
   }
 }
 
-/**
- * 批量按 _id 查询集合，返回 id→doc 的 Map
- *  - 自动分片（每批 BATCH_SIZE 个），并行查询（原为串行 for...of await）
- *  - fieldFn 控制返回字段
- */
-async function batchGetByIds(collection, ids, fieldFn) {
-  if (!ids || ids.length === 0) return new Map();
-  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
-  if (uniqueIds.length === 0) return new Map();
+async function batchGetAnimationsByBvids(bvids, fieldFn) {
+  if (!bvids || bvids.length === 0) return new Map();
+  const uniqueBvids = Array.from(new Set(bvids.filter(Boolean)));
+  if (uniqueBvids.length === 0) return new Map();
 
   const chunks = [];
-  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
-    chunks.push(uniqueIds.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < uniqueBvids.length; i += BATCH_SIZE) {
+    chunks.push(uniqueBvids.slice(i, i + BATCH_SIZE));
   }
 
   const results = await Promise.all(
     chunks.map((chunk) => {
-      let query = db.collection(collection).where({ _id: _.in(chunk) }).limit(BATCH_SIZE);
+      let query = db.collection('animations').where({ bvid: _.in(chunk) }).limit(BATCH_SIZE);
       if (fieldFn) query = query.field(fieldFn());
       return query.get();
     }),
@@ -53,7 +48,7 @@ async function batchGetByIds(collection, ids, fieldFn) {
   const map = new Map();
   results.forEach((res) => {
     (res.data || []).forEach((doc) => {
-      map.set(doc._id, doc);
+      map.set(doc.bvid, doc);
     });
   });
   return map;
@@ -72,7 +67,24 @@ const TARGET_FIELDS = () => ({
 /** 批量 join submitter 昵称 */
 async function joinSubmitters(list) {
   const openids = list.map((it) => it.submitter_openid).filter(Boolean);
-  const userMap = await batchGetByIds('users', openids);
+  const userMap = new Map();
+  if (openids.length > 0) {
+    const chunks = [];
+    const uniqueOpenids = Array.from(new Set(openids));
+    for (let i = 0; i < uniqueOpenids.length; i += BATCH_SIZE) {
+      chunks.push(uniqueOpenids.slice(i, i + BATCH_SIZE));
+    }
+    const results = await Promise.all(
+      chunks.map((chunk) =>
+        db.collection('users').where({ _id: _.in(chunk) }).limit(BATCH_SIZE).get(),
+      ),
+    );
+    results.forEach((res) => {
+      (res.data || []).forEach((doc) => {
+        userMap.set(doc._id, doc);
+      });
+    });
+  }
   return list.map((it) => ({
     ...it,
     submitter: it.submitter_openid
@@ -83,11 +95,11 @@ async function joinSubmitters(list) {
 
 /** 批量 join target（原动画摘要） */
 async function joinTargets(list) {
-  const targetIds = list.map((it) => it.target_id).filter(Boolean);
-  const animMap = await batchGetByIds('animations', targetIds, TARGET_FIELDS);
+  const targetBvids = list.map((it) => it.target_bvid).filter(Boolean);
+  const animMapByBvid = await batchGetAnimationsByBvids(targetBvids, TARGET_FIELDS);
   return list.map((it) => ({
     ...it,
-    target: it.target_id ? animMap.get(it.target_id) || null : null,
+    target: it.target_bvid ? animMapByBvid.get(it.target_bvid) || null : null,
   }));
 }
 
@@ -140,23 +152,13 @@ async function getAction(event) {
             .then((u) => (u.data ? { nickName: u.data.nickName, _id: u.data._id } : null))
             .catch(() => null)
         : Promise.resolve(null),
-      res.data.target_id
+      res.data.target_bvid
         ? db
             .collection('animations')
-            .doc(res.data.target_id)
+            .where({ bvid: res.data.target_bvid })
+            .limit(1)
             .get()
-            .then((a) =>
-              a.data
-                ? {
-                    _id: a.data._id,
-                    title: a.data.title,
-                    bvid: a.data.bvid,
-                    up_name: a.data.up_name,
-                    cover: a.data.cover,
-                    duration: a.data.duration,
-                  }
-                : null,
-            )
+            .then((a) => ((a.data && a.data[0]) || null))
             .catch(() => null)
         : Promise.resolve(null),
     ]);
@@ -193,15 +195,20 @@ async function applySubmission(submission) {
     const res = await db.collection('animations').add({ data: doc });
     return {
       type: submission.type,
-      targetId: '',
-      animationId: res._id,
       bvid: String(p.bvid).trim(),
     };
   }
 
   if (submission.type === 'correction') {
-    if (!submission.target_id) return 'correction 提交缺少 target_id';
-    await db.collection('animations').doc(submission.target_id).update({
+    if (!submission.target_bvid) return 'correction 提交缺少 target_bvid';
+    const targetRes = await db
+      .collection('animations')
+      .where({ bvid: String(submission.target_bvid) })
+      .limit(1)
+      .get();
+    const target = (targetRes && targetRes.data && targetRes.data[0]) || null;
+    if (!target) return '原动画不存在';
+    await db.collection('animations').doc(target._id).update({
       data: {
         title: String(p.title).trim(),
         tag: String(p.tag).trim(),
@@ -210,20 +217,25 @@ async function applySubmission(submission) {
     });
     return {
       type: submission.type,
-      targetId: String(submission.target_id),
-      animationId: String(submission.target_id),
-      bvid: String(p.bvid || '').trim(),
+      targetBvid: String(target.bvid || submission.target_bvid || ''),
+      bvid: String(target.bvid || submission.target_bvid || ''),
     };
   }
 
   if (submission.type === 'correction_delete') {
-    if (!submission.target_id) return 'correction_delete 提交缺少 target_id';
-    await db.collection('animations').doc(submission.target_id).remove();
+    if (!submission.target_bvid) return 'correction_delete 提交缺少 target_bvid';
+    const targetRes = await db
+      .collection('animations')
+      .where({ bvid: String(submission.target_bvid) })
+      .limit(1)
+      .get();
+    const target = (targetRes && targetRes.data && targetRes.data[0]) || null;
+    if (!target) return '原动画不存在';
+    await db.collection('animations').doc(target._id).remove();
     return {
       type: submission.type,
-      targetId: String(submission.target_id),
-      animationId: '',
-      bvid: String(p.bvid || '').trim(),
+      targetBvid: String(target.bvid || submission.target_bvid || ''),
+      bvid: String(target.bvid || submission.target_bvid || ''),
     };
   }
 
@@ -269,7 +281,7 @@ async function decide(event, action) {
         submissionId: String(event._id),
         submitterOpenid: String(submission.submitter_openid || ''),
         type: String(submission.type || ''),
-        targetId: String(submission.target_id || ''),
+        targetBvid: String(submission.target_bvid || ''),
         bvid: String(submission.payload?.bvid || ''),
         ...(appliedMeta || {}),
       },

@@ -47,7 +47,7 @@ const MyRatingsPage: React.FC = () => {
               <View
                 key={r._id}
                 className={styles.ratingItem}
-                onClick={() => goDetail(r.animation_id)}
+                onClick={() => goDetail(r.animation_bvid || r.animBvid || '')}
               >
                 <Image
                   className={styles.ratingCover}

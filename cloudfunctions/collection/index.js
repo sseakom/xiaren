@@ -1,10 +1,10 @@
 // cloudfunctions/collection/index.js
 // 收藏 / 看过 业务统一入口。
 // 入参：{ action, ...payload }
-//   - action: 'getStatus'   payload: { animation_id }       → { success, isCollected, isWatched }
-//   - action: 'toggle'      payload: { animation_id, type, add } → { success, isCollected, isWatched }
+//   - action: 'getStatus'   payload: { animation_bvid }       → { success, isCollected, isWatched }
+//   - action: 'toggle'      payload: { animation_bvid, type, add } → { success, isCollected, isWatched }
 //   - action: 'listMy'      payload: { type, limit?, offset?, include_anim? }
-//       include_anim=true 时，附带返回动画基础信息（title/up_name/cover）
+//       include_anim=true 时，附带返回动画基础信息（title/up_name/cover/bvid）
 //       返回：{ success, data: Collection[], total }
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -24,20 +24,34 @@ function ensureType(t) {
   return t === 'collect' || t === 'watched' ? t : null;
 }
 
-async function getStatus(animationId) {
+async function getAnimationByBvid(animationBvid) {
+  if (!animationBvid) return null;
+  const res = await db.collection('animations').where({ bvid: String(animationBvid) }).limit(1).get();
+  return (res.data && res.data[0]) || null;
+}
+
+async function findCollections(openid, animationBvid, type) {
+  const res = await db
+    .collection('collections')
+    .where({
+      user_id: openid,
+      animation_bvid: String(animationBvid),
+      ...(type ? { type } : {}),
+    })
+    .limit(type ? 1 : 2)
+    .get();
+  return res.data || [];
+}
+
+async function getStatus(animationBvid) {
   const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
-  if (!animationId) return { success: false, error: '缺少 animation_id' };
+  if (!animationBvid) return { success: false, error: '缺少 animation_bvid' };
   try {
-    // 每个动画对同一用户最多 2 条记录（collect + watched），limit(2) 足够
-    const res = await db
-      .collection('collections')
-      .where({ user_id: openid, animation_id: String(animationId) })
-      .limit(2)
-      .get();
+    const records = await findCollections(openid, animationBvid);
     let isCollected = false;
     let isWatched = false;
-    (res.data || []).forEach((c) => {
+    records.forEach((c) => {
       if (c.type === 'collect') isCollected = true;
       if (c.type === 'watched') isWatched = true;
     });
@@ -48,35 +62,36 @@ async function getStatus(animationId) {
   }
 }
 
-async function toggle(animationId, type, add) {
+async function toggle(animationBvid, type, add) {
   const openid = cloud.getWXContext().OPENID;
   if (!openid) return { success: false, error: '未登录' };
   const t = ensureType(type);
-  if (!animationId || !t) {
+  if (!animationBvid || !t) {
     return { success: false, error: '参数错误' };
   }
   try {
-    const res = await db
-      .collection('collections')
-      .where({ user_id: openid, animation_id: String(animationId), type: t })
-      .limit(1)
-      .get();
+    const animation = await getAnimationByBvid(animationBvid);
+    if (!animation) {
+      return { success: false, error: '动画不存在' };
+    }
+    const existing = await findCollections(openid, animationBvid, t);
     if (add) {
-      if (!res.data || res.data.length === 0) {
+      if (existing.length === 0) {
         await db.collection('collections').add({
           data: {
             user_id: openid,
-            animation_id: String(animationId),
+            animation_bvid: String(animationBvid),
             type: t,
             created_at: new Date(),
           },
         });
       }
-    } else if (res.data && res.data.length > 0) {
-      const docId = String(res.data[0]._id);
-      await db.collection('collections').doc(docId).remove();
+    } else if (existing.length > 0) {
+      await Promise.all(
+        existing.map((item) => db.collection('collections').doc(String(item._id)).remove()),
+      );
     }
-    return getStatus(animationId);
+    return getStatus(animationBvid);
   } catch (err) {
     console.error('[collection.toggle] 失败', err);
     return { success: false, error: err.message };
@@ -107,20 +122,31 @@ async function listMy(type, limit, offset, includeAnim) {
     const data = res.data || [];
     // 3) include_anim=true 时，一次性查所有关联动画（去掉 N+1）
     if (includeAnim && data.length > 0) {
-      const ids = Array.from(new Set(data.map((c) => String(c.animation_id))));
-      const animRes = await db
-        .collection('animations')
-        .where({ _id: _.in(ids) })
-        .limit(ids.length)
-        .field({ _id: true, title: true, up_name: true, cover: true })
-        .get();
-      const animMap = new Map((animRes.data || []).map((a) => [String(a._id), a]));
+      const bvids = Array.from(new Set(data.map((c) => String(c.animation_bvid || '')).filter(Boolean)));
+      const results =
+        bvids.length > 0
+          ? [
+              await db
+                .collection('animations')
+                .where({ bvid: _.in(bvids) })
+                .limit(bvids.length)
+                .field({ _id: true, title: true, up_name: true, cover: true, bvid: true })
+                .get(),
+            ]
+          : [];
+      const animMapByBvid = new Map();
+      results.forEach((resItem) => {
+        (resItem.data || []).forEach((a) => {
+          if (a.bvid) animMapByBvid.set(String(a.bvid), a);
+        });
+      });
       data.forEach((c) => {
-        const a = animMap.get(String(c.animation_id));
+        const a = animMapByBvid.get(String(c.animation_bvid || ''));
         if (a) {
           c.title = a.title;
           c.up_name = a.up_name;
           c.cover = a.cover;
+          c.bvid = a.bvid;
         }
       });
     }
@@ -135,9 +161,9 @@ exports.main = async (event /*, context*/) => {
   const action = event && event.action;
   switch (action) {
     case 'getStatus':
-      return getStatus(event.animation_id);
+      return getStatus(event.animation_bvid);
     case 'toggle':
-      return toggle(event.animation_id, event.type, !!event.add);
+      return toggle(event.animation_bvid, event.type, !!event.add);
     case 'listMy':
       return listMy(event.type, event.limit, event.offset, !!event.include_anim);
     default:

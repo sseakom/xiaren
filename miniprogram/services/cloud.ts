@@ -37,9 +37,9 @@ function makeScopedTag(base: string, scopeToken = getCurrentUserScopeToken()) {
 function collectAnimationTags(items: any[] = []) {
   const tags: string[] = [];
   items.forEach((item) => {
-    const id = normalizeTagValue(item?._id || item?.animation_id);
-    if (id) {
-      tags.push(`animation:${id}`);
+    const bvid = normalizeTagValue(item?.bvid || item?.animation_bvid || item?.animBvid);
+    if (bvid) {
+      tags.push(`animation:${bvid}`);
     }
   });
   return tags;
@@ -63,7 +63,7 @@ function buildCacheTags(
       tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
       break;
     case 'getAnimationById': {
-      const id = normalizeTagValue(data?.id || result?.data?._id);
+      const id = normalizeTagValue(data?.bvid || result?.data?.bvid);
       pushScoped('animations:detail');
       if (id) {
         tags.push(`animation:${id}`);
@@ -75,7 +75,7 @@ function buildCacheTags(
       tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
       break;
     case 'calcScore': {
-      const id = normalizeTagValue(data?.animation_id);
+      const id = normalizeTagValue(data?.animation_bvid);
       if (id) {
         tags.push(`animation:${id}:score`);
         tags.push(`animation:${id}`);
@@ -93,7 +93,7 @@ function buildCacheTags(
     case 'rating': {
       pushScoped('user:ratings');
       if (data?.action === 'get') {
-        const id = normalizeTagValue(data?.animation_id);
+        const id = normalizeTagValue(data?.animation_bvid);
         if (id) {
           tags.push(makeScopedTag(`animation:${id}:rating`, scopeToken));
           tags.push(`animation:${id}`);
@@ -114,7 +114,7 @@ function buildCacheTags(
         tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
       }
       if (data?.action === 'getStatus') {
-        const id = normalizeTagValue(data?.animation_id);
+        const id = normalizeTagValue(data?.animation_bvid);
         if (id) {
           tags.push(makeScopedTag(`animation:${id}:collection`, scopeToken));
           tags.push(`animation:${id}`);
@@ -178,7 +178,7 @@ function buildInvalidationTags(
   switch (name) {
     case 'rating': {
       if (data?.action !== 'submit') break;
-      const id = normalizeTagValue(data?.animation_id);
+      const id = normalizeTagValue(data?.animation_bvid);
       tags.push(currentScoped('user:ratings'));
       tags.push(currentScoped('user:stats'));
       if (id) {
@@ -189,7 +189,7 @@ function buildInvalidationTags(
     }
     case 'collection': {
       if (data?.action !== 'toggle') break;
-      const id = normalizeTagValue(data?.animation_id);
+      const id = normalizeTagValue(data?.animation_bvid);
       const type = normalizeTagValue(data?.type);
       tags.push(currentScoped('user:collections'));
       tags.push(currentScoped('user:stats'));
@@ -236,7 +236,7 @@ function buildInvalidationTags(
     case 'animationReview': {
       const meta = result?.data || {};
       const submissionId = normalizeTagValue(data?._id || meta?.submissionId);
-      const targetId = normalizeTagValue(meta?.targetId);
+      const targetBvid = normalizeTagValue(meta?.targetBvid);
       const bvid = normalizeTagValue(meta?.bvid);
       const submitterOpenid = normalizeTagValue(meta?.submitterOpenid);
       const submitterScope = submitterOpenid ? `user:${submitterOpenid}` : '';
@@ -258,15 +258,15 @@ function buildInvalidationTags(
       }
       if (meta?.type === 'correction') {
         tags.push('animations:list', 'animations:search');
-        if (targetId) {
-          tags.push(`animation:${targetId}`);
+        if (targetBvid) {
+          tags.push(`animation:${targetBvid}`);
         }
       }
       if (meta?.type === 'correction_delete') {
         tags.push('animations:list', 'animations:search');
-        if (targetId) {
-          tags.push(`animation:${targetId}`);
-          tags.push(`animation:${targetId}:score`);
+        if (targetBvid) {
+          tags.push(`animation:${targetBvid}`);
+          tags.push(`animation:${targetBvid}:score`);
         }
       }
       break;

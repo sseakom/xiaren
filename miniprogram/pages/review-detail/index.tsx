@@ -269,8 +269,8 @@ const ReviewDetailPage: React.FC = () => {
         <Text className={styles.sectionTitle}>提交信息</Text>
         <Text className={styles.meta}>提交人：{(item as any).submitter?.nickName || '匿名用户'}</Text>
         <Text className={styles.meta}>提交时间：{formatDateTime(item.submitted_at)}</Text>
-        {item.target_id && (
-          <Text className={styles.meta}>目标动画：{item.target_id}</Text>
+        {item.target_bvid && (
+          <Text className={styles.meta}>目标动画：{item.target_bvid}</Text>
         )}
         {item.review_comment && (
           <Text className={styles.reviewComment}>

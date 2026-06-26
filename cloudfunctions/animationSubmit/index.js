@@ -3,7 +3,7 @@
 // 入参：
 //   - type: 'create' | 'correction' | 'correction_delete'
 //   - payload:        类型对应的数据
-//   - target_id?:     correction / correction_delete 必传（原动画 _id）
+//   - target_bvid?:   correction / correction_delete 必传（原动画 bvid）
 //   - action: 'checkBvidUnique' | 'cancel' （独立 action 分发）
 // 返回：{ success, data: { _id, status } } 或 { success: false, error }
 const cloud = require('wx-server-sdk');
@@ -69,6 +69,12 @@ async function checkBvidUnique(bvid) {
   return (subRes.data || []).length === 0;
 }
 
+async function getAnimationByTarget(targetBvid) {
+  if (!targetBvid) return null;
+  const byBvid = await db.collection('animations').where({ bvid: String(targetBvid) }).limit(1).get();
+  return (byBvid.data && byBvid.data[0]) || null;
+}
+
 async function checkBvidUniqueAction(bvid) {
   const ok = await checkBvidUnique(bvid);
   return { success: true, data: { unique: ok } };
@@ -101,20 +107,17 @@ async function submit(event) {
   }
 
   // correction / correction_delete 需校验原动画存在
-  let targetId = null;
+  let targetBvid = null;
   if (type === 'correction' || type === 'correction_delete') {
-    targetId = event.target_id || event.correction_of;
-    if (!targetId) {
-      return { success: false, error: '缺少原动画 id（target_id）' };
+    targetBvid = event.target_bvid || event.correction_of || null;
+    if (!targetBvid) {
+      return { success: false, error: '缺少原动画 bvid（target_bvid）' };
     }
-    try {
-      const orig = await db.collection('animations').doc(targetId).get();
-      if (!orig.data) {
-        return { success: false, error: '原动画不存在' };
-      }
-    } catch (e) {
+    const orig = await getAnimationByTarget(targetBvid);
+    if (!orig) {
       return { success: false, error: '原动画不存在' };
     }
+    targetBvid = String(orig.bvid || targetBvid || '');
   }
 
   // create 模式做 bvid 唯一性校验
@@ -127,7 +130,7 @@ async function submit(event) {
 
   const doc = {
     type,
-    target_id: targetId || null,
+    target_bvid: targetBvid || null,
     payload,
     status: 2,
     submitter_openid: openid,
