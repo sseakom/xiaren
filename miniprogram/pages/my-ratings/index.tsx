@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import { View } from '@tarojs/components';
 import { useShareAppMessage } from '@tarojs/taro';
 import { Rating } from '@/types';
 import { RatingService } from '@/services/business';
@@ -8,10 +8,8 @@ import { goDetail, goHome } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
 import AppIcon from '@/components/AppIcon';
-import EmptyState from '@/components/EmptyState';
-import Skeleton from '@/components/Skeleton';
 import StarRating from '@/components/StarRating';
-import LoadMoreFooter from '@/components/LoadMoreFooter';
+import UserMediaList from '@/components/UserMediaList';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
@@ -33,55 +31,28 @@ const MyRatingsPage: React.FC = () => {
 
   return (
     <View className={styles.pageMyRatings}>
-      <Skeleton type="list" loading={loading}>
-        {list.length > 0 ? (
-          <ScrollView
-            scrollY
-            lowerThreshold={80}
-            className={styles.ratingList}
-            onScrollToLower={() => {
-              void handleLoadMore();
-            }}
-          >
-            {list.map((r) => (
-              <View
-                key={r._id}
-                className={styles.ratingItem}
-                onClick={() => goDetail(r.animation_bvid || r.animBvid || '')}
-              >
-                <Image
-                  className={styles.ratingCover}
-                  src={r.animCover || 'https://picsum.photos/id/1/400/300'}
-                  mode="aspectFill"
-                />
-                <View className={styles.ratingInfo}>
-                  <Text className={styles.ratingTitle}>
-                    {r.animTitle || '已删除的动画'}
-                  </Text>
-                  <View className={styles.ratingStars}>
-                    <StarRating value={r.score} disabled showScore={false} size={24} />
-                  </View>
-                  <Text className={styles.ratingTime}>
-                    {formatTime(r.updated_at)}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
-          </ScrollView>
-        ) : (
-          !loading && (
-            <EmptyState
-              icon={<AppIcon name="rating" size="100rpx" />}
-              title="还没有评分"
-              description="去首页给喜欢的动画打个分吧"
-              showBtn
-              btnText="去首页"
-              onAction={goHome}
-            />
-          )
-        )}
-      </Skeleton>
+      <UserMediaList
+        loading={loading}
+        items={list.map((r) => ({
+          key: r._id,
+          cover: r.animCover,
+          title: r.animTitle || '已删除的动画',
+          extra: <StarRating value={r.score} disabled showScore={false} size={24} />,
+          meta: formatTime(r.updated_at),
+          onClick: () => goDetail(r.animation_bvid || r.animBvid || ''),
+        }))}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={() => {
+          void handleLoadMore();
+        }}
+        emptyIcon={<AppIcon name="rating" size="100rpx" />}
+        emptyTitle="还没有评分"
+        emptyDescription="去首页给喜欢的动画打个分吧"
+        emptyShowBtn
+        emptyBtnText="去首页"
+        onEmptyAction={goHome}
+      />
     </View>
   );
 };

@@ -1,0 +1,84 @@
+@use '@/styles/variables.scss' as *;
+
+.list {
+  flex: 1;
+  padding: $spacing-sm;
+  box-sizing: border-box;
+}
+
+.item {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  overflow: hidden;
+  display: flex;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.itemCompact {
+  align-items: center;
+  padding: $spacing-sm;
+}
+
+.cover {
+  width: 200rpx;
+  height: 140rpx;
+  flex-shrink: 0;
+  background: $color-bg-hover;
+}
+
+.coverCompact {
+  width: 160rpx;
+  height: 100rpx;
+  border-radius: $radius-sm;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  padding: $spacing-sm $spacing-sm + 4rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.itemCompact .info {
+  gap: 4rpx;
+  justify-content: flex-start;
+  padding: 0 $spacing-sm + 4rpx;
+}
+
+.title {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.titleCompact {
+  font-size: $font-size-md - 2rpx;
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
+}
+
+.subtitle,
+.meta {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.extra {
+  margin: 4rpx 0;
+}
+
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-tertiary;
+  padding: 0 $spacing-xs;
+}

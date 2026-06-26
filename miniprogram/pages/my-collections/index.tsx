@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import { View, Text } from '@tarojs/components';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Collection } from '@/types';
 import { CollectionService } from '@/services/business';
@@ -8,9 +8,7 @@ import { goDetail, goHome } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
 import AppIcon from '@/components/AppIcon';
-import EmptyState from '@/components/EmptyState';
-import Skeleton from '@/components/Skeleton';
-import LoadMoreFooter from '@/components/LoadMoreFooter';
+import UserMediaList from '@/components/UserMediaList';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 20;
@@ -73,61 +71,38 @@ const MyCollectionsPage: React.FC = () => {
         </View>
       </View>
 
-      <Skeleton type="list" loading={loading}>
-        {list.length > 0 ? (
-          <ScrollView
-            scrollY
-            lowerThreshold={80}
-            className={styles.collList}
-            onScrollToLower={() => {
-              void handleLoadMore();
-            }}
-          >
-            {list.map((c) => (
-              <View
-                key={c._id}
-                className={styles.collItem}
-                onClick={() => goDetail(c.animation_bvid || c.bvid || '')}
-              >
-                <Image
-                  className={styles.collCover}
-                  src={c.cover || 'https://picsum.photos/id/1/400/300'}
-                  mode="aspectFill"
-                />
-                <View className={styles.collInfo}>
-                  <Text className={styles.collTitle}>{c.title || '已删除'}</Text>
-                  <Text className={styles.collCreator}>{c.up_name}</Text>
-                  <Text className={styles.collTime}>{c.timeText}</Text>
-                </View>
-                <View className={styles.collArrow}>
-                  <AppIcon name="arrowRight" size="20rpx" />
-                </View>
-              </View>
-            ))}
-            <LoadMoreFooter hasMore={hasMore} loading={loadingMore} />
-          </ScrollView>
-        ) : (
-          !loading && (
-            <EmptyState
-              icon={(
-                <AppIcon
-                  name={type === 'collect' ? 'collectionFilled' : 'watchedFilled'}
-                  size="100rpx"
-                />
-              )}
-              title={type === 'collect' ? '还没有收藏' : '还没看过'}
-              description={
-                type === 'collect'
-                  ? '在详情页点击收藏，把喜欢的动画收藏起来'
-                  : '去首页看一些沙雕动画吧'
-              }
-              showBtn
-              btnText="去首页"
-              onAction={goHome}
-            />
-          )
+      <UserMediaList
+        loading={loading}
+        items={list.map((c) => ({
+          key: c._id,
+          cover: c.cover,
+          title: c.title || '已删除',
+          subtitle: c.up_name,
+          meta: c.timeText,
+          onClick: () => goDetail(c.animation_bvid || c.bvid || ''),
+        }))}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={() => {
+          void handleLoadMore();
+        }}
+        emptyIcon={(
+          <AppIcon
+            name={type === 'collect' ? 'collectionFilled' : 'watchedFilled'}
+            size="100rpx"
+          />
         )}
-      </Skeleton>
+        emptyTitle={type === 'collect' ? '还没有收藏' : '还没看过'}
+        emptyDescription={
+          type === 'collect'
+            ? '在详情页点击收藏，把喜欢的动画收藏起来'
+            : '去首页看一些沙雕动画吧'
+        }
+        emptyShowBtn
+        emptyBtnText="去首页"
+        onEmptyAction={goHome}
+        variant="compact"
+      />
     </View>
   );
 };
