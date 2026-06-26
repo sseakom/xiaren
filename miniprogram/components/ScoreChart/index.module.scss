@@ -19,8 +19,8 @@
     width: 64rpx;
   }
 
-  .chartBarBg {
-    height: 10rpx;
+  .chartProgress {
+    --nutui-progress-height: 10rpx;
   }
 
   .chartCount {
@@ -67,6 +67,14 @@
   gap: $spacing-sm;
 }
 
+.chartRowInactive {
+  .chartLabel,
+  .chartCount,
+  .chartRatio {
+    color: #b8bec8;
+  }
+}
+
 .chartLabel {
   font-size: $font-size-sm;
   color: $color-text-secondary;
@@ -76,20 +84,19 @@
   font-weight: $font-weight-medium;
 }
 
-.chartBarBg {
+.chartProgress {
   flex: 1;
-  height: 14rpx;
-  background: $color-bg-hover;
-  border-radius: $radius-round;
-  overflow: hidden;
-  position: relative;
+  --nutui-progress-height: 14rpx;
+  --nutui-progress-background: #{$color-bg-hover};
 }
 
-.chartBar {
-  height: 100%;
+.chartProgress :global(.nut-progress-outer) {
   border-radius: $radius-round;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 8rpx rgba(255, 107, 53, 0.3);
+  overflow: hidden;
+}
+
+.chartProgress :global(.nut-progress-inner) {
+  border-radius: $radius-round;
 }
 
 .chartMeta {

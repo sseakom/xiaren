@@ -179,7 +179,11 @@ const DetailPage: React.FC = () => {
 
             <View className={styles.summaryCard}>
               <Text className={styles.title} onClick={() => copyText(anim.title)}>{anim.title}</Text>
-              <Text className={styles.subTitle} onClick={() => copyText(anim.original_title)}>{anim.original_title}</Text>
+              {anim.original_title ? (
+                <Text className={styles.subTitle} onClick={() => copyText(anim.original_title)}>
+                  {anim.original_title}
+                </Text>
+              ) : null}
               <View className={styles.metaRow}>
                 <Text className={styles.metaBadge} onClick={() => copyText(anim.up_name)}>{anim.up_name}</Text>
                 <Text className={styles.metaBadge} onClick={() => copyText(anim.bvid, true)}>{anim.bvid}</Text>
@@ -228,9 +232,8 @@ const DetailPage: React.FC = () => {
               <View className={styles.scoreColLeft}>
                 <View className={styles.scoreMain}>
                   <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
-                  <Text className={styles.scoreUnit}>/10</Text>
                 </View>
-                <Text className={styles.scoreMeta}>当前作品综合评分</Text>
+                <Text className={styles.scoreMeta}>综合评分</Text>
               </View>
 
               {/* 右：评分分布 */}
@@ -242,17 +245,10 @@ const DetailPage: React.FC = () => {
 
           {/* 我的评分 */}
           <View className={styles.myRatingSection}>
-            <View className={styles.sectionHeader}>
-              <View className={styles.sectionHeaderMain}>
-                <Text className={styles.sectionTitle}>我的评分</Text>
-                <Text className={styles.sectionDesc}>
-                  点击星级即可提交或更新你的评分
-                </Text>
-              </View>
-            </View>
-            <View className={styles.myRatingCard}>
-              <RatingRow value={myScore} onChange={onRate} size={40} />
-            </View>
+            <RatingRow value={myScore} onChange={onRate} size={40} />
+            <Text className={styles.myRatingHint}>
+              评分会实时参与综合分计算，你可以随时修改自己的星级
+            </Text>
           </View>
 
           {/* 操作区 */}
@@ -304,6 +300,9 @@ const DetailPage: React.FC = () => {
                 <Text className={styles.actionText}>勘误</Text>
               </View>
             </View>
+            <Text className={styles.actionNote}>
+              所有操作即时生效，勘误内容提交后进入审核流程
+            </Text>
           </View>
 
           <View className={styles.bottomSafe} />

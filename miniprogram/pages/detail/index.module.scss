@@ -71,6 +71,7 @@
   box-shadow: $shadow-card;
   padding: $spacing-md;
   margin-bottom: $spacing-md;
+  border: 1rpx solid rgba($color-primary, 0.06);
 }
 
 .summaryCard {
@@ -127,12 +128,13 @@
   min-height: 120rpx;
   padding: $spacing-sm $spacing-md;
   border-radius: $radius-md;
-  background: linear-gradient(180deg, rgba(255, 107, 53, 0.08) 0%, rgba(255, 107, 53, 0.02) 100%);
+  background: linear-gradient(180deg, rgba($color-primary, 0.08) 0%, rgba($color-primary, 0.02) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 8rpx;
   box-sizing: border-box;
+  border: 1rpx solid rgba($color-primary, 0.08);
 }
 
 .statIconWrap {
@@ -142,7 +144,7 @@
   width: 44rpx;
   height: 44rpx;
   border-radius: $radius-round;
-  background: rgba(255, 107, 53, 0.12);
+  background: rgba($color-primary, 0.12);
 }
 
 .statIcon {
@@ -158,36 +160,38 @@
 }
 
 .scoreLayout {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 180rpx minmax(0, 1fr);
+  align-items: stretch;
   gap: $spacing-md;
 }
 
 .scoreColLeft {
-  flex: 0 0 200rpx;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: $spacing-xs;
   min-width: 0;
-  align-items: flex-start;
+  align-items: center;
   padding: $spacing-md;
   border-radius: $radius-md;
-  background: linear-gradient(180deg, rgba(255, 107, 53, 0.12) 0%, rgba(255, 107, 53, 0.04) 100%);
+  background: linear-gradient(180deg, rgba($color-primary, 0.12) 0%, rgba($color-primary, 0.04) 100%);
+  border: 1rpx solid rgba($color-primary, 0.1);
 }
 
 .scoreMain {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
 }
 
 .scoreBig {
-  font-size: 64rpx;
+  font-size: 80rpx;
   font-weight: $font-weight-bold;
   color: $color-primary;
   line-height: 1;
   font-family: 'DIN Alternate', 'Helvetica Neue', sans-serif;
+  margin-bottom: $spacing-xs;
 }
 
 .scoreUnit {
@@ -204,11 +208,13 @@
 }
 
 .scoreColRight {
-  flex: 1;
-  min-width: 280rpx;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  padding: $spacing-md;
+  border-radius: $radius-md;
+  background: $color-bg-page;
 }
 
 .sectionHeader {
@@ -254,9 +260,18 @@
 }
 
 .myRatingCard {
-  padding: $spacing-sm;
+  padding: $spacing-md;
   border-radius: $radius-md;
-  background: $color-bg-page;
+  background: linear-gradient(180deg, rgba($color-primary, 0.06), rgba($color-primary, 0.015));
+  border: 1rpx solid rgba($color-primary, 0.08);
+}
+
+.myRatingHint {
+  display: block;
+  margin-top: $spacing-sm;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: $line-height-normal;
 }
 
 .infoGrid,
@@ -295,7 +310,7 @@
 
 .actionBtn {
   width: calc((100% - #{$spacing-sm}) / 2);
-  min-height: 136rpx;
+  min-height: 128rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -305,6 +320,7 @@
   border-radius: $radius-md;
   background: $color-bg-page;
   box-sizing: border-box;
+  border: 1rpx solid rgba($color-primary, 0.06);
   transition: transform $transition-fast, background $transition-fast;
 
   &:active {
@@ -314,6 +330,7 @@
 
   &.actionActive {
     background: $color-primary-bg;
+    border-color: rgba($color-primary, 0.16);
 
     .actionIcon {
       color: $color-primary;
@@ -340,6 +357,14 @@
   line-height: 1.2;
 }
 
+.actionNote {
+  display: block;
+  margin-top: $spacing-sm;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: $line-height-normal;
+}
+
 .bottomSafe {
   height: $spacing-md;
 }
@@ -348,4 +373,10 @@
   padding: $spacing-lg;
   text-align: center;
   color: $color-text-tertiary;
+}
+
+@media (max-width: 720rpx) {
+  .scoreLayout {
+    grid-template-columns: 1fr;
+  }
 }
