@@ -163,6 +163,8 @@ const DetailPage: React.FC = () => {
   const displayDuration = formatDuration(
     anim.duration ?? anim.durationText ?? null,
   );
+  const playCount = anim.play_count || 0;
+  const likeCount = anim.like_count || 0;
 
   return (
     <View className={styles.pageDetail}>
@@ -192,24 +194,26 @@ const DetailPage: React.FC = () => {
 
               <View className={styles.statsGrid}>
                 <View className={styles.statCard}>
-                  <View className={styles.statIconWrap}>
-                    <AppIcon name="movie" size="28rpx" className={styles.statIcon} />
+                  <View className={styles.statTop}>
+                    <View className={styles.statIconWrap}>
+                      <AppIcon name="movie" size="28rpx" className={styles.statIcon} />
+                    </View>
+                    <Text className={styles.statLabel}>播放</Text>
                   </View>
-                  <Text className={styles.statValue}>
-                    {formatNumber(anim.play_count || 0)}
-                  </Text>
+                  <Text className={styles.statValue}>{formatNumber(playCount)}</Text>
                 </View>
                 <View className={styles.statCard}>
-                  <View className={styles.statIconWrap}>
-                    <AppIcon
-                      name="collection"
-                      size="26rpx"
-                      className={styles.statIcon}
-                    />
+                  <View className={styles.statTop}>
+                    <View className={styles.statIconWrap}>
+                      <AppIcon
+                        name="collection"
+                        size="26rpx"
+                        className={styles.statIcon}
+                      />
+                    </View>
+                    <Text className={styles.statLabel}>点赞</Text>
                   </View>
-                  <Text className={styles.statValue}>
-                    {formatNumber(anim.like_count || 0)}
-                  </Text>
+                  <Text className={styles.statValue}>{formatNumber(likeCount)}</Text>
                 </View>
               </View>
             </View>
@@ -289,22 +293,9 @@ const DetailPage: React.FC = () => {
                   {isWatched ? '已看过' : '已看过'}
                 </Text>
               </View>
-
-              {/* <View className={styles.actionBtn} onClick={onOpenBili}>
-                <AppIcon name="link" size="40rpx" className={styles.actionIcon} />
-                <Text className={styles.actionText}>复制链接</Text>
-              </View> */}
-
-              <View className={styles.actionBtn} onClick={onCorrect}>
-                <AppIcon name="edit" size="40rpx" className={styles.actionIcon} />
-                <Text className={styles.actionText}>勘误</Text>
-              </View>
             </View>
-            <Text className={styles.actionNote}>
-              所有操作即时生效，勘误内容提交后进入审核流程
-            </Text>
           </View>
-
+          <Text onClick={onCorrect} className={styles.correctBtn}>勘误</Text>
           <View className={styles.bottomSafe} />
         </View>
       </ScrollView>
