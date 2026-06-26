@@ -8,6 +8,14 @@
   padding-bottom: $spacing-md;
 }
 
+.stickyBar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: $color-bg-card;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06);
+}
+
 .searchHeader {
   padding: $spacing-sm $spacing-sm;
   background: $color-bg-card;
@@ -50,8 +58,6 @@
   padding: $spacing-xs $spacing-sm;
   background: $color-bg-card;
   border-bottom: 1rpx solid $color-divider;
-  position: relative;
-  z-index: 20;
 }
 
 .searchHistory {

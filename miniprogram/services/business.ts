@@ -71,19 +71,29 @@ export const AnimationService = {
    *  - 服务端负责 RegExp 候选集 + fuzzyScore 排序 + 分页
    *  - 客户端只传 keyword / page / pageSize
    */
-  async search(keyword: string, page = 0, pageSize = 20, category = '') {
-    if (!keyword || !keyword.trim()) return [];
+  async search(
+    keyword: string,
+    page = 0,
+    pageSize = 20,
+    category = '',
+  ): Promise<ListResult> {
+    if (!keyword || !keyword.trim()) return { list: [], total: 0 };
     const res = await CloudService.callFunction('search', {
       keyword: keyword.trim(),
       page,
       pageSize,
       category,
     });
-    const result = (res as any)?.result as { data?: any[]; error?: string } | undefined;
+    const result = (res as any)?.result as
+      | { data?: any[]; total?: number; error?: string }
+      | undefined;
     if (result?.error) {
       console.warn('[Animation] search 失败', result.error);
     }
-    return result?.data || [];
+    return {
+      list: result?.data || [],
+      total: result?.total || 0,
+    };
   },
 };
 

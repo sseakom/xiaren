@@ -60,8 +60,8 @@ const SearchPage: React.FC = () => {
         if (p === 0) setLoading(true);
         setLoadingMore(p > 0);
         // 走 AnimationService.search（内部 callFunction 'search' + 超时/日志）
-        const list = (await AnimationService.search(q, p, PAGE_SIZE, cat)) as Animation[];
-        setTotal(list.length);
+        const { list, total } = await AnimationService.search(q, p, PAGE_SIZE, cat);
+        setTotal(total);
         setResults((prev) => (p === 0 || isNew ? list : [...prev, ...list]));
         setHasMore(list.length >= PAGE_SIZE);
         setPage(p + 1);
@@ -82,6 +82,7 @@ const SearchPage: React.FC = () => {
     }
     saveHistory(keyword.trim());
     setHasSearched(true);
+    setTotal(0);
     setPage(0);
     setResults([]);
     doSearch(0, true);
@@ -90,6 +91,7 @@ const SearchPage: React.FC = () => {
   const onClear = () => {
     setKeyword('');
     setHasSearched(false);
+    setTotal(0);
     setResults([]);
   };
 
@@ -108,6 +110,7 @@ const SearchPage: React.FC = () => {
     setKeyword(q);
     saveHistory(q);
     setHasSearched(true);
+    setTotal(0);
     setPage(0);
     setResults([]);
     doSearch(0, true, q);
@@ -127,6 +130,7 @@ const SearchPage: React.FC = () => {
       return;
     }
     setHasSearched(true);
+    setTotal(0);
     setPage(0);
     setResults([]);
     doSearch(0, true, q, cat);
@@ -134,25 +138,27 @@ const SearchPage: React.FC = () => {
 
   return (
     <View className={styles.pageSearch}>
-      <View className={styles.searchHeader}>
-        <SearchBar
-          className={styles.searchBar}
-          shape="round"
-          value={keyword}
-          placeholder="搜索动画名称、UP主..."
-          clearable
-          right={<Text className={styles.searchBtn} onClick={onSearch}>搜索</Text>}
-          inputProps={{
-            confirmType: 'search',
-          }}
-          onChange={(value) => setKeyword(value)}
-          onClear={onClear}
-          onSearch={onSearch}
-        />
-      </View>
+      <View className={styles.stickyBar}>
+        <View className={styles.searchHeader}>
+          <SearchBar
+            className={styles.searchBar}
+            shape="round"
+            value={keyword}
+            placeholder="搜索动画名称、UP主..."
+            clearable
+            right={<Text className={styles.searchBtn} onClick={onSearch}>搜索</Text>}
+            inputProps={{
+              confirmType: 'search',
+            }}
+            onChange={(value) => setKeyword(value)}
+            onClear={onClear}
+            onSearch={onSearch}
+          />
+        </View>
 
-      <View className={styles.filterBar}>
-        <CategoryFilter value={category} onChange={onSwitchCategory} />
+        <View className={styles.filterBar}>
+          <CategoryFilter value={category} onChange={onSwitchCategory} />
+        </View>
       </View>
 
       {!hasSearched ? (
