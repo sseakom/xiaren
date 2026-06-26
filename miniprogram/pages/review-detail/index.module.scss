@@ -17,6 +17,37 @@
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
+.badgeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.typeTag {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.2;
+}
+
+.typeCreate {
+  background: rgba($color-primary, 0.12);
+  color: $color-primary;
+}
+
+.typeCorrection {
+  background: rgba(52, 152, 219, 0.12);
+  color: #3498db;
+}
+
+.typeDelete {
+  background: rgba(210, 58, 58, 0.12);
+  color: #d23a3a;
+}
+
 .coverWrap {
   width: 100%;
   height: 360rpx;
@@ -52,6 +83,7 @@
   font-weight: 600;
   color: #222;
   line-height: 1.4;
+  min-width: 0;
 }
 
 .meta {
@@ -80,10 +112,10 @@
 
 .statusTag {
   display: inline-block;
-  margin-top: 8rpx;
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
-  font-size: 24rpx;
+  font-size: 22rpx;
+  flex-shrink: 0;
 }
 
 .statusPending {

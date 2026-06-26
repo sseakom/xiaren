@@ -5,7 +5,10 @@ import { ReviewService } from '@/services/business';
 import { Submission } from '@/types';
 import { formatDateTime, formatDuration } from '@/utils/util';
 import { toastError, toastOpError } from '@/utils/error';
-import { SUBMISSION_TYPE_LABEL_FULL } from '@/utils/submission';
+import {
+  SUBMISSION_TYPE_COLOR,
+  SUBMISSION_TYPE_LABEL,
+} from '@/utils/submission';
 import styles from './index.module.scss';
 
 const ReviewDetailPage: React.FC = () => {
@@ -138,11 +141,30 @@ const ReviewDetailPage: React.FC = () => {
 
   return (
     <View className={styles.page}>
-      {/* 类型横幅 */}
-      <View className={styles.typeBanner}>
-        <Text className={styles.typeBannerText}>
-          {SUBMISSION_TYPE_LABEL_FULL[item.type] || item.type}
-        </Text>
+      <View className={styles.card}>
+        <View className={styles.badgeRow}>
+          <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[item.type]] || ''}`}>
+            {SUBMISSION_TYPE_LABEL[item.type] || item.type}
+          </Text>
+          <Text
+            className={`${styles.statusTag} ${
+              item.status === 2
+                ? styles.statusPending
+                : item.status === 3
+                  ? styles.statusRejected
+                  : styles.statusApproved
+            }`}
+          >
+            {item.status === 2 ? '待审' : item.status === 3 ? '已驳回' : '已应用'}
+          </Text>
+        </View>
+        <View className={styles.body}>
+          <Text className={styles.title}>{showTitle || '未命名'}</Text>
+          <Text className={styles.meta}>{showUp || '未知 UP'} · {showBvid || ''}</Text>
+          {item.submitted_at && (
+            <Text className={styles.meta}>提交时间：{formatDateTime(item.submitted_at)}</Text>
+          )}
+        </View>
       </View>
 
       {/* create 模式：展示完整动画字段 */}
@@ -250,17 +272,6 @@ const ReviewDetailPage: React.FC = () => {
         {item.target_id && (
           <Text className={styles.meta}>目标动画：{item.target_id}</Text>
         )}
-        <Text
-          className={`${styles.statusTag} ${
-            item.status === 2
-              ? styles.statusPending
-              : item.status === 3
-              ? styles.statusRejected
-              : styles.statusApproved
-          }`}
-        >
-          状态：{item.status === 2 ? '待审' : item.status === 3 ? '已驳回' : '已应用'}
-        </Text>
         {item.review_comment && (
           <Text className={styles.reviewComment}>
             {item.status === 3 ? '驳回原因' : '审核备注'}：{item.review_comment}

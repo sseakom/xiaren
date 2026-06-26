@@ -76,63 +76,67 @@ const MySubmissionsPage: React.FC = () => {
           {list.map((it) => {
             const disp = getSubmissionDisplay(it);
             return (
-              <View key={it._id} className={styles.item}>
-                <View className={styles.coverWrap}>
-                  {disp.cover ? (
-                    <TaroImage
-                      className={styles.cover}
-                      src={disp.cover}
-                      mode="aspectFill"
-                    />
-                  ) : (
-                    <View className={styles.coverPlaceholder}>无封面</View>
-                  )}
-                </View>
-                <View className={styles.info}>
-                  <View className={styles.titleRow}>
-                    <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[it.type]] || ''}`}>
-                      {SUBMISSION_TYPE_LABEL[it.type] || it.type}
-                    </Text>
-                    <Text className={styles.title} numberOfLines={1}>
-                      {disp.title}
-                    </Text>
-                    <Text
-                      className={`${styles.statusTag} ${
-                        it.status === 2 ? styles.statusPending : styles.statusRejected
-                      }`}
-                    >
-                      {it.status === 2 ? '审核中' : '已驳回'}
-                    </Text>
+              <View key={it._id} className={styles.itemWrap}>
+                <View className={styles.item}>
+                  <View className={styles.coverWrap}>
+                    {disp.cover ? (
+                      <TaroImage
+                        className={styles.cover}
+                        src={disp.cover}
+                        mode="aspectFill"
+                      />
+                    ) : (
+                      <View className={styles.coverPlaceholder}>无封面</View>
+                    )}
                   </View>
-                  <Text className={styles.meta}>
-                    {disp.upName || '未知 UP'} · {formatDuration(disp.duration || 0)}
-                  </Text>
-                  <Text className={styles.meta}>
-                    提交时间：{formatDateTime(it.submitted_at)}
-                  </Text>
-                  {it.review_time && (
-                    <Text className={styles.meta}>
-                      审核时间：{formatDateTime(it.review_time)}
-                    </Text>
-                  )}
-                  {it.review_comment && (
-                    <View className={styles.reviewBox}>
-                      <Text className={styles.reviewLabel}>
-                        {it.status === 3 ? '驳回原因' : '审核备注'}：
+                  <View className={styles.info}>
+                    <View className={styles.titleRow}>
+                      <Text className={styles.title} numberOfLines={2}>
+                        {disp.title}
                       </Text>
-                      <Text className={styles.reviewText}>{it.review_comment}</Text>
                     </View>
-                  )}
-                  {it.status === 2 && (
-                    <View className={styles.actions}>
-                      <View
-                        className={styles.cancelBtn}
-                        onClick={() => onCancel(it)}
-                      >
-                        <Text className={styles.cancelBtnText}>取消提交</Text>
+                    <Text className={styles.meta}>
+                      {disp.upName || '未知 UP'} · {formatDuration(disp.duration || 0)}
+                    </Text>
+                    <Text className={styles.meta}>
+                      提交时间：{formatDateTime(it.submitted_at)}
+                    </Text>
+                    {it.review_time && (
+                      <Text className={styles.meta}>
+                        审核时间：{formatDateTime(it.review_time)}
+                      </Text>
+                    )}
+                    {it.review_comment && (
+                      <View className={styles.reviewBox}>
+                        <Text className={styles.reviewLabel}>
+                          {it.status === 3 ? '驳回原因' : '审核备注'}：
+                        </Text>
+                        <Text className={styles.reviewText}>{it.review_comment}</Text>
                       </View>
-                    </View>
-                  )}
+                    )}
+                    {it.status === 2 && (
+                      <View className={styles.actions}>
+                        <View
+                          className={styles.cancelBtn}
+                          onClick={() => onCancel(it)}
+                        >
+                          <Text className={styles.cancelBtnText}>取消提交</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View className={styles.tagRow}>
+                  <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[it.type]] || ''}`}>
+                    {SUBMISSION_TYPE_LABEL[it.type] || it.type}
+                  </Text>
+                  <Text
+                    className={`${styles.statusTag} ${
+                      it.status === 2 ? styles.statusPending : styles.statusRejected
+                    }`}
+                  >
+                    {it.status === 2 ? '审核中' : '已驳回'}
+                  </Text>
                 </View>
               </View>
             );

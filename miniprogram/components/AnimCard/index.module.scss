@@ -80,10 +80,43 @@
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: $spacing-xs;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.animTitleText {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.animSubTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.animSubTitleText {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-normal;
+  color: $color-text-secondary;
+  line-height: 1.4;
 }

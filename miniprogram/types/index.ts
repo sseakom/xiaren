@@ -4,6 +4,7 @@
 export interface Animation {
   _id: string;
   title: string;
+  original_title?: string;
   bvid: string;
   url: string;
   up_name: string;
@@ -73,6 +74,7 @@ export interface Submission {
 /** 用户提交动画的表单字段（录入） */
 export interface AnimationFormPayload {
   title: string;
+  original_title?: string;
   bvid: string;
   up_name: string;
   cover: string;

@@ -93,46 +93,49 @@ const ReviewListPage: React.FC = () => {
           {list.map((it) => {
             const disp = getSubmissionDisplay(it);
             return (
-              <View
-                key={it._id}
-                className={styles.item}
-                onClick={() => onTap(it)}
-              >
-                <View className={styles.coverWrap}>
-                  {disp.cover ? (
-                    <TaroImage
-                      className={styles.cover}
-                      src={disp.cover}
-                      mode="aspectFill"
-                    />
-                  ) : (
-                    <View className={styles.coverPlaceholder}>无封面</View>
-                  )}
-                </View>
-                <View className={styles.info}>
-                  <View className={styles.titleRow}>
-                    <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[it.type]] || ''}`}>
-                      {SUBMISSION_TYPE_LABEL[it.type] || it.type}
+              <View key={it._id} className={styles.itemWrap}>
+                <View
+                  className={styles.item}
+                  onClick={() => onTap(it)}
+                >
+                  <View className={styles.coverWrap}>
+                    {disp.cover ? (
+                      <TaroImage
+                        className={styles.cover}
+                        src={disp.cover}
+                        mode="aspectFill"
+                      />
+                    ) : (
+                      <View className={styles.coverPlaceholder}>无封面</View>
+                    )}
+                  </View>
+                  <View className={styles.info}>
+                    <View className={styles.titleRow}>
+                      <Text className={styles.title} numberOfLines={2}>
+                        {disp.title}
+                      </Text>
+                    </View>
+                    <Text className={styles.meta}>
+                      {disp.upName || '未知 UP'} · {disp.bvid || ''}
                     </Text>
-                    <Text className={styles.title} numberOfLines={1}>
-                      {disp.title}
+                    <Text className={styles.meta}>
+                      提交人：{(it as any).submitter?.nickName || '匿名用户'}
                     </Text>
-                    <Text
-                      className={`${styles.statusTag} ${
-                        it.status === 2 ? styles.statusPending : styles.statusRejected
-                      }`}
-                    >
-                      {it.status === 2 ? '待审' : '驳回'}
+                    <Text className={styles.meta}>
+                      {it.submitted_at ? formatDateTime(it.submitted_at) : ''}
                     </Text>
                   </View>
-                  <Text className={styles.meta}>
-                    {disp.upName || '未知 UP'} · {disp.bvid || ''}
+                </View>
+                <View className={styles.tagRow}>
+                  <Text className={`${styles.typeTag} ${styles[SUBMISSION_TYPE_COLOR[it.type]] || ''}`}>
+                    {SUBMISSION_TYPE_LABEL[it.type] || it.type}
                   </Text>
-                  <Text className={styles.meta}>
-                    提交人：{(it as any).submitter?.nickName || '匿名用户'}
-                  </Text>
-                  <Text className={styles.meta}>
-                    {it.submitted_at ? formatDateTime(it.submitted_at) : ''}
+                  <Text
+                    className={`${styles.statusTag} ${
+                      it.status === 2 ? styles.statusPending : styles.statusRejected
+                    }`}
+                  >
+                    {it.status === 2 ? '待审' : '驳回'}
                   </Text>
                 </View>
               </View>

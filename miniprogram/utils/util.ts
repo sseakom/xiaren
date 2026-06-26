@@ -167,3 +167,18 @@ export function parseTags(tag: string | string[] | undefined | null): string[] {
     .map((item) => item.trim())
     .filter(Boolean);
 }
+
+/** 复制文本到剪贴板 */
+export function copyText(text?: string , toUrl: boolean = false): void {
+  console.log('🚀 - copyText - toUrl:', toUrl)
+  if (!text) return;
+  // if (toUrl) {
+  //   text = `https://www.bilibili.com/video/${text}`;
+  // }
+  Taro.setClipboardData({
+    data: text,
+    success: () => {
+      Taro.showToast({ title:  '复制成功',  icon: 'none' });
+    },
+  });
+}

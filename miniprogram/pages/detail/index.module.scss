@@ -88,11 +88,19 @@
   @include text-ellipsis-multi(2);
 }
 
+.subTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-normal;
+  color: $color-text-secondary;
+  line-height: 1.4;
+}
+
 .metaRow {
   display: flex;
   flex-wrap: wrap;
   gap: $spacing-sm;
-  margin-bottom: $spacing-sm;
+  margin: $spacing-sm 0;
+  justify-content: space-between;
 }
 
 .metaBadge {

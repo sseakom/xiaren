@@ -13,7 +13,7 @@ export interface AnimCardFooterProps {
 
 const AnimCardFooter: React.FC<AnimCardFooterProps> = ({ item }) => (
   <>
-    <TagRow tags={parseTags(item.tags ?? item.tag) || []} />
+    <TagRow tags={parseTags(item.tags ?? item.tag) || []} nowarp />
     <View className={styles.animMeta}>
       <Text className={styles.metaAuthor} numberOfLines={1}>
         {item.up_name}

@@ -285,6 +285,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
     setBilibiliInfo(null);
     try {
       const info = await BilibiliService.fetchByBvid(raw);
+      info.original_title = info.title;
       setBilibiliInfo(info);
       // 默认填入 title（如用户没改过）
       setTitle((prev) => prev || info.title);
@@ -323,6 +324,7 @@ const AnimationForm: React.FC<AnimationFormProps> = ({
         const ret = await SubmissionService.create({
           title: title.trim(),
           bvid: bilibiliInfo.bvid,
+          original_title: bilibiliInfo.original_title,
           up_name: bilibiliInfo.up_name,
           cover: bilibiliInfo.cover,
           duration: bilibiliInfo.duration,

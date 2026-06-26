@@ -69,9 +69,12 @@ const AnimCard: React.FC<AnimCardProps> = ({
         ) : null}
       </View>
       <View className={styles.animInfo}>
-        <Text className={styles.animTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
+        <View className={styles.animTitle}>
+          <Text className={styles.animTitleText}>{item.title}</Text>
+        </View>
+        <View className={styles.animSubTitle}>
+          <Text className={styles.animSubTitleText}>{item.original_title}</Text>
+        </View>
         {footer}
       </View>
     </View>

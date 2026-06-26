@@ -213,6 +213,7 @@ export const ScoreService = {
 export interface BilibiliVideoInfo {
   bvid: string;
   title: string;
+  original_title: string;
   cover: string;
   up_name: string;
   duration: number; // 秒

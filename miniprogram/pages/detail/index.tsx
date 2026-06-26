@@ -12,7 +12,7 @@ import { UserService } from '@/services/user';
 import {
   formatNumber,
   formatDuration,
-  // openBilibili,
+  copyText,
 } from '@/utils/util';
 import { toastError } from '@/utils/error';
 import AppIcon from '@/components/AppIcon';
@@ -178,9 +178,11 @@ const DetailPage: React.FC = () => {
             </View>
 
             <View className={styles.summaryCard}>
-              <Text className={styles.title}>{anim.title}</Text>
+              <Text className={styles.title} onClick={() => copyText(anim.title)}>{anim.title}</Text>
+              <Text className={styles.subTitle} onClick={() => copyText(anim.original_title)}>{anim.original_title}</Text>
               <View className={styles.metaRow}>
-                <Text className={styles.metaBadge}>UP: {anim.up_name}</Text>
+                <Text className={styles.metaBadge} onClick={() => copyText(anim.up_name)}>{anim.up_name}</Text>
+                <Text className={styles.metaBadge} onClick={() => copyText(anim.bvid, true)}>{anim.bvid}</Text>
               </View>
               <TagRow tags={tagList} />
 
