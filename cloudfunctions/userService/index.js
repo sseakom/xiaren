@@ -112,19 +112,21 @@ async function loadStats() {
   const openid = getOpenid();
   if (!openid) return NOT_LOGIN;
   try {
-    // 并行查询评分数 + 收藏数
-    const [ratingRes, collectRes] = await Promise.all([
+    // 并行查询评分数 + 收藏数 + 看过数
+    const [ratingRes, collectRes, watchRes] = await Promise.all([
       db.collection('ratings').where({ user_id: openid }).count(),
       db.collection('collections').where({ user_id: openid, type: 'collect' }).count(),
+      db.collection('collections').where({ user_id: openid, type: 'watched' }).count(),
     ]);
     return {
       success: true,
       ratingCount: ratingRes.total || 0,
       collectCount: collectRes.total || 0,
+      watchCount: watchRes.total || 0,
     };
   } catch (err) {
     console.error('[userService.loadStats] 失败', err);
-    return { success: false, error: err.message, ratingCount: 0, collectCount: 0 };
+    return { success: false, error: err.message, ratingCount: 0, collectCount: 0, watchCount: 0 };
   }
 }
 

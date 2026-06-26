@@ -129,6 +129,7 @@ export interface User {
 export interface UserStats {
   ratingCount: number;
   collectCount: number;
+  watchCount: number;
 }
 
 /** 评分分布 */

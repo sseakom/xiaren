@@ -253,28 +253,29 @@ class UserServiceImpl {
     }
   }
 
-  /** 加载统计（评分数/收藏数）—— 走云函数 userService.action='loadStats' */
+  /** 加载统计（评分数/收藏数/看过数）—— 走云函数 userService.action='loadStats' */
   async loadStats(): Promise<UserStats> {
     if (!this.openid) {
-      return { ratingCount: 0, collectCount: 0 };
+      return { ratingCount: 0, collectCount: 0, watchCount: 0 };
     }
     try {
       const res = (await CloudService.callFunction('userService', {
         action: 'loadStats',
       })) as any;
       const result = res?.result as
-        | { success?: boolean; ratingCount?: number; collectCount?: number; error?: string }
+        | { success?: boolean; ratingCount?: number; collectCount?: number; watchCount?: number; error?: string }
         | undefined;
       if (result?.success) {
         return {
           ratingCount: result.ratingCount || 0,
           collectCount: result.collectCount || 0,
+          watchCount: result.watchCount || 0,
         };
       }
     } catch (err) {
       console.error('[User] loadStats failed', err);
     }
-    return { ratingCount: 0, collectCount: 0 };
+    return { ratingCount: 0, collectCount: 0, watchCount: 0 };
   }
 
   /** 等待 userInfo 就绪 */

@@ -1,5 +1,10 @@
 @use '@/styles/variables.scss' as *;
 
+.pullRefresh {
+  min-height: 100vh;
+  background: $color-bg-page;
+}
+
 .pageUser {
   --user-theme-primary: #{$color-primary};
   --user-theme-primary-light: #{$color-primary-light};
@@ -160,7 +165,7 @@
 .statsCard {
   background: $color-bg-card;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: $spacing-sm;
   margin-top: $spacing-md;
   display: flex;
   align-items: center;
@@ -204,7 +209,7 @@
 
 .statDivider {
   width: 1rpx;
-  height: 88rpx;
+  height: 50rpx;
   background: $color-divider;
 }
 
@@ -240,12 +245,24 @@
   box-shadow: $shadow-card;
 }
 
-.menuItem {
+.menuCell {
+  padding: 0;
+
+  :global {
+    .nut-cell {
+      padding: 0;
+    }
+  }
+}
+
+.menuCellContent {
   display: flex;
   align-items: center;
   padding: $spacing-sm + 6rpx $spacing-md;
   border-bottom: 1rpx solid $color-divider;
   gap: $spacing-sm;
+  width: 100%;
+  box-sizing: border-box;
 
   &:last-child {
     border-bottom: none;
@@ -253,6 +270,15 @@
 
   &:active {
     background: $color-bg-hover;
+  }
+}
+
+.menuCellDanger {
+  .menuCellContent {
+    .menuText {
+      color: #ff4d4f;
+      font-weight: $font-weight-medium;
+    }
   }
 }
 

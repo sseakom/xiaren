@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, Button, Input } from '@tarojs/components';
-import Taro, { useShareAppMessage } from '@tarojs/taro';
+import Taro, { usePageScroll, useShareAppMessage } from '@tarojs/taro';
+import { Cell, PullToRefresh } from '@nutui/nutui-react-taro';
+import '@nutui/nutui-react-taro/dist/es/packages/cell/style/style.css';
+import '@nutui/nutui-react-taro/dist/es/packages/pulltorefresh/style/style.css';
 import { UserService } from '@/services/user';
 import { User, UserStats } from '@/types';
 import AppIcon from '@/components/AppIcon';
@@ -38,8 +41,10 @@ const UserPage: React.FC = () => {
   const [stats, setStats] = useState<UserStats>({
     ratingCount: 0,
     collectCount: 0,
+    watchCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [scrollTop, setScrollTop] = useState(0);
   const themeStyle = {
     '--user-theme-primary': THEME_PRIMARY_COLOR,
     '--user-theme-primary-light': mixWithWhite(THEME_PRIMARY_COLOR, 0.2),
@@ -88,6 +93,14 @@ const UserPage: React.FC = () => {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  usePageScroll((event) => {
+    setScrollTop(event.scrollTop);
+  });
+
+  const onRefresh = useCallback(async () => {
+    await load();
   }, [load]);
 
   const goMyRatings = () => Taro.navigateTo({ url: '/pages/my-ratings/index' });
@@ -208,7 +221,16 @@ const UserPage: React.FC = () => {
 
 
   return (
-    <View className={styles.pageUser} style={themeStyle}>
+    <PullToRefresh
+      className={styles.pullRefresh}
+      scrollTop={scrollTop}
+      onRefresh={onRefresh}
+      completeDelay={300}
+      threshold={72}
+      headHeight={56}
+      catchMove
+    >
+      <View className={styles.pageUser} style={themeStyle}>
       {/* 头部 */}
       <View className={styles.header}>
         <View className={styles.headerCard}>
@@ -281,6 +303,11 @@ const UserPage: React.FC = () => {
               <Text className={styles.statNum}>{stats.collectCount}</Text>
               <Text className={styles.statLabel}>我的收藏</Text>
             </View>
+            <View className={styles.statDivider} />
+            <View className={styles.statItem} onClick={goWatched}>
+              <Text className={styles.statNum}>{stats.watchCount}</Text>
+              <Text className={styles.statLabel}>我看过的</Text>
+            </View>
           </View>
         </Skeleton>
       </View>
@@ -292,77 +319,65 @@ const UserPage: React.FC = () => {
           <Text className={styles.sectionDesc}>查看记录、管理投稿与账号操作</Text>
         </View>
         <View className={styles.menuList}>
-          <View className={styles.menuItem} onClick={goMyRatings}>
-            <View className={styles.menuIconWrap}>
-              <AppIcon name="rating" size="36rpx" className={styles.menuIcon} />
-            </View>
-            <Text className={styles.menuText}>我的评分</Text>
-            <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-          </View>
-          <View className={styles.menuItem} onClick={goMyCollections}>
-            <View className={styles.menuIconWrap}>
-              <AppIcon name="collectionFilled" size="36rpx" className={styles.menuIcon} />
-            </View>
-            <Text className={styles.menuText}>我的收藏</Text>
-            <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-          </View>
-          <View className={styles.menuItem} onClick={goWatched}>
-            <View className={styles.menuIconWrap}>
-              <AppIcon name="watchedFilled" size="36rpx" className={styles.menuIcon} />
-            </View>
-            <Text className={styles.menuText}>我看过的</Text>
-            <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-          </View>
           {user ? (
             <>
-              <View
-                className={styles.menuItem}
+              <Cell
+                className={styles.menuCell}
                 onClick={() => Taro.navigateTo({ url: '/pages/animation-form/index?mode=create' })}
               >
-                <View className={styles.menuIconWrap}>
-                  <AppIcon name="add" size="36rpx" className={styles.menuIcon} />
-                </View>
-                <Text className={styles.menuText}>录入动画</Text>
-                <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-              </View>
-              <View
-                className={styles.menuItem}
-                onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
-              >
-                <View className={styles.menuIconWrap}>
-                  <AppIcon name="submission" size="36rpx" className={styles.menuIcon} />
-                </View>
-                <Text className={styles.menuText}>我的提交</Text>
-                <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-              </View>
-              {UserService.isAdmin() && (
-                <View
-                  className={styles.menuItem}
-                  onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
-                >
+                <View className={styles.menuCellContent}>
                   <View className={styles.menuIconWrap}>
-                    <AppIcon name="review" size="36rpx" className={styles.menuIcon} />
+                    <AppIcon name="add" size="36rpx" className={styles.menuIcon} />
                   </View>
-                  <Text className={styles.menuText}>审核中心</Text>
+                  <Text className={styles.menuText}>录入动画</Text>
                   <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
                 </View>
-              )}
-              <View className={styles.menuItem} onClick={onLogout}>
-                <View className={`${styles.menuIconWrap} ${styles.menuIconWrapDanger}`}>
-                  <AppIcon
-                    name="logout"
-                    size="36rpx"
-                    className={`${styles.menuIcon} ${styles.menuIconDanger}`}
-                  />
+              </Cell>
+              <Cell
+                className={styles.menuCell}
+                onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
+              >
+                <View className={styles.menuCellContent}>
+                  <View className={styles.menuIconWrap}>
+                    <AppIcon name="submission" size="36rpx" className={styles.menuIcon} />
+                  </View>
+                  <Text className={styles.menuText}>我的提交</Text>
+                  <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
                 </View>
-                <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
-                <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
-              </View>
+              </Cell>
+              {UserService.isAdmin() && (
+                <Cell
+                  className={styles.menuCell}
+                  onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
+                >
+                  <View className={styles.menuCellContent}>
+                    <View className={styles.menuIconWrap}>
+                      <AppIcon name="review" size="36rpx" className={styles.menuIcon} />
+                    </View>
+                    <Text className={styles.menuText}>审核中心</Text>
+                    <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+                  </View>
+                </Cell>
+              )}
+              <Cell className={`${styles.menuCell} ${styles.menuCellDanger}`} onClick={onLogout}>
+                <View className={styles.menuCellContent}>
+                  <View className={`${styles.menuIconWrap} ${styles.menuIconWrapDanger}`}>
+                    <AppIcon
+                      name="logout"
+                      size="36rpx"
+                      className={`${styles.menuIcon} ${styles.menuIconDanger}`}
+                    />
+                  </View>
+                  <Text className={`${styles.menuText} ${styles.menuTextDanger}`}>退出登录</Text>
+                  <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+                </View>
+              </Cell>
             </>
           ) : null}
         </View>
       </View>
-    </View>
+      </View>
+    </PullToRefresh>
   );
 };
 
