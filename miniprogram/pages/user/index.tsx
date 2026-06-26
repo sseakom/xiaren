@@ -7,7 +7,6 @@ import '@nutui/nutui-react-taro/dist/es/packages/pulltorefresh/style/style.css';
 import { UserService } from '@/services/user';
 import { User, UserStats } from '@/types';
 import AppIcon from '@/components/AppIcon';
-import Skeleton from '@/components/Skeleton';
 import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 import styles from './index.module.scss';
 
@@ -43,7 +42,6 @@ const UserPage: React.FC = () => {
     collectCount: 0,
     watchCount: 0,
   });
-  const [loading, setLoading] = useState(true);
   const [scrollTop, setScrollTop] = useState(0);
   const themeStyle = {
     '--user-theme-primary': THEME_PRIMARY_COLOR,
@@ -76,7 +74,6 @@ const UserPage: React.FC = () => {
   }, []);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       await UserService.waitForReady();
       const nextUser = getEffectiveUser();
@@ -86,9 +83,7 @@ const UserPage: React.FC = () => {
       setStats(s);
     } catch (err) {
       console.error('[User] 加载失败', err);
-    } finally {
-      setLoading(false);
-    }
+    } 
   }, [getEffectiveUser]);
 
   useEffect(() => {
@@ -292,24 +287,22 @@ const UserPage: React.FC = () => {
         </View>
 
         {/* 统计卡片 */}
-        <Skeleton type="custom" height={120} width={100}>
-          <View className={styles.statsCard}>
-            <View className={styles.statItem} onClick={goMyRatings}>
-              <Text className={styles.statNum}>{stats.ratingCount}</Text>
-              <Text className={styles.statLabel}>我的评分</Text>
-            </View>
-            <View className={styles.statDivider} />
-            <View className={styles.statItem} onClick={goMyCollections}>
-              <Text className={styles.statNum}>{stats.collectCount}</Text>
-              <Text className={styles.statLabel}>我的收藏</Text>
-            </View>
-            <View className={styles.statDivider} />
-            <View className={styles.statItem} onClick={goWatched}>
-              <Text className={styles.statNum}>{stats.watchCount}</Text>
-              <Text className={styles.statLabel}>我看过的</Text>
-            </View>
+        <View className={styles.statsCard}>
+          <View className={styles.statItem} onClick={goMyRatings}>
+            <Text className={styles.statNum}>{stats.ratingCount}</Text>
+            <Text className={styles.statLabel}>我的评分</Text>
           </View>
-        </Skeleton>
+          <View className={styles.statDivider} />
+          <View className={styles.statItem} onClick={goMyCollections}>
+            <Text className={styles.statNum}>{stats.collectCount}</Text>
+            <Text className={styles.statLabel}>我的收藏</Text>
+          </View>
+          <View className={styles.statDivider} />
+          <View className={styles.statItem} onClick={goWatched}>
+            <Text className={styles.statNum}>{stats.watchCount}</Text>
+            <Text className={styles.statLabel}>我看过的</Text>
+          </View>
+        </View>
       </View>
 
       {/* 功能列表 */}
