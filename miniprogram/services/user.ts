@@ -3,6 +3,7 @@ import { CloudService } from './cloud';
 import { User, UserStats } from '@/types';
 
 const OPENID_CACHE_KEY = 'user_openid_cache';
+const PHONE_CACHE_KEY = 'user_phone_cache';
 
 /**
  * 全局用户信息管理
@@ -27,6 +28,30 @@ class UserServiceImpl {
       updated_at: profile.updated_at ?? now,
       is_admin: profile.is_admin ?? this.userInfo?.is_admin ?? false,
     };
+  }
+
+  private setLoginState(openid: string) {
+    this.openid = openid;
+    this.hasLogin = true;
+    Taro.setStorageSync(OPENID_CACHE_KEY, openid);
+  }
+
+  private setResolvedUserInfo(profile: Partial<User> = {}) {
+    this.userInfo = this.buildLocalUser(profile);
+    this.userInfoReady = true;
+    this.emit();
+    return this.userInfo;
+  }
+
+  private async callUserService<T = Record<string, any>>(
+    action: string,
+    payload: Record<string, any> = {},
+  ): Promise<T | null> {
+    const res = (await CloudService.callFunction('userService', {
+      action,
+      ...payload,
+    })) as any;
+    return (res?.result as T | undefined) ?? null;
   }
 
   /**
@@ -94,10 +119,7 @@ class UserServiceImpl {
     if (!result.openid) {
       throw new Error('云函数 login 未返回 openid');
     }
-    this.openid = result.openid;
-    this.hasLogin = true;
-    // 缓存 openid，下次启动可直接复用
-    Taro.setStorageSync(OPENID_CACHE_KEY, result.openid);
+    this.setLoginState(result.openid);
     await this.fetchUserInfo();
   }
 
@@ -122,12 +144,9 @@ class UserServiceImpl {
     if (!result.phoneNumber || !result.openid) {
       throw new Error('云函数 phoneLogin 未返回手机号');
     }
-    this.openid = result.openid;
-    this.hasLogin = true;
-    // 同步缓存（用 openid 作为下次静默登录的 key）
-    Taro.setStorageSync(OPENID_CACHE_KEY, result.openid);
+    this.setLoginState(result.openid);
     // 手机号额外缓存一份，供后续业务使用
-    Taro.setStorageSync('user_phone_cache', result.phoneNumber);
+    Taro.setStorageSync(PHONE_CACHE_KEY, result.phoneNumber);
     await this.fetchUserInfo();
     return { phoneNumber: result.phoneNumber, openid: result.openid };
   }
@@ -140,7 +159,7 @@ class UserServiceImpl {
     this.userInfoReady = true;
     this.initReady = true;
     Taro.removeStorageSync(OPENID_CACHE_KEY);
-    Taro.removeStorageSync('user_phone_cache');
+    Taro.removeStorageSync(PHONE_CACHE_KEY);
     this.emit();
   }
 
@@ -151,14 +170,11 @@ class UserServiceImpl {
   private async fetchUserInfo() {
     if (!this.openid) return;
     try {
-      const res = (await CloudService.callFunction('userService', {
-        action: 'getInfo',
-      })) as any;
-      const result = res?.result as { success?: boolean; data?: User; error?: string };
+      const result = await this.callUserService<{ success?: boolean; data?: User; error?: string }>(
+        'getInfo',
+      );
       if (result?.success && result.data) {
-        this.userInfo = this.buildLocalUser(result.data);
-        this.userInfoReady = true;
-        this.emit();
+        this.setResolvedUserInfo(result.data);
         return;
       }
       // getInfo 没成功 → 主动 upsert 一条空档案（不抛错）
@@ -168,9 +184,7 @@ class UserServiceImpl {
       console.error('[User] fetchUserInfo failed', err);
     }
     // 最后兜底：即使云端建档失败，也保持前端登录态不丢
-    this.userInfo = this.buildLocalUser();
-    this.userInfoReady = true;
-    this.emit();
+    this.setResolvedUserInfo();
   }
 
   /**
@@ -180,16 +194,12 @@ class UserServiceImpl {
   private async upsertUser(profile: { nickName: string; avatarUrl: string }): Promise<User | null> {
     if (!this.openid) return null;
     try {
-      const res = (await CloudService.callFunction('userService', {
-        action: 'upsert',
-        profile,
-      })) as any;
-      const result = res?.result as { success?: boolean; data?: User; error?: string };
+      const result = await this.callUserService<{ success?: boolean; data?: User; error?: string }>(
+        'upsert',
+        { profile },
+      );
       if (result?.success && result.data) {
-        this.userInfo = this.buildLocalUser(result.data);
-        this.userInfoReady = true;
-        this.emit();
-        return this.userInfo;
+        return this.setResolvedUserInfo(result.data);
       }
     } catch (err) {
       console.error('[User] upsertUser failed', err);
@@ -201,17 +211,15 @@ class UserServiceImpl {
   async updateProfile(profile: { nickName: string; avatarUrl: string }) {
     if (!this.openid) return;
     try {
-      const res = (await CloudService.callFunction('userService', {
-        action: 'updateProfile',
-        profile,
-      })) as any;
-      const result = res?.result as { success?: boolean; error?: string };
+      const result = await this.callUserService<{ success?: boolean; error?: string }>(
+        'updateProfile',
+        { profile },
+      );
       if (!result?.success) {
         console.error('[User] updateProfile failed', result?.error);
         return;
       }
-      this.userInfo = this.buildLocalUser({ ...this.userInfo, ...profile });
-      this.emit();
+      this.setResolvedUserInfo({ ...this.userInfo, ...profile });
     } catch (err) {
       console.error('[User] updateProfile failed', err);
     }
@@ -259,12 +267,9 @@ class UserServiceImpl {
       return { ratingCount: 0, collectCount: 0, watchCount: 0 };
     }
     try {
-      const res = (await CloudService.callFunction('userService', {
-        action: 'loadStats',
-      })) as any;
-      const result = res?.result as
+      const result = await this.callUserService<
         | { success?: boolean; ratingCount?: number; collectCount?: number; watchCount?: number; error?: string }
-        | undefined;
+      >('loadStats');
       if (result?.success) {
         return {
           ratingCount: result.ratingCount || 0,

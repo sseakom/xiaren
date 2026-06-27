@@ -2,6 +2,7 @@ import Taro from '@tarojs/taro';
 import { RequestCacheService, buildCloudCacheKey } from './requestCache';
 
 const CLOUD_ENV = 'cloud1-d0gk61vsuefecd8cf';
+const OPENID_CACHE_KEY = 'user_openid_cache';
 
 // 微信云函数默认超时 10s，业务上经常不够（DB 聚合、跨函数调用、外部 HTTP）
 // 显式延长到 30s；需要更长时由调用方临时覆盖
@@ -10,6 +11,7 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 type CloudFunctionData = Record<string, any> | undefined;
 type CacheMode = 'read' | 'write' | 'never';
 type CloudFunctionResultData = Record<string, any> | undefined;
+type CloudFunctionOptions = { timeoutMs?: number };
 
 interface CloudRequestPolicy {
   mode: CacheMode;
@@ -26,7 +28,7 @@ function normalizeTagValue(value: any) {
 }
 
 function getCurrentUserScopeToken() {
-  const openid = Taro.getStorageSync('user_openid_cache') as string | undefined;
+  const openid = Taro.getStorageSync(OPENID_CACHE_KEY) as string | undefined;
   return openid ? `user:${openid}` : 'guest';
 }
 
@@ -34,15 +36,73 @@ function makeScopedTag(base: string, scopeToken = getCurrentUserScopeToken()) {
   return `${base}@${scopeToken}`;
 }
 
+function appendScopedTag(tags: string[], base: string, userScoped: boolean, scopeToken: string) {
+  tags.push(userScoped ? makeScopedTag(base, scopeToken) : base);
+}
+
+function appendAnimationTag(tags: string[], value: any) {
+  const bvid = normalizeTagValue(value);
+  if (bvid) {
+    tags.push(`animation:${bvid}`);
+  }
+}
+
+function appendLowercaseTag(tags: string[], prefix: string, value: any) {
+  const normalized = normalizeTagValue(value);
+  if (normalized) {
+    tags.push(`${prefix}:${normalized.toLowerCase()}`);
+  }
+}
+
 function collectAnimationTags(items: any[] = []) {
   const tags: string[] = [];
   items.forEach((item) => {
-    const bvid = normalizeTagValue(item?.bvid || item?.animation_bvid || item?.animBvid);
-    if (bvid) {
-      tags.push(`animation:${bvid}`);
-    }
+    appendAnimationTag(tags, item?.bvid || item?.animation_bvid || item?.animBvid);
   });
   return tags;
+}
+
+function collectResultAnimationTags(result: CloudFunctionResultData) {
+  return collectAnimationTags(Array.isArray(result?.data) ? result.data : []);
+}
+
+function collectReviewItemTags(result: CloudFunctionResultData) {
+  const tags: string[] = [];
+  if (Array.isArray(result?.data)) {
+    result.data.forEach((item: any) => {
+      const id = normalizeTagValue(item?._id);
+      if (id) {
+        tags.push(`review:item:${id}`);
+      }
+    });
+  }
+  return tags;
+}
+
+function finalizeTags(tags: string[]) {
+  return [...new Set(tags.filter(Boolean))];
+}
+
+function getAction(data?: CloudFunctionData) {
+  return typeof data?.action === 'string' ? data.action : '';
+}
+
+function buildReadPolicy(ttlMs: number, userScoped = false): CloudRequestPolicy {
+  return { mode: 'read', ttlMs, userScoped };
+}
+
+function getCloudResult(res: Taro.cloud.CallFunctionResult) {
+  return (res as any)?.result as CloudFunctionResultData;
+}
+
+function buildCallError(name: string, callId: string, cost: number, err: any) {
+  const errMsg = err?.errMsg || err?.message || String(err);
+  const wrapped = new Error(`[Cloud] callFunction "${name}" failed after ${cost}ms (${callId}): ${errMsg}`);
+  (wrapped as any).origin = err;
+  (wrapped as any).callId = callId;
+  (wrapped as any).name = name;
+  (wrapped as any).cost = cost;
+  return wrapped;
 }
 
 function buildCacheTags(
@@ -53,104 +113,89 @@ function buildCacheTags(
 ): string[] {
   const tags = [`fn:${name}`];
   const scopeToken = userScoped ? getCurrentUserScopeToken() : '';
-  const pushScoped = (base: string) => {
-    tags.push(userScoped ? makeScopedTag(base, scopeToken) : base);
-  };
 
   switch (name) {
     case 'listAnimations':
-      pushScoped('animations:list');
-      tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
+      appendScopedTag(tags, 'animations:list', userScoped, scopeToken);
+      tags.push(...collectResultAnimationTags(result));
       break;
     case 'getAnimationById': {
       const id = normalizeTagValue(data?.bvid || result?.data?.bvid);
-      pushScoped('animations:detail');
-      if (id) {
-        tags.push(`animation:${id}`);
-      }
+      appendScopedTag(tags, 'animations:detail', userScoped, scopeToken);
+      appendAnimationTag(tags, id);
       break;
     }
     case 'search':
-      pushScoped('animations:search');
-      tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
+      appendScopedTag(tags, 'animations:search', userScoped, scopeToken);
+      tags.push(...collectResultAnimationTags(result));
       break;
     case 'calcScore': {
       const id = normalizeTagValue(data?.animation_bvid);
       if (id) {
         tags.push(`animation:${id}:score`);
-        tags.push(`animation:${id}`);
+        appendAnimationTag(tags, id);
       }
       break;
     }
     case 'bilibiliFetch': {
       const bvid = normalizeTagValue(data?.bvid || result?.data?.bvid);
-      pushScoped('bilibili:meta');
-      if (bvid) {
-        tags.push(`bilibili:${bvid.toLowerCase()}`);
-      }
+      appendScopedTag(tags, 'bilibili:meta', userScoped, scopeToken);
+      appendLowercaseTag(tags, 'bilibili', bvid);
       break;
     }
     case 'rating': {
-      pushScoped('user:ratings');
+      appendScopedTag(tags, 'user:ratings', userScoped, scopeToken);
       if (data?.action === 'get') {
         const id = normalizeTagValue(data?.animation_bvid);
         if (id) {
           tags.push(makeScopedTag(`animation:${id}:rating`, scopeToken));
-          tags.push(`animation:${id}`);
+          appendAnimationTag(tags, id);
         }
       }
       if (data?.action === 'listMy') {
-        tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
+        tags.push(...collectResultAnimationTags(result));
       }
       break;
     }
     case 'collection': {
-      pushScoped('user:collections');
+      appendScopedTag(tags, 'user:collections', userScoped, scopeToken);
       if (data?.action === 'listMy') {
         const type = normalizeTagValue(data?.type);
         if (type) {
-          pushScoped(`user:collections:${type}`);
+          appendScopedTag(tags, `user:collections:${type}`, userScoped, scopeToken);
         }
-        tags.push(...collectAnimationTags(Array.isArray(result?.data) ? result?.data : []));
+        tags.push(...collectResultAnimationTags(result));
       }
       if (data?.action === 'getStatus') {
         const id = normalizeTagValue(data?.animation_bvid);
         if (id) {
           tags.push(makeScopedTag(`animation:${id}:collection`, scopeToken));
-          tags.push(`animation:${id}`);
+          appendAnimationTag(tags, id);
         }
       }
       break;
     }
     case 'userService':
       if (data?.action === 'getInfo') {
-        pushScoped('user:profile');
+        appendScopedTag(tags, 'user:profile', userScoped, scopeToken);
       }
       if (data?.action === 'loadStats') {
-        pushScoped('user:stats');
+        appendScopedTag(tags, 'user:stats', userScoped, scopeToken);
       }
       break;
     case 'animationSubmit':
       if (data?.action === 'checkBvidUnique') {
-        const bvid = normalizeTagValue(data?.bvid);
-        pushScoped('submission:bvid');
-        if (bvid) {
-          tags.push(`submission:bvid:${bvid.toLowerCase()}`);
-        }
+        appendScopedTag(tags, 'submission:bvid', userScoped, scopeToken);
+        appendLowercaseTag(tags, 'submission:bvid', data?.bvid);
       }
       break;
     case 'animationMySubmissions':
-      pushScoped('user:submissions');
+      appendScopedTag(tags, 'user:submissions', userScoped, scopeToken);
       break;
     case 'animationReview':
       if (data?.action === 'list') {
         tags.push('review:list');
-        if (Array.isArray(result?.data)) {
-          result.data.forEach((item: any) => {
-            const id = normalizeTagValue(item?._id);
-            if (id) tags.push(`review:item:${id}`);
-          });
-        }
+        tags.push(...collectReviewItemTags(result));
       }
       if (data?.action === 'get') {
         const id = normalizeTagValue(data?._id || result?.data?._id);
@@ -221,12 +266,9 @@ function buildInvalidationTags(
         break;
       }
       if (data?.type === 'create') {
-        const bvid = normalizeTagValue(data?.payload?.bvid);
         tags.push('review:list');
         tags.push(currentScoped('submission:bvid'));
-        if (bvid) {
-          tags.push(`submission:bvid:${bvid.toLowerCase()}`);
-        }
+        appendLowercaseTag(tags, 'submission:bvid', data?.payload?.bvid);
       }
       if (data?.type === 'correction' || data?.type === 'correction_delete') {
         tags.push('review:list');
@@ -252,20 +294,18 @@ function buildInvalidationTags(
       }
       if (meta?.type === 'create') {
         tags.push('animations:list', 'animations:search');
-        if (bvid) {
-          tags.push(`submission:bvid:${bvid.toLowerCase()}`);
-        }
+        appendLowercaseTag(tags, 'submission:bvid', bvid);
       }
       if (meta?.type === 'correction') {
         tags.push('animations:list', 'animations:search');
         if (targetBvid) {
-          tags.push(`animation:${targetBvid}`);
+          appendAnimationTag(tags, targetBvid);
         }
       }
       if (meta?.type === 'correction_delete') {
         tags.push('animations:list', 'animations:search');
         if (targetBvid) {
-          tags.push(`animation:${targetBvid}`);
+          appendAnimationTag(tags, targetBvid);
           tags.push(`animation:${targetBvid}:score`);
         }
       }
@@ -275,74 +315,50 @@ function buildInvalidationTags(
       break;
   }
 
-  return [...new Set(tags.filter(Boolean))];
+  return finalizeTags(tags);
 }
 
 function getCloudRequestPolicy(name: string, data?: CloudFunctionData): CloudRequestPolicy {
-  const action = typeof data?.action === 'string' ? data.action : '';
+  const action = getAction(data);
   switch (name) {
     case 'listAnimations':
-      return { mode: 'read', ttlMs: 3 * 60 * 1000 };
+      return buildReadPolicy(3 * 60 * 1000);
     case 'getAnimationById':
-      return { mode: 'read', ttlMs: 10 * 60 * 1000 };
+      return buildReadPolicy(10 * 60 * 1000);
     case 'search':
-      return { mode: 'read', ttlMs: 2 * 60 * 1000 };
+      return buildReadPolicy(2 * 60 * 1000);
     case 'calcScore':
-      return { mode: 'read', ttlMs: 3 * 60 * 1000 };
+      return buildReadPolicy(3 * 60 * 1000);
     case 'bilibiliFetch':
-      return { mode: 'read', ttlMs: 10 * 60 * 1000 };
+      return buildReadPolicy(10 * 60 * 1000);
     case 'rating':
       if (action === 'get' || action === 'listMy') {
-        return {
-          mode: 'read',
-          ttlMs: 60 * 1000,
-          userScoped: true,
-        };
+        return buildReadPolicy(60 * 1000, true);
       }
       return { mode: 'write' };
     case 'collection':
       if (action === 'getStatus' || action === 'listMy') {
-        return {
-          mode: 'read',
-          ttlMs: 60 * 1000,
-          userScoped: true,
-        };
+        return buildReadPolicy(60 * 1000, true);
       }
       return { mode: 'write' };
     case 'userService':
       if (action === 'getInfo') {
-        return {
-          mode: 'read',
-          ttlMs: 5 * 60 * 1000,
-          userScoped: true,
-        };
+        return buildReadPolicy(5 * 60 * 1000, true);
       }
       if (action === 'loadStats') {
-        return {
-          mode: 'read',
-          ttlMs: 60 * 1000,
-          userScoped: true,
-        };
+        return buildReadPolicy(60 * 1000, true);
       }
       return { mode: 'write' };
     case 'animationSubmit':
       if (action === 'checkBvidUnique') {
-        return { mode: 'read', ttlMs: 2 * 60 * 1000, userScoped: false };
+        return buildReadPolicy(2 * 60 * 1000);
       }
       return { mode: 'write' };
     case 'animationMySubmissions':
-      return {
-        mode: 'read',
-        ttlMs: 60 * 1000,
-        userScoped: true,
-      };
+      return buildReadPolicy(60 * 1000, true);
     case 'animationReview':
       if (action === 'list' || action === 'get') {
-        return {
-          mode: 'read',
-          ttlMs: 60 * 1000,
-          userScoped: false,
-        };
+        return buildReadPolicy(60 * 1000);
       }
       return { mode: 'write' };
     default:
@@ -366,6 +382,64 @@ function isValidCacheableResult(result: any) {
 class CloudServiceImpl {
   private initialized = false;
   private inFlightRequests = new Map<string, Promise<Taro.cloud.CallFunctionResult>>();
+
+  private getCacheKey(name: string, data: CloudFunctionData, policy: CloudRequestPolicy) {
+    if (policy.mode !== 'read') {
+      return '';
+    }
+    return buildCloudCacheKey(name, data, !!policy.userScoped);
+  }
+
+  private getReusableRequest(cacheKey: string, name: string) {
+    if (!cacheKey) {
+      return null;
+    }
+    const cached = RequestCacheService.get<Taro.cloud.CallFunctionResult>(cacheKey);
+    if (cached) {
+      console.log(`[Cloud] ↺ ${name} cache-hit`);
+      return cached;
+    }
+    const pending = this.inFlightRequests.get(cacheKey);
+    if (pending) {
+      console.log(`[Cloud] ↻ ${name} reuse in-flight request`);
+      return pending;
+    }
+    return null;
+  }
+
+  private persistReadCache(
+    name: string,
+    data: CloudFunctionData,
+    result: CloudFunctionResultData,
+    policy: CloudRequestPolicy,
+    cacheKey: string,
+    res: Taro.cloud.CallFunctionResult,
+  ) {
+    if (!cacheKey || !policy.ttlMs || !isValidCacheableResult(result)) {
+      return;
+    }
+    const cacheTags = buildCacheTags(name, data, result, !!policy.userScoped);
+    RequestCacheService.set(cacheKey, res, policy.ttlMs, cacheTags);
+  }
+
+  private invalidateWriteCache(
+    name: string,
+    data: CloudFunctionData,
+    result: CloudFunctionResultData,
+    policy: CloudRequestPolicy,
+  ) {
+    if (policy.mode !== 'write' || !isValidCacheableResult(result)) {
+      return;
+    }
+    const invalidationTags = buildInvalidationTags(name, data, result);
+    const cleared = RequestCacheService.invalidateByTags(invalidationTags);
+    if (cleared > 0) {
+      console.log(`[Cloud] ♻ invalidated request cache after write: ${name}`, {
+        cleared,
+        tags: invalidationTags,
+      });
+    }
+  }
 
   init() {
     if (this.initialized) return;
@@ -392,23 +466,14 @@ class CloudServiceImpl {
   async callFunction(
     name: string,
     data?: CloudFunctionData,
-    options: { timeoutMs?: number } = {},
+    options: CloudFunctionOptions = {},
   ): Promise<Taro.cloud.CallFunctionResult> {
     if (!this.initialized) this.init();
     const policy = getCloudRequestPolicy(name, data);
-    const cacheKey =
-      policy.mode === 'read' ? buildCloudCacheKey(name, data, !!policy.userScoped) : '';
-    if (cacheKey) {
-      const cached = RequestCacheService.get<Taro.cloud.CallFunctionResult>(cacheKey);
-      if (cached) {
-        console.log(`[Cloud] ↺ ${name} cache-hit`);
-        return cached;
-      }
-      const pending = this.inFlightRequests.get(cacheKey);
-      if (pending) {
-        console.log(`[Cloud] ↻ ${name} reuse in-flight request`);
-        return pending;
-      }
+    const cacheKey = this.getCacheKey(name, data, policy);
+    const reusableRequest = this.getReusableRequest(cacheKey, name);
+    if (reusableRequest) {
+      return reusableRequest;
     }
 
     const callId = genCallId();
@@ -425,40 +490,21 @@ class CloudServiceImpl {
           config: { timeout },
         })) as Taro.cloud.CallFunctionResult;
         const cost = Date.now() - started;
-        const result = (res as any)?.result;
+        const result = getCloudResult(res);
         // 透出 success/error 字段，方便区分业务失败与网络失败
         if (result?.success === false) {
           console.warn(`[Cloud] ✖ ${name} ${callId} business-fail ${cost}ms`, result);
         } else {
           console.log(`[Cloud] ✓ ${name} ${callId} ok ${cost}ms`);
-          if (cacheKey && policy.ttlMs && isValidCacheableResult(result)) {
-            const cacheTags = buildCacheTags(name, data, result, !!policy.userScoped);
-            RequestCacheService.set(cacheKey, res, policy.ttlMs, cacheTags);
-          }
-          if (policy.mode === 'write' && isValidCacheableResult(result)) {
-            const invalidationTags = buildInvalidationTags(name, data, result);
-            const cleared = RequestCacheService.invalidateByTags(invalidationTags);
-            if (cleared > 0) {
-              console.log(`[Cloud] ♻ invalidated request cache after write: ${name}`, {
-                cleared,
-                tags: invalidationTags,
-              });
-            }
-          }
+          this.persistReadCache(name, data, result, policy, cacheKey, res);
+          this.invalidateWriteCache(name, data, result, policy);
         }
         return res;
       } catch (err: any) {
         const cost = Date.now() - started;
         // 微信默认 10s 超时会返回 errMsg="timeout"，无法定位来源
         // 包装成业务可识别的错误
-        const errMsg = err?.errMsg || err?.message || String(err);
-        const wrapped = new Error(
-          `[Cloud] callFunction "${name}" failed after ${cost}ms (${callId}): ${errMsg}`,
-        );
-        (wrapped as any).origin = err;
-        (wrapped as any).callId = callId;
-        (wrapped as any).name = name;
-        (wrapped as any).cost = cost;
+        const wrapped = buildCallError(name, callId, cost, err);
         console.error(`[Cloud] ✖ ${name} ${callId} err ${cost}ms`, err);
         throw wrapped;
       } finally {
@@ -484,10 +530,10 @@ class CloudServiceImpl {
   async callCloud(
     name: string,
     data?: Record<string, any>,
-    options?: { timeoutMs?: number },
+    options?: CloudFunctionOptions,
   ): Promise<Record<string, any>> {
     const res = await this.callFunction(name, data, options);
-    const result = (res as any)?.result;
+    const result = getCloudResult(res);
     if (!result || result.success === false) {
       throw new Error(result?.error || `${name} 调用失败`);
     }
@@ -503,11 +549,11 @@ class CloudServiceImpl {
   async callCloudSafe(
     name: string,
     data?: Record<string, any>,
-    options?: { timeoutMs?: number },
+    options?: CloudFunctionOptions,
   ): Promise<Record<string, any> | null> {
     try {
       const res = await this.callFunction(name, data, options);
-      const result = (res as any)?.result;
+      const result = getCloudResult(res);
       if (!result || result.success === false) {
         console.warn(`[Cloud] callCloudSafe ${name} business-fail`, result?.error);
         return null;

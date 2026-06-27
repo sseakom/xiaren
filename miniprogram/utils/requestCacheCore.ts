@@ -61,6 +61,39 @@ function createEmptyState(version: number): CacheState {
   };
 }
 
+function countEntries(state: CacheState) {
+  return Object.keys(state.entries).length;
+}
+
+function createCleanupResult(
+  state: CacheState,
+  options: {
+    removedExpired?: number;
+    removedLru?: number;
+    removedManual?: number;
+    skipped?: boolean;
+  } = {},
+): CacheCleanupResult {
+  return {
+    removedExpired: options.removedExpired ?? 0,
+    removedLru: options.removedLru ?? 0,
+    removedManual: options.removedManual ?? 0,
+    totalSize: state.totalSize,
+    entryCount: countEntries(state),
+    ...(options.skipped ? { skipped: true } : {}),
+  };
+}
+
+function createEmptyCleanupResult(): CacheCleanupResult {
+  return {
+    removedExpired: 0,
+    removedLru: 0,
+    removedManual: 0,
+    totalSize: 0,
+    entryCount: 0,
+  };
+}
+
 function normalizeValue(value: any): any {
   if (value === null || value === undefined) return value ?? null;
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string') {
@@ -112,6 +145,45 @@ export class RequestCacheCore {
     return this.options.storageKey;
   }
 
+  private removeEntry(state: CacheState, key: string) {
+    const entry = state.entries[key];
+    if (!entry) {
+      return false;
+    }
+    state.totalSize -= entry.size;
+    delete state.entries[key];
+    return true;
+  }
+
+  private touchEntry(entry: CacheEntry, now: number) {
+    entry.lastAccessedAt = now;
+    entry.updatedAt = now;
+  }
+
+  private createEntry(
+    value: any,
+    size: number,
+    prev: CacheEntry | undefined,
+    options: CacheSetOptions,
+    now: number,
+  ): CacheEntry {
+    return {
+      value,
+      size,
+      tags: [...new Set(options.tags || [])],
+      createdAt: prev?.createdAt ?? now,
+      updatedAt: now,
+      lastAccessedAt: now,
+      expiresAt: now + Math.max(1, options.ttlMs),
+    };
+  }
+
+  private writeSweepResult(state: CacheState, now: number, removedExpired: number, removedLru: number) {
+    state.lastSweepAt = now;
+    this.writeState(state);
+    return createCleanupResult(state, { removedExpired, removedLru });
+  }
+
   get<T = any>(key: string, now = Date.now()): T | null {
     try {
       const state = this.readState();
@@ -122,8 +194,7 @@ export class RequestCacheCore {
         if (dirty) this.writeState(state);
         return null;
       }
-      entry.lastAccessedAt = now;
-      entry.updatedAt = now;
+      this.touchEntry(entry, now);
       this.writeState(state);
       return entry.value as T;
     } catch (err) {
@@ -135,8 +206,7 @@ export class RequestCacheCore {
   set(key: string, value: any, options: CacheSetOptions): boolean {
     const now = options.now ?? Date.now();
     try {
-      const serializedValue = stableSerialize(value);
-      const size = serializedValue.length;
+      const size = stableSerialize(value).length;
       if (size <= 0 || size > this.options.maxEntrySize) {
         return false;
       }
@@ -144,17 +214,9 @@ export class RequestCacheCore {
       this.removeExpiredEntries(state, now);
       const prev = state.entries[key];
       if (prev) {
-        state.totalSize -= prev.size;
+        this.removeEntry(state, key);
       }
-      state.entries[key] = {
-        value,
-        size,
-        tags: [...new Set(options.tags || [])],
-        createdAt: prev?.createdAt ?? now,
-        updatedAt: now,
-        lastAccessedAt: now,
-        expiresAt: now + Math.max(1, options.ttlMs),
-      };
+      state.entries[key] = this.createEntry(value, size, prev, options, now);
       state.totalSize += size;
       const removedLru = this.removeOverflowEntries(state);
       if (removedLru > 0) {
@@ -195,7 +257,7 @@ export class RequestCacheCore {
   clear(now = Date.now()): number {
     try {
       const state = this.readState();
-      const removed = Object.keys(state.entries).length;
+      const removed = countEntries(state);
       if (removed === 0) return 0;
       const nextState = createEmptyState(this.options.version);
       nextState.lastSweepAt = now;
@@ -217,24 +279,10 @@ export class RequestCacheCore {
       const state = this.readState();
       const removedExpired = this.removeExpiredEntries(state, now);
       const removedLru = this.removeOverflowEntries(state);
-      state.lastSweepAt = now;
-      this.writeState(state);
-      return {
-        removedExpired,
-        removedLru,
-        removedManual: 0,
-        totalSize: state.totalSize,
-        entryCount: Object.keys(state.entries).length,
-      };
+      return this.writeSweepResult(state, now, removedExpired, removedLru);
     } catch (err) {
       console.warn('[RequestCache] cleanup failed', err);
-      return {
-        removedExpired: 0,
-        removedLru: 0,
-        removedManual: 0,
-        totalSize: 0,
-        entryCount: 0,
-      };
+      return createEmptyCleanupResult();
     }
   }
 
@@ -242,36 +290,28 @@ export class RequestCacheCore {
     try {
       const state = this.readState();
       if (now - state.lastSweepAt < this.options.cleanupIntervalMs) {
-        return {
-          removedExpired: 0,
-          removedLru: 0,
-          removedManual: 0,
-          totalSize: state.totalSize,
-          entryCount: Object.keys(state.entries).length,
-          skipped: true,
-        };
+        return createCleanupResult(state, { skipped: true });
       }
       const removedExpired = this.removeExpiredEntries(state, now);
       const removedLru = this.removeOverflowEntries(state);
-      state.lastSweepAt = now;
-      this.writeState(state);
-      return {
-        removedExpired,
-        removedLru,
-        removedManual: 0,
-        totalSize: state.totalSize,
-        entryCount: Object.keys(state.entries).length,
-      };
+      return this.writeSweepResult(state, now, removedExpired, removedLru);
     } catch (err) {
       console.warn('[RequestCache] scheduled cleanup failed', err);
-      return {
-        removedExpired: 0,
-        removedLru: 0,
-        removedManual: 0,
-        totalSize: 0,
-        entryCount: 0,
-      };
+      return createEmptyCleanupResult();
     }
+  }
+
+  private normalizeEntry(entry: CacheEntry): CacheEntry {
+    const size = Number(entry.size) || stableSerialize(entry.value).length;
+    return {
+      value: entry.value,
+      size,
+      tags: Array.isArray(entry.tags) ? entry.tags.filter(Boolean) : [],
+      createdAt: Number(entry.createdAt) || 0,
+      updatedAt: Number(entry.updatedAt) || 0,
+      lastAccessedAt: Number(entry.lastAccessedAt) || 0,
+      expiresAt: Number(entry.expiresAt) || 0,
+    };
   }
 
   private readState(): CacheState {
@@ -289,17 +329,8 @@ export class RequestCacheCore {
       Object.keys(parsed.entries || {}).forEach((key) => {
         const entry = parsed.entries[key];
         if (!entry) return;
-        const size = Number(entry.size) || stableSerialize(entry.value).length;
-        state.entries[key] = {
-          value: entry.value,
-          size,
-          tags: Array.isArray(entry.tags) ? entry.tags.filter(Boolean) : [],
-          createdAt: Number(entry.createdAt) || 0,
-          updatedAt: Number(entry.updatedAt) || 0,
-          lastAccessedAt: Number(entry.lastAccessedAt) || 0,
-          expiresAt: Number(entry.expiresAt) || 0,
-        };
-        state.totalSize += size;
+        state.entries[key] = this.normalizeEntry(entry);
+        state.totalSize += state.entries[key].size;
       });
       return state;
     } catch (err) {
@@ -318,9 +349,9 @@ export class RequestCacheCore {
     Object.keys(state.entries).forEach((key) => {
       const entry = state.entries[key];
       if (entry.expiresAt > now) return;
-      state.totalSize -= entry.size;
-      delete state.entries[key];
-      removed += 1;
+      if (this.removeEntry(state, key)) {
+        removed += 1;
+      }
     });
     return removed;
   }
@@ -334,11 +365,11 @@ export class RequestCacheCore {
       return a.createdAt - b.createdAt;
     });
     let removed = 0;
-    candidates.forEach(([key, entry]) => {
+    candidates.forEach(([key]) => {
       if (state.totalSize <= this.options.maxSize) return;
-      state.totalSize -= entry.size;
-      delete state.entries[key];
-      removed += 1;
+      if (this.removeEntry(state, key)) {
+        removed += 1;
+      }
     });
     return removed;
   }

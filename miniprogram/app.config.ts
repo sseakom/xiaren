@@ -29,14 +29,20 @@ export default defineAppConfig({
       {
         pagePath: 'pages/index/index',
         text: '首页',
+        iconPath: 'assets/tabbar/home.png',
+        selectedIconPath: 'assets/tabbar/home-active.png',
       },
       {
         pagePath: 'pages/search/index',
         text: '搜索',
+        iconPath: 'assets/tabbar/search.png',
+        selectedIconPath: 'assets/tabbar/search-active.png',
       },
       {
         pagePath: 'pages/user/index',
         text: '我的',
+        iconPath: 'assets/tabbar/user.png',
+        selectedIconPath: 'assets/tabbar/user-active.png',
       },
     ],
   },

@@ -31,6 +31,42 @@ export interface ListResult<T = any> {
 // 向后兼容：保留 AnimationFormPayload 的 re-export
 export type { AnimationFormPayload };
 
+function createEmptyListResult<T>(): ListResult<T> {
+  return { list: [], total: 0 };
+}
+
+function toListResult<T>(result?: { data?: T[]; total?: number } | null): ListResult<T> {
+  if (!result) {
+    return createEmptyListResult<T>();
+  }
+  return {
+    list: Array.isArray(result.data) ? result.data : [],
+    total: typeof result.total === 'number' ? result.total : 0,
+  };
+}
+
+function requireLogin() {
+  if (!UserService.openid) {
+    throw new Error('未登录');
+  }
+}
+
+function trimText(value?: string) {
+  return (value || '').trim();
+}
+
+function requireTrimmedText(value: string | undefined, errorMessage: string) {
+  const trimmed = trimText(value);
+  if (!trimmed) {
+    throw new Error(errorMessage);
+  }
+  return trimmed;
+}
+
+function normalizeOptionalNote(note?: string) {
+  return trimText(note).slice(0, 200);
+}
+
 /**
  * 动画业务服务
  *  - list       → 云函数 listAnimations
@@ -50,14 +86,14 @@ export const AnimationService = {
     sortBy: ListSort = 'publish_time',
     category = '',
   ): Promise<ListResult> {
-    const r = await CloudService.callCloudSafe('listAnimations', {
+    return toListResult(
+      await CloudService.callCloudSafe('listAnimations', {
       page,
       pageSize,
       sortBy,
       category,
-    });
-    if (!r) return { list: [], total: 0 };
-    return { list: r.data || [], total: r.total || 0 };
+      }),
+    );
   },
 
   /** 获取单个动画详情（按 bvid） */
@@ -77,9 +113,12 @@ export const AnimationService = {
     pageSize = 20,
     category = '',
   ): Promise<ListResult> {
-    if (!keyword || !keyword.trim()) return { list: [], total: 0 };
+    const trimmedKeyword = trimText(keyword);
+    if (!trimmedKeyword) {
+      return createEmptyListResult();
+    }
     const res = await CloudService.callFunction('search', {
-      keyword: keyword.trim(),
+      keyword: trimmedKeyword,
       page,
       pageSize,
       category,
@@ -90,10 +129,7 @@ export const AnimationService = {
     if (result?.error) {
       console.warn('[Animation] search 失败', result.error);
     }
-    return {
-      list: result?.data || [],
-      total: result?.total || 0,
-    };
+    return toListResult(result);
   },
 };
 
@@ -114,7 +150,7 @@ export const RatingService = {
 
   /** 提交评分；云函数内部会自动触发 calcScore 聚合 */
   async submit(animationBvid: string, score: number): Promise<{ newRating: boolean }> {
-    if (!UserService.openid) throw new Error('未登录');
+    requireLogin();
     const r = await CloudService.callCloud('rating', {
       action: 'submit',
       animation_bvid: animationBvid,
@@ -129,15 +165,15 @@ export const RatingService = {
     pageSize = 20,
     includeAnim = false,
   ): Promise<{ list: Rating[]; total: number }> {
-    if (!UserService.openid) return { list: [], total: 0 };
-    const r = await CloudService.callCloudSafe('rating', {
+    if (!UserService.openid) return createEmptyListResult();
+    return toListResult<Rating>(
+      await CloudService.callCloudSafe('rating', {
       action: 'listMy',
       limit: pageSize,
       offset: page * pageSize,
       include_anim: includeAnim,
-    });
-    if (!r) return { list: [], total: 0 };
-    return { list: r.data || [], total: r.total || 0 };
+      }),
+    );
   },
 };
 
@@ -161,7 +197,7 @@ export const CollectionService = {
     type: 'collect' | 'watched',
     add: boolean,
   ): Promise<{ isCollected: boolean; isWatched: boolean }> {
-    if (!UserService.openid) throw new Error('未登录');
+    requireLogin();
     const r = await CloudService.callCloud('collection', {
       action: 'toggle',
       animation_bvid: animationBvid,
@@ -177,16 +213,16 @@ export const CollectionService = {
     pageSize = 20,
     includeAnim = false,
   ): Promise<{ list: Collection[]; total: number }> {
-    if (!UserService.openid) return { list: [], total: 0 };
-    const r = await CloudService.callCloudSafe('collection', {
+    if (!UserService.openid) return createEmptyListResult();
+    return toListResult<Collection>(
+      await CloudService.callCloudSafe('collection', {
       action: 'listMy',
       type,
       limit: pageSize,
       offset: page * pageSize,
       include_anim: includeAnim,
-    });
-    if (!r) return { list: [], total: 0 };
-    return { list: r.data || [], total: r.total || 0 };
+      }),
+    );
   },
 };
 
@@ -263,10 +299,11 @@ export const SubmissionService = {
    * 提交前实时校验 bvid 是否已被占用
    */
   async checkBvidUnique(bvid: string): Promise<boolean> {
-    if (!bvid || !bvid.trim()) return true;
+    const trimmedBvid = trimText(bvid);
+    if (!trimmedBvid) return true;
     const r = await CloudService.callCloudSafe('animationSubmit', {
       action: 'checkBvidUnique',
-      bvid: bvid.trim(),
+      bvid: trimmedBvid,
     });
     return !!(r && r.data?.unique);
   },
@@ -275,7 +312,7 @@ export const SubmissionService = {
    * 提交一条新动画（type=create）
    */
   async create(payload: AnimationFormPayload) {
-    if (!UserService.openid) throw new Error('未登录');
+    requireLogin();
     const r = await CloudService.callCloud('animationSubmit', {
       type: 'create',
       payload,
@@ -292,17 +329,17 @@ export const SubmissionService = {
     targetBvid: string,
     payload: { title: string; tag: string; note?: string },
   ) {
-    if (!UserService.openid) throw new Error('未登录');
-    if (!targetBvid) throw new Error('缺少原动画 bvid');
-    if (!payload.title?.trim()) throw new Error('标题不能为空');
-    if (!payload.tag?.trim()) throw new Error('标签不能为空');
-    const note = (payload.note || '').trim().slice(0, 200);
+    requireLogin();
+    const nextTargetBvid = requireTrimmedText(targetBvid, '缺少原动画 bvid');
+    const title = requireTrimmedText(payload.title, '标题不能为空');
+    const tag = requireTrimmedText(payload.tag, '标签不能为空');
+    const note = normalizeOptionalNote(payload.note);
     const r = await CloudService.callCloud('animationSubmit', {
       type: 'correction',
-      target_bvid: targetBvid,
+      target_bvid: nextTargetBvid,
       payload: {
-        title: payload.title.trim(),
-        tag: payload.tag.trim(),
+        title,
+        tag,
         ...(note ? { note } : {}),
       },
     });
@@ -317,16 +354,16 @@ export const SubmissionService = {
    *  - 管理员通过后从 animations 集合删除
    */
   async remove(targetBvid: string, reason: string, note?: string) {
-    if (!UserService.openid) throw new Error('未登录');
-    if (!targetBvid) throw new Error('缺少原动画 bvid');
-    const trimmed = (reason || '').trim();
-    if (trimmed.length < 4) throw new Error('请填写删除理由（至少 4 个字）');
-    const noteTrim = (note || '').trim().slice(0, 200);
+    requireLogin();
+    const nextTargetBvid = requireTrimmedText(targetBvid, '缺少原动画 bvid');
+    const trimmedReason = trimText(reason);
+    if (trimmedReason.length < 4) throw new Error('请填写删除理由（至少 4 个字）');
+    const noteTrim = normalizeOptionalNote(note);
     const r = await CloudService.callCloud('animationSubmit', {
       type: 'correction_delete',
-      target_bvid: targetBvid,
+      target_bvid: nextTargetBvid,
       payload: {
-        reason: trimmed,
+        reason: trimmedReason,
         ...(noteTrim ? { note: noteTrim } : {}),
       },
     });
@@ -345,11 +382,11 @@ export const SubmissionService = {
    * @returns 成功返回被删除的 _id
    */
   async cancel(_id: string): Promise<{ _id: string } | null> {
-    if (!UserService.openid) throw new Error('未登录');
-    if (!_id) throw new Error('缺少 _id');
+    requireLogin();
+    const submissionId = requireTrimmedText(_id, '缺少 _id');
     const r = await CloudService.callCloud('animationSubmit', {
       action: 'cancel',
-      _id,
+      _id: submissionId,
     });
     return r.data || null;
   },
@@ -385,7 +422,7 @@ export const ReviewService = {
 
   /** 通过 */
   async approve(id: string, comment = '') {
-    if (!UserService.openid) throw new Error('未登录');
+    requireLogin();
     await CloudService.callCloud('animationReview', {
       action: 'approve',
       _id: id,
@@ -395,12 +432,11 @@ export const ReviewService = {
 
   /** 驳回（必须填原因） */
   async reject(id: string, comment: string) {
-    if (!UserService.openid) throw new Error('未登录');
-    if (!comment || !comment.trim()) throw new Error('请填写驳回原因');
+    requireLogin();
     await CloudService.callCloud('animationReview', {
       action: 'reject',
       _id: id,
-      comment: comment.trim(),
+      comment: requireTrimmedText(comment, '请填写驳回原因'),
     });
   },
 };
