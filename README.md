@@ -178,6 +178,10 @@ sha-diao-taro/
 | `submissions` | `_id` | 用户投稿 / 勘误 / 删除申请 | `type` `target_bvid` `payload` `status` `submitter_openid` `submitted_at` `reviewer_openid` `review_time` `review_comment` |
 | `config` | `_id` | 配置 | `key` `value`，当前评分逻辑读取 `global_avg_score` |
 
+**安全约束：**
+- `users.is_admin` 仅允许在云开发控制台手动设置/修改
+- 所有云函数入口都会忽略客户端传入的 `is_admin` 字段
+
 ### 提交状态
 
 - `type`: `create` | `correction` | `correction_delete`
@@ -423,4 +427,3 @@ npx ts-node tests/request-cache.test.ts
 | 搜索改了一端不生效 | `fuzzy.ts` 和 `search/index.js` 必须同步 |
 | 我的提交看不到已通过记录 | 当前实现默认只返回审核中 / 已驳回 |
 | 业务跳转还在传 `_id` | 当前实现统一按 `bvid` 跳转和查询 |
-
