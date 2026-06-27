@@ -19,6 +19,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   btnText = '去看看',
   onAction,
 }) => {
+  const actions = showBtn
+    ? [{ text: btnText, onClick: onAction ? () => onAction : undefined }]
+    : [];
+
   return (
     <Empty
       image={icon}
@@ -26,11 +30,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       title={title}
       description={description}
       status="empty"
-      actions={
-        showBtn
-          ? [{ text: btnText, onClick: onAction ? () => onAction : undefined }]
-          : undefined
-      }
+      actions={actions}
     />
   );
 };

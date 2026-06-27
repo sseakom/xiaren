@@ -39,12 +39,29 @@ const SearchPage: React.FC = () => {
 
 
   useEffect(() => {
-    const h = Taro.getStorageSync(STORAGE_KEY) || [];
+    let h: string[] = [];
+    try {
+      const raw = Taro.getStorageSync(STORAGE_KEY);
+      if (Array.isArray(raw)) {
+        h = raw.filter((x): x is string => typeof x === 'string');
+      }
+    } catch {
+      h = [];
+    }
     setHistory(h.slice(0, 10));
   }, []);
 
   const saveHistory = (kw: string) => {
-    let h: string[] = Taro.getStorageSync(STORAGE_KEY) || [];
+    if (!kw.trim()) return;
+    let h: string[] = [];
+    try {
+      const raw = Taro.getStorageSync(STORAGE_KEY);
+      if (Array.isArray(raw)) {
+        h = raw.filter((x): x is string => typeof x === 'string');
+      }
+    } catch {
+      h = [];
+    }
     h = h.filter((x) => x !== kw);
     h.unshift(kw);
     h = h.slice(0, 10);
@@ -61,9 +78,10 @@ const SearchPage: React.FC = () => {
         setLoadingMore(p > 0);
         // 走 AnimationService.search（内部 callFunction 'search' + 超时/日志）
         const { list, total } = await AnimationService.search(q, p, PAGE_SIZE, cat);
-        setTotal(total);
-        setResults((prev) => (p === 0 || isNew ? list : [...prev, ...list]));
-        setHasMore(list.length >= PAGE_SIZE);
+        setTotal(total || 0);
+        const safeList = Array.isArray(list) ? list : [];
+        setResults((prev) => (p === 0 || isNew ? safeList : [...(Array.isArray(prev) ? prev : []), ...safeList]));
+        setHasMore(safeList.length >= PAGE_SIZE);
         setPage(p + 1);
       } catch (err) {
         toastError('[Search]', err, '搜索失败');

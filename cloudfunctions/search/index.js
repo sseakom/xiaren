@@ -38,7 +38,9 @@ function escapeRegExp(s) {
 }
 
 function isAllTokensPresent(text, tokens) {
+  if (!text || !tokens || tokens.length === 0) return false;
   for (const tk of tokens) {
+    if (!tk) continue;
     if (!text.includes(tk)) return false;
   }
   return true;
@@ -54,8 +56,8 @@ function isAllTokensPresent(text, tokens) {
  *  - 不匹配：0
  */
 function fuzzyScore(text, keyword, kwTokens) {
-  if (!text) return 0;
-  const t = String(text).toLowerCase();
+  if (!text && text !== 0 && text !== false) return 0;
+  const t = String(text || '').toLowerCase();
   if (!keyword) return 0;
   if (t === keyword) return 1000;
   if (t.startsWith(keyword)) return 500;
@@ -64,6 +66,7 @@ function fuzzyScore(text, keyword, kwTokens) {
   // token 按序出现？
   let cursor = 0;
   for (const tk of kwTokens) {
+    if (!tk) continue;
     const idx = t.indexOf(tk, cursor);
     if (idx === -1) {
       return isAllTokensPresent(t, kwTokens) ? 30 : 0;
@@ -85,19 +88,22 @@ function buildLoosePattern(tokens) {
 }
 
 /**
- * 判断某条动画是否包含指定 tag
+ * 判断某条动画是否包含指定的 tag
  *  - tag 可能是逗号分隔字符串，也可能是数组（兼容历史数据）
  */
 function hasTag(tag, target) {
   if (!tag || !target) return false;
+  const targetStr = String(target).trim();
+  if (!targetStr) return false;
+  
   if (Array.isArray(tag)) {
-    return tag.some((t) => String(t).trim() === target);
+    return tag.some((t) => String(t || '').trim() === targetStr);
   }
-  return String(tag)
+  return String(tag || '')
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean)
-    .includes(target);
+    .includes(targetStr);
 }
 
 exports.main = async (event /*, context*/) => {
@@ -143,12 +149,26 @@ exports.main = async (event /*, context*/) => {
     for (const it of list) {
       const titleScore = fuzzyScore(it.title, kwLower, kwTokens);
       const upScore = fuzzyScore(it.up_name, kwLower, kwTokens);
-      const tagScore = Array.isArray(it.tag)
-        ? it.tag.reduce((max, tg) => {
-            const s = fuzzyScore(String(tg), kwLower, kwTokens);
+      
+      let tagScore = 0;
+      if (Array.isArray(it.tag)) {
+        tagScore = it.tag.reduce((max, tg) => {
+          const s = fuzzyScore(String(tg || ''), kwLower, kwTokens);
+          return s > max ? s : max;
+        }, 0);
+      } else if (typeof it.tag === 'string') {
+        tagScore = fuzzyScore(it.tag, kwLower, kwTokens);
+        // 如果是逗号分隔的多个标签，也尝试分割后逐个评分
+        const tags = it.tag.split(',').map(t => t.trim()).filter(Boolean);
+        if (tags.length > 1) {
+          const multiTagScore = tags.reduce((max, tg) => {
+            const s = fuzzyScore(tg, kwLower, kwTokens);
             return s > max ? s : max;
-          }, 0)
-        : 0;
+          }, 0);
+          tagScore = Math.max(tagScore, multiTagScore);
+        }
+      }
+      
       const score = Math.max(titleScore * 2, upScore, tagScore);
       if (score > 0) {
         scored.push({ it, score });
