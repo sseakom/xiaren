@@ -125,7 +125,7 @@ export interface User {
   avatarUrl: string;
   created_at: string | Date;
   updated_at: string | Date;
-  /** 是否管理员；通过云函数 userService.setAdmin 设为 true */
+  /** 是否管理员；仅在云开发控制台手动修改 */
   is_admin?: boolean;
 }
 

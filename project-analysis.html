@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>shrimp-universe 源码分析报告</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-soft: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --warn: #d97706;
+      --ok: #059669;
+      --sidebar: #0f172a;
+      --sidebar-text: #cbd5e1;
+      --card: #ffffff;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #020617;
+      --bg-soft: #0f172a;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #1e293b;
+      --accent: #60a5fa;
+      --danger: #f87171;
+      --warn: #fbbf24;
+      --ok: #34d399;
+      --sidebar: #020617;
+      --sidebar-text: #cbd5e1;
+      --card: #0f172a;
+      --shadow: none;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    code {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.92em;
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar);
+      color: var(--sidebar-text);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sidebar h1 {
+      margin: 0;
+      font-size: 16px;
+      color: #fff;
+    }
+
+    .sidebar .sub {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .nav a {
+      color: var(--sidebar-text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .nav a:hover { background: rgba(255,255,255,0.08); }
+
+    .sidebar-footer {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 12px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .theme-toggle {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .main {
+      flex: 1;
+      max-width: 1100px;
+      padding: 36px 44px 60px;
+    }
+
+    .header {
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .header h2 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    section { margin-bottom: 40px; scroll-margin-top: 24px; }
+    h3 {
+      font-size: 24px;
+      margin: 0 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    h4 {
+      margin: 20px 0 10px;
+      font-size: 17px;
+    }
+
+    p { margin: 0 0 12px; }
+    ul { margin: 0 0 12px; padding-left: 20px; }
+    li { margin-bottom: 6px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+
+    .stat .value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      margin-bottom: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--bg-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    pre {
+      margin: 0 0 14px;
+      padding: 16px;
+      overflow-x: auto;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .module, .decision, .unknown, .risk {
+      border-left: 4px solid var(--accent);
+      padding: 14px 16px;
+      border-radius: 0 12px 12px 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .risk.high { border-left-color: var(--danger); }
+    .risk.medium { border-left-color: var(--warn); }
+    .badge {
+      display: inline-block;
+      margin-right: 8px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .badge.high { background: rgba(220,38,38,0.12); color: var(--danger); }
+    .badge.medium { background: rgba(217,119,6,0.12); color: var(--warn); }
+
+    .mobile-toggle {
+      display: none;
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 20;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: var(--sidebar);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    @media (max-width: 900px) {
+      .mobile-toggle { display: block; }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        z-index: 30;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .main {
+        padding: 64px 16px 40px;
+      }
+      .header h2 { font-size: 24px; }
+    }
+
+    @media print {
+      .sidebar, .mobile-toggle { display: none !important; }
+      .main { padding: 0; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <button class="mobile-toggle" id="mobileToggle">菜单</button>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div>
+        <h1>shrimp-universe</h1>
+        <div class="sub">源码分析报告</div>
+      </div>
+      <nav class="nav">
+        <a href="#overview">项目概览</a>
+        <a href="#shape">仓库结构</a>
+        <a href="#stack">技术栈</a>
+        <a href="#arch">架构设计</a>
+        <a href="#modules">核心模块</a>
+        <a href="#decisions">独特设计决策</a>
+        <a href="#quality">质量信号与风险</a>
+        <a href="#unknowns">待验证未知项</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div>2026-06-27</div>
+        <div>Generated by Repo Analyzer</div>
+        <button class="theme-toggle" id="themeToggle">切换暗色模式</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <h2>shrimp-universe 源码分析报告</h2>
+        <div class="meta">
+          <span>路径: /Users/admin/workspace/miniprogram/sha-diao-taro</span>
+          <span>主要语言: TypeScript</span>
+          <span>协议: Apache-2.0</span>
+          <span>CodeGraph: 69 files / 663 nodes / 1357 edges</span>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h3>项目概览</h3>
+        <div class="card">
+          <p>这个仓库的真实形态是一个围绕 <code>bvid</code> 统一业务主键、以云函数为唯一数据入口、并由客户端 service 层接管缓存与失效语义的微信小程序系统。它的核心价值不在页面数量，而在把评分、收藏、搜索、投稿、审核和用户态这些业务能力压进一套稳定的数据边界里。</p>
+          <ul>
+            <li>最强证据位于 <code>miniprogram/app.tsx</code>、<code>miniprogram/services/cloud.ts</code>、<code>miniprogram/services/business.ts</code> 与 <code>cloudfunctions/*</code>。</li>
+            <li>代码和文档都明确要求页面只能调用 service，客户端不允许直接碰数据库或业务云函数细节。</li>
+            <li>它不是模板式小程序，而是一个带有清晰读写协议和缓存失效策略的 serverless 应用。</li>
+          </ul>
+        </div>
+        <div class="grid">
+          <div class="stat"><div class="value">69</div><div class="label">源文件数</div></div>
+          <div class="stat"><div class="value">8455</div><div class="label">近似代码行数</div></div>
+          <div class="stat"><div class="value">3</div><div class="label">主要语言</div></div>
+          <div class="stat"><div class="value">20</div><div class="label">运行依赖</div></div>
+        </div>
+      </section>
+
+      <section id="shape">
+        <h3>仓库结构</h3>
+        <div class="card">
+          <p>这是一个单应用仓库，结构按前端壳层、业务 service、缓存基础设施和云函数后端组织，而不是按多个 package 切分。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>层级</th><th>路径</th><th>职责</th></tr></thead>
+            <tbody>
+              <tr><td>前端界面</td><td><code>miniprogram/pages</code> + <code>miniprogram/components</code></td><td>页面、组件、交互和展示</td></tr>
+              <tr><td>业务接口</td><td><code>miniprogram/services/business.ts</code> + <code>miniprogram/services/user.ts</code></td><td>页面到云函数之间的业务 API 面</td></tr>
+              <tr><td>基础设施</td><td><code>miniprogram/services/cloud.ts</code> + <code>requestCache*</code></td><td>云函数调用、缓存、超时、日志、失效</td></tr>
+              <tr><td>后端逻辑</td><td><code>cloudfunctions/*</code></td><td>数据库读写、鉴权、审核落地和搜索排序</td></tr>
+              <tr><td>验证与文档</td><td><code>tests/</code> <code>README.md</code> <code>AGENTS.md</code></td><td>缓存回归与项目约束说明</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="stack">
+        <h3>技术栈</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>类别</th><th>技术</th><th>版本</th><th>架构意义</th></tr></thead>
+            <tbody>
+              <tr><td>语言</td><td>TypeScript</td><td><code>^5.1.0</code></td><td>为页面、service 和缓存核心提供静态约束</td></tr>
+              <tr><td>框架</td><td>React + Taro</td><td><code>18</code> / <code>4.1.9</code></td><td>统一小程序页面模型与多端构建入口</td></tr>
+              <tr><td>UI</td><td>NutUI React Taro</td><td><code>^3.0.19</code></td><td>提供基础交互组件，但布局仍以自定义组件为主</td></tr>
+              <tr><td>后端</td><td>微信云函数 + 云数据库</td><td>managed</td><td>数据库访问被封装到云函数侧，客户端不直连 DB</td></tr>
+              <tr><td>缓存</td><td>自研请求缓存</td><td>in-repo</td><td>支持 TTL、LRU、Tag 精准失效和用户作用域</td></tr>
+              <tr><td>测试</td><td><code>ts-node</code> + <code>assert</code></td><td>in-repo</td><td>只覆盖缓存核心，没有扩展到主业务流</td></tr>
+              <tr><td>CI/CD</td><td>未检测到</td><td>—</td><td>构建、测试和部署主要依赖本地人工执行</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <p>这个项目真正的负载型依赖不是 NutUI，而是 <code>@tarojs/*</code> 与微信云开发模型；同时它把缓存系统内建到仓库里，说明团队更看重可控的失效语义，而不是通用缓存库的抽象一致性。</p>
+        </div>
+      </section>
+
+      <section id="arch">
+        <h3>架构设计</h3>
+        <div class="card">
+          <p>项目采用“单仓库前端 + 云函数后端”的 serverless 风格模块化单体。真正的边界不是多个服务进程，而是页面必须经过 service 层再进入云函数这一编码纪律。</p>
+        </div>
+
+        <h4>执行流程</h4>
+        <pre>Build:  yarn build:weapp
+Run:    yarn dev:weapp
+Test:   npx ts-node tests/request-cache.test.ts
+Deploy: 微信开发者工具手动上传并部署云函数</pre>
+
+        <h4>分层结构</h4>
+        <pre class="mermaid">graph TD
+    A[Pages And Components] --> B[Business Services]
+    B --> C[CloudService]
+    C --> D[Request Cache]
+    C --> E[Cloud Functions]
+    E --> F[(Cloud Database)]</pre>
+
+        <h4>数据流</h4>
+        <pre class="mermaid">sequenceDiagram
+    participant U as User
+    participant P as Page
+    participant S as Service
+    participant C as CloudService
+    participant F as CloudFunction
+    participant DB as Cloud DB
+    participant RC as Request Cache
+
+    U->>P: 搜索/评分/收藏/投稿
+    P->>S: 调业务方法
+    S->>C: callCloud / callFunction
+    C->>RC: 命中缓存或复用 in-flight
+    C->>F: 调云函数
+    F->>DB: 读写数据
+    DB-->>F: 返回结果
+    F-->>C: success/data/error
+    C->>RC: 写缓存或按 Tag 失效
+    C-->>S: 标准化结果
+    S-->>P: 页面可消费数据</pre>
+
+        <div class="card">
+          <p>关键证据包括 <code>miniprogram/app.tsx</code> 中的启动链路、<code>miniprogram/services/business.ts</code> 中的服务编排，以及 <code>cloudfunctions/search/index.js</code> 中的数据库候选拉取与模糊排序实现。</p>
+        </div>
+      </section>
+
+      <section id="modules">
+        <h3>核心模块</h3>
+        <div class="card">
+          <p>这个仓库的重心在基础设施与业务边界控制模块，而不在页面 JSX 本身。</p>
+        </div>
+
+        <div class="module">
+          <strong>CloudService</strong> <code>miniprogram/services/cloud.ts</code>
+          <p>统一承接云函数调用、超时、日志、缓存写入、in-flight 复用与 Tag 精准失效，是前后端边界和缓存边界的共同控制点。</p>
+        </div>
+
+        <div class="module">
+          <strong>Business Services</strong> <code>miniprogram/services/business.ts</code>
+          <p>把动画、评分、收藏、录入、审核这些动作收束成稳定 API，阻止页面依赖云函数 payload 细节。</p>
+        </div>
+
+        <div class="module">
+          <strong>UserService</strong> <code>miniprogram/services/user.ts</code>
+          <p>负责静默登录、手机号登录、建档兜底、资料更新和统计读取，是用户体验连续性的关键模块。</p>
+        </div>
+
+        <div class="module">
+          <strong>Request Cache Core</strong> <code>miniprogram/utils/requestCacheCore.ts</code>
+          <p>定义稳定序列化、哈希键、TTL、LRU 和 Tag 失效，是性能与状态一致性的基础设施。</p>
+        </div>
+
+        <div class="module">
+          <strong>Review Workflow</strong> <code>cloudfunctions/animationSubmit/index.js</code> + <code>cloudfunctions/animationReview/index.js</code>
+          <p>承接投稿、勘误、删除申请和审批落地，同时返回缓存失效所需元信息，是最关键的业务闭环。</p>
+        </div>
+      </section>
+
+      <section id="decisions">
+        <h3>独特设计决策</h3>
+        <div class="card">
+          <p>这个项目最有辨识度的地方，是它对小程序最容易失控的边界做了强约束，而不是继续堆页面功能。</p>
+        </div>
+
+        <div class="decision"><strong>01. 统一以 <code>bvid</code> 作为业务主键</strong><p>这让页面跳转、缓存 Tag 和跨集合关联都共享同一套标识语义，代价是协议迁移必须全链路一致。</p></div>
+        <div class="decision"><strong>02. 页面禁止直接触达数据库或业务云函数</strong><p>这显著降低了页面复杂度，但把大量正确性责任集中到了 service 层。</p></div>
+        <div class="decision"><strong>03. 缓存被提升为正式协议的一部分</strong><p><code>buildCacheTags()</code> 和 <code>buildInvalidationTags()</code> 说明缓存不是附加优化，而是状态一致性设计。</p></div>
+        <div class="decision"><strong>04. 审核返回元信息以驱动精准失效</strong><p><code>animationReview</code> 返回 <code>submissionId</code>、<code>targetBvid</code>、<code>submitterOpenid</code> 等字段，直接服务于前端缓存体系。</p></div>
+        <div class="decision"><strong>05. 搜索算法要求前后端双实现同步</strong><p>这提升了语义一致性，但也增加了每次算法演进的维护成本。</p></div>
+      </section>
+
+      <section id="quality">
+        <h3>质量信号与风险</h3>
+        <div class="card">
+          <p>仓库在基础设施设计上已经有明显工程意识，但自动化质量链路和安全封口还没有跟上。</p>
+        </div>
+
+        <h4>测试覆盖</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>指标</th><th>状态</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>Test Framework</td><td>Present</td><td>用 <code>ts-node</code> + <code>assert</code> 跑缓存脚本测试</td></tr>
+              <tr><td>Unit Tests</td><td>Present</td><td>缓存命中、TTL、LRU、异常降级、Tag 失效都有覆盖</td></tr>
+              <tr><td>Integration Tests</td><td>Absent</td><td>搜索、审核、登录、收藏、评分没有集成回归</td></tr>
+              <tr><td>E2E Tests</td><td>Absent</td><td>没有小程序端到端验证</td></tr>
+              <tr><td>Test Quality</td><td>Adequate</td><td>缓存测试有价值，但覆盖范围明显偏窄</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>文档质量</h4>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>文档</th><th>状态</th><th>质量</th></tr></thead>
+            <tbody>
+              <tr><td>README</td><td>Present</td><td>Good</td></tr>
+              <tr><td>Architecture Docs</td><td>Present</td><td>Good</td></tr>
+              <tr><td>API Docs</td><td>Partial</td><td>Adequate</td></tr>
+              <tr><td>Onboarding Guide</td><td>Present</td><td>Good</td></tr>
+              <tr><td>Inline Comments</td><td>Adequate</td><td>Adequate</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="risk high">
+          <h4><span class="badge high">HIGH</span><span><code>setAdmin</code> 接口缺少管理员鉴权</span></h4>
+          <p><strong>类别:</strong> Security</p>
+          <p><strong>证据:</strong> <code>cloudfunctions/userService/index.js</code> 中 <code>setAdmin()</code> 没有校验调用者是否已经是管理员。</p>
+          <p><strong>影响:</strong> 任意已登录用户理论上都可能给自己或他人提权，直接破坏审核和后台管理边界。</p>
+        </div>
+
+        <div class="risk medium">
+          <h4><span class="badge medium">MEDIUM</span><span>搜索候选集被硬编码截断为 200 条</span></h4>
+          <p><strong>类别:</strong> Scalability</p>
+          <p><strong>证据:</strong> <code>cloudfunctions/search/index.js</code> 查询候选集时固定 <code>.limit(200)</code>。</p>
+          <p><strong>影响:</strong> 数据规模上来后，搜索相关性排序只在截断子集上进行，召回完整性会下降。</p>
+        </div>
+
+        <div class="risk medium">
+          <h4><span class="badge medium">MEDIUM</span><span>自动化质量门禁缺失</span></h4>
+          <p><strong>类别:</strong> Operations</p>
+          <p><strong>证据:</strong> 仓库未检测到 GitHub Actions、Jenkinsfile 或其他 CI 配置。</p>
+          <p><strong>影响:</strong> 前后端协议漂移、缓存规则遗漏和云函数漏部署很难在合并前被自动发现。</p>
+        </div>
+
+        <div class="risk medium">
+          <h4><span class="badge medium">MEDIUM</span><span>云环境硬编码在客户端基础设施中</span></h4>
+          <p><strong>类别:</strong> Operations</p>
+          <p><strong>证据:</strong> <code>miniprogram/services/cloud.ts</code> 直接写死 <code>CLOUD_ENV</code>。</p>
+          <p><strong>影响:</strong> 多环境切换和多人协作容易出错，不利于 staging / production 分离。</p>
+        </div>
+
+        <h4>商业使用与二次开发可行性</h4>
+        <div class="card">
+          <p><strong>协议:</strong> Apache-2.0</p>
+          <p><strong>商业使用:</strong> 允许。</p>
+          <p><strong>闭源嵌入:</strong> 允许。</p>
+          <p><strong>修改与再分发:</strong> 可以，但必须保留许可证、版权声明和相关 NOTICE/归属信息。</p>
+          <p><strong>二次开发:</strong> 适合作为微信内容型小程序底座，但上线前应优先补齐安全与 CI。</p>
+          <p><strong>专利条款:</strong> 包含专利授权和专利诉讼触发的终止条款。</p>
+          <p><strong>署名要求:</strong> 分发时需保留 Apache 2.0 许可证和相关版权/NOTICE 信息。</p>
+        </div>
+      </section>
+
+      <section id="unknowns">
+        <h3>待验证未知项</h3>
+        <div class="card">
+          <p>最大的未知项不在目录结构，而在微信云开发运行时和真实数据规模下，这些代码假设是否都能成立。</p>
+        </div>
+        <div class="unknown"><strong><code>setAdmin</code> 是否被外层权限再次限制</strong><p>静态代码看不到管理员鉴权，必须通过实际调用链验证，否则应按生产级漏洞处理。</p></div>
+        <div class="unknown"><strong>数据库索引是否按文档建议已落地</strong><p>仓库无法验证云数据库真实索引配置，若缺失索引，搜索、审核和统计性能都会退化。</p></div>
+        <div class="unknown"><strong>云函数部署是否总与前端版本同步</strong><p>文档多次强调手动重部署，说明线上协议错位是现实风险而不是理论风险。</p></div>
+        <div class="unknown"><strong>搜索 200 条候选上限在真实数据集中的效果</strong><p>当前实现可能适合小数据量，但需要用真实样本验证召回质量。</p></div>
+        <div class="unknown"><strong>缓存失效规则是否覆盖所有边缘写路径</strong><p>主路径设计较完整，但组合操作后的状态一致性仍应通过真实回放验证。</p></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const html = document.documentElement;
+    const sidebar = document.getElementById('sidebar');
+    const mobileToggle = document.getElementById('mobileToggle');
+    const themeToggle = document.getElementById('themeToggle');
+
+    mobileToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+
+    themeToggle.addEventListener('click', () => {
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      themeToggle.textContent = next === 'dark' ? '切换亮色模式' : '切换暗色模式';
+      try { localStorage.setItem('project-analysis-theme', next); } catch (e) {}
+    });
+
+    try {
+      const saved = localStorage.getItem('project-analysis-theme');
+      if (saved === 'dark' || saved === 'light') {
+        html.setAttribute('data-theme', saved);
+        themeToggle.textContent = saved === 'dark' ? '切换亮色模式' : '切换暗色模式';
+      }
+    } catch (e) {}
+
+    document.querySelectorAll('.nav a').forEach((link) => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 900) sidebar.classList.remove('open');
+      });
+    });
+  </script>
+</body>
+</html>

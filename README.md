@@ -159,7 +159,7 @@ sha-diao-taro/
 | `animationSubmit` | 录入、勘误、删除申请、`bvid` 唯一性检查、取消提交 |
 | `animationMySubmissions` | 查询我的待审 / 驳回记录 |
 | `animationReview` | 管理员审核列表、详情、通过、驳回 |
-| `userService` | 用户档案、统计、管理员标记接口 |
+| `userService` | 用户档案、统计接口（无 `setAdmin` 接口） |
 | `login` | `wx.login` 后获取 openid |
 | `phoneLogin` | 手机号授权登录 + 建档 |
 

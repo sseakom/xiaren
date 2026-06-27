@@ -52,6 +52,7 @@ page / component
 - ❌ 不要再使用 `_id` 作为业务跳转或关联主键
 - ❌ 不要恢复自定义 tabbar 方案
 - ❌ 不要写“全量清缓存”式失效逻辑来规避精确失效
+- ❌ 不要通过任何云函数设置/修改 `users.is_admin`，仅允许在云开发控制台手动操作
 
 ### 必须遵守
 
@@ -107,7 +108,7 @@ page / component
 | `animationSubmit` | 录入、勘误、删除申请、取消提交、`bvid` 唯一性检查 |
 | `animationMySubmissions` | 我的提交列表 |
 | `animationReview` | 管理员审核列表、详情、审批 |
-| `userService` | 用户档案、统计、管理员标记接口 |
+| `userService` | 用户档案、统计接口（无 `setAdmin` 接口） |
 | `login` | 获取 openid |
 | `phoneLogin` | 手机号授权登录 |
 

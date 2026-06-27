@@ -202,10 +202,10 @@ function buildInvalidationTags(
       break;
     }
     case 'userService': {
-      if (data?.action === 'upsert' || data?.action === 'updateProfile' || data?.action === 'setAdmin') {
+      if (data?.action === 'upsert' || data?.action === 'updateProfile') {
         tags.push(currentScoped('user:profile'));
       }
-      if (data?.action === 'upsert' || data?.action === 'setAdmin') {
+      if (data?.action === 'upsert') {
         tags.push(currentScoped('user:stats'));
       }
       break;

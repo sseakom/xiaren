@@ -4,8 +4,11 @@
 //   - action: 'getInfo'          读用户档案；不存在则 upsert 空档案
 //   - action: 'upsert'           upsert 用户档案（不允许借机提权）
 //   - action: 'updateProfile'    局部更新用户档案
-//   - action: 'loadStats'        返回 ratingCount / collectCount
-//   - action: 'setAdmin'         管理员设置目标用户 is_admin（需鉴权）
+//   - action: 'loadStats'        返回 ratingCount / collectCount / watchCount
+//
+// 【安全约束】
+// - 无 setAdmin 接口；设置/取消管理员需直接在云开发控制台手动修改 users 文档
+// - upsert/updateProfile 会自动过滤客户端传入的 is_admin，仅控制台可更改
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -18,6 +21,14 @@ function getOpenid() {
 /** 未登录错误响应 */
 const NOT_LOGIN = { success: false, error: '未登录' };
 
+function sanitizeProfileInput(profile = {}) {
+  return {
+    nickName: profile.nickName,
+    avatarUrl: profile.avatarUrl,
+    phoneNumber: profile.phoneNumber,
+  };
+}
+
 function normalizeUser(openid, profile = {}, existing = {}) {
   const now = new Date();
   return {
@@ -25,9 +36,8 @@ function normalizeUser(openid, profile = {}, existing = {}) {
     nickName: profile.nickName != null ? profile.nickName : (existing.nickName || ''),
     avatarUrl: profile.avatarUrl != null ? profile.avatarUrl : (existing.avatarUrl || ''),
     phoneNumber: profile.phoneNumber != null ? profile.phoneNumber : (existing.phoneNumber || ''),
-    is_admin: profile.is_admin != null
-      ? !!profile.is_admin
-      : (existing.is_admin === undefined ? false : !!existing.is_admin),
+    // 仅控制台可修改 is_admin，云函数不会从 profile 读取/覆盖
+    is_admin: existing.is_admin === undefined ? false : !!existing.is_admin,
     created_at: existing.created_at || now,
     updated_at: now,
   };
@@ -82,7 +92,7 @@ async function upsert(profile) {
   if (!openid) return NOT_LOGIN;
   try {
     const existing = await getUserDoc(openid);
-    const data = normalizeUser(openid, profile, existing || {});
+    const data = normalizeUser(openid, sanitizeProfileInput(profile), existing || {});
     await db.collection('users').doc(openid).set({ data: toUserWriteData(data) });
     return { success: true, data };
   } catch (err) {
@@ -99,7 +109,7 @@ async function updateProfile(profile) {
   }
   try {
     const existing = await getUserDoc(openid);
-    const data = normalizeUser(openid, profile, existing || {});
+    const data = normalizeUser(openid, sanitizeProfileInput(profile), existing || {});
     await db.collection('users').doc(openid).set({ data: toUserWriteData(data) });
     return { success: true, data };
   } catch (err) {
@@ -130,30 +140,6 @@ async function loadStats() {
   }
 }
 
-/**
- * 设置目标用户的管理员标记
- * 安全模型：调用方必须是当前已存在的管理员
- * 首个管理员需要在云开发控制台手动加 is_admin=true（避免任意用户自封管理员）
- */
-async function setAdmin(payload) {
-  const openid = getOpenid();
-  if (!openid) return NOT_LOGIN;
-  const targetOpenid = payload && payload.target_openid;
-  const isAdmin = !!(payload && payload.is_admin);
-  if (!targetOpenid) {
-    return { success: false, error: '缺少 target_openid' };
-  }
-  try {
-    const existing = await getUserDoc(targetOpenid);
-    const data = normalizeUser(targetOpenid, { is_admin: isAdmin }, existing || {});
-    await db.collection('users').doc(targetOpenid).set({ data: toUserWriteData(data) });
-    return { success: true, data };
-  } catch (err) {
-    console.error('[userService.setAdmin] 失败', err);
-    return { success: false, error: err.message };
-  }
-}
-
 exports.main = async (event /*, context*/) => {
   const action = event && event.action;
   switch (action) {
@@ -165,8 +151,6 @@ exports.main = async (event /*, context*/) => {
       return updateProfile(event.profile);
     case 'loadStats':
       return loadStats();
-    case 'setAdmin':
-      return setAdmin(event);
     default:
       return { success: false, error: `未知 action: ${action}` };
   }
