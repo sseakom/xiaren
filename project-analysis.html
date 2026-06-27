@@ -1,609 +1,1356 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>shrimp-universe 源码分析报告</title>
-  <style>
-    :root {
-      --bg: #ffffff;
-      --bg-soft: #f8fafc;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --accent: #2563eb;
-      --danger: #dc2626;
-      --warn: #d97706;
-      --ok: #059669;
-      --sidebar: #0f172a;
-      --sidebar-text: #cbd5e1;
-      --card: #ffffff;
-      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虾仁宇宙 - 源码分析报告</title>
+<style>
+  /* ===================== Theme Variables ===================== */
+  :root,
+  [data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-sidebar: #1e293b;
+    --bg-sidebar-hover: #334155;
+    --bg-card: #ffffff;
+    --text-primary: #1a1a2e;
+    --text-secondary: #64748b;
+    --text-sidebar: #cbd5e1;
+    --text-sidebar-active: #ffffff;
+    --text-sidebar-muted: #64748b;
+    --border-color: #e2e8f0;
+    --accent: #3b82f6;
+    --accent-light: #eff6ff;
+    --success: #10b981;
+    --success-bg: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-bg: #fffbeb;
+    --danger: #ef4444;
+    --danger-bg: #fef2f2;
+    --info: #6366f1;
+    --info-bg: #eef2ff;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+    --radius: 8px;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    --overlay-bg: rgba(0,0,0,0.4);
+  }
 
-    html[data-theme="dark"] {
-      --bg: #020617;
-      --bg-soft: #0f172a;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --border: #1e293b;
-      --accent: #60a5fa;
-      --danger: #f87171;
-      --warn: #fbbf24;
-      --ok: #34d399;
-      --sidebar: #020617;
-      --sidebar-text: #cbd5e1;
-      --card: #0f172a;
-      --shadow: none;
-    }
+  [data-theme="dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-sidebar: #0c1222;
+    --bg-sidebar-hover: #1e293b;
+    --bg-card: #1e293b;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-sidebar: #94a3b8;
+    --text-sidebar-active: #ffffff;
+    --text-sidebar-muted: #475569;
+    --border-color: #334155;
+    --accent-light: #1e293b;
+    --success-bg: #052e1633;
+    --warning-bg: #42200633;
+    --danger-bg: #3b080833;
+    --info-bg: #1e1b4b33;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.3);
+    --overlay-bg: rgba(0,0,0,0.6);
+  }
 
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.7;
-    }
+  /* ===================== Reset & Base ===================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+    transition: background 0.25s, color 0.25s;
+  }
 
-    a { color: var(--accent); text-decoration: none; }
-    code {
-      background: var(--bg-soft);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 1px 6px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.92em;
-    }
+  /* ===================== Sidebar ===================== */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 260px;
+    background: var(--bg-sidebar);
+    display: flex;
+    flex-direction: column;
+    z-index: 200;
+    transition: transform 0.3s ease;
+  }
 
-    .layout { display: flex; min-height: 100vh; }
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  .sidebar-header h2 {
+    color: var(--text-sidebar-active);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-header .subtitle {
+    color: var(--text-sidebar);
+    font-size: 12px;
+    opacity: 0.65;
+  }
+
+  /* Scrollable nav area */
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  .sidebar-nav::-webkit-scrollbar { width: 4px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    color: var(--text-sidebar);
+    text-decoration: none;
+    font-size: 13.5px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    margin-bottom: 2px;
+  }
+
+  .nav-link:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-sidebar-active);
+  }
+
+  .nav-link.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .nav-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  /* ===================== Sidebar Footer ===================== */
+  .sidebar-footer {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-meta {
+    font-size: 11.5px;
+    color: var(--text-sidebar-muted);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .sidebar-meta a {
+    color: var(--text-sidebar);
+    text-decoration: none;
+    opacity: 0.75;
+  }
+
+  .sidebar-meta a:hover { opacity: 1; text-decoration: underline; }
+
+  /* Theme toggle button */
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: var(--text-sidebar);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: var(--font-sans);
+  }
+
+  .theme-toggle:hover {
+    background: rgba(255,255,255,0.12);
+    color: var(--text-sidebar-active);
+  }
+
+  .theme-toggle .toggle-icon { font-size: 15px; }
+  .theme-toggle .toggle-label { flex: 1; text-align: left; }
+
+  /* ===================== Main Content ===================== */
+  .main-content {
+    margin-left: 260px;
+    flex: 1;
+    padding: 40px 48px;
+    max-width: 1100px;
+    min-width: 0;
+    transition: margin-left 0.3s;
+  }
+
+  /* ===================== Report Header ===================== */
+  .report-header {
+    margin-bottom: 40px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .report-header h1 {
+    font-size: 30px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .report-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+  }
+
+  .report-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ===================== Sections ===================== */
+  .section {
+    margin-bottom: 48px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-title {
+    font-size: 21px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title .icon { font-size: 19px; }
+
+  .subsection-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 22px 0 10px;
+    color: var(--text-primary);
+  }
+
+  p { margin-bottom: 12px; }
+
+  ul, ol { padding-left: 1.5em; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+
+  /* ===================== Cards ===================== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+  }
+
+  .stat-card .stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .stat-card .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===================== Tables ===================== */
+  .table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead { background: var(--bg-secondary); }
+
+  th {
+    padding: 11px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: var(--accent-light); }
+
+  /* ===================== Badges ===================== */
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-high, .badge-danger   { background: var(--danger-bg);  color: var(--danger);  }
+  .badge-medium, .badge-warning { background: var(--warning-bg); color: var(--warning); }
+  .badge-low, .badge-success    { background: var(--success-bg); color: var(--success); }
+  .badge-info                   { background: var(--info-bg);    color: var(--info);    }
+
+  /* ===================== Code ===================== */
+  .code-block {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin-bottom: 14px;
+    white-space: pre;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .arch-diagram {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin: 14px 0;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  .dep-flow {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin: 14px 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre;
+  }
+
+  /* ===================== Mermaid Diagrams ===================== */
+  pre.mermaid {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin: 14px 0;
+    text-align: center;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  /* Once mermaid renders, the <pre> gets a <svg> child — let the SVG control sizing */
+  pre.mermaid[data-processed="true"] {
+    white-space: normal;
+    font-family: var(--font-sans);
+  }
+
+  pre.mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ===================== Feature List ===================== */
+  .feature-list { list-style: none; padding: 0; }
+
+  .feature-list li {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .feature-list li:last-child { border-bottom: none; }
+
+  .feature-list .bullet {
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ===================== Module Cards ===================== */
+  .module-card {
+    border-left: 4px solid var(--accent);
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    background: var(--bg-card);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .module-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .module-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--accent-light);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .module-card p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+
+  .module-card p strong {
+    color: var(--text-primary);
+  }
+
+  /* ===================== Decision Items ===================== */
+  .decision-item {
+    border-left: 4px solid var(--info);
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    background: var(--bg-card);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .decision-item-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .decision-number {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--info-bg);
+    color: var(--info);
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+  }
+
+  .decision-item p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+
+  /* ===================== Unknown Items ===================== */
+  .unknown-item {
+    border-left: 4px solid var(--info);
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    background: var(--bg-card);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .unknown-item-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+  }
+
+  .unknown-item-desc {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* ===================== Risk Items ===================== */
+  .risk-item {
+    border-left: 4px solid var(--border-color);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: var(--bg-card);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .risk-item.risk-high   { border-left-color: var(--danger); }
+  .risk-item.risk-medium { border-left-color: var(--warning); }
+  .risk-item.risk-low    { border-left-color: var(--success); }
+
+  .risk-item h4 {
+    font-size: 14.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .risk-item p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+  }
+
+  /* ===================== Mobile overlay ===================== */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    z-index: 150;
+  }
+
+  /* ===================== Mobile menu button ===================== */
+  .mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 14px; left: 14px;
+    z-index: 300;
+    background: var(--bg-sidebar);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    width: 38px; height: 38px;
+    font-size: 18px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ===================== Print ===================== */
+  @media print {
+    .sidebar, .mobile-menu-btn, .sidebar-overlay { display: none !important; }
+    .main-content { margin-left: 0; padding: 20px; }
+    .card, .table-wrapper { break-inside: avoid; }
+    body { background: white; color: black; }
+  }
+
+  /* ===================== Responsive ===================== */
+  @media (max-width: 768px) {
     .sidebar {
-      width: 260px;
-      background: var(--sidebar);
-      color: var(--sidebar-text);
-      position: sticky;
-      top: 0;
-      height: 100vh;
+      transform: translateX(-100%);
+      box-shadow: none;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .sidebar-overlay.visible { display: block; }
+
+    .main-content {
+      margin-left: 0;
       padding: 20px 16px;
+    }
+
+    .mobile-menu-btn {
       display: flex;
-      flex-direction: column;
-      gap: 16px;
     }
 
-    .sidebar h1 {
-      margin: 0;
-      font-size: 16px;
-      color: #fff;
-    }
+    .report-header h1 { font-size: 22px; }
+    .card-grid { grid-template-columns: 1fr 1fr; }
+  }
 
-    .sidebar .sub {
-      font-size: 12px;
-      color: #94a3b8;
-    }
-
-    .nav {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex: 1;
-    }
-
-    .nav a {
-      color: var(--sidebar-text);
-      padding: 8px 10px;
-      border-radius: 8px;
-      font-size: 13px;
-    }
-
-    .nav a:hover { background: rgba(255,255,255,0.08); }
-
-    .sidebar-footer {
-      border-top: 1px solid rgba(255,255,255,0.08);
-      padding-top: 12px;
-      font-size: 12px;
-      color: #94a3b8;
-    }
-
-    .theme-toggle {
-      margin-top: 10px;
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.06);
-      color: #fff;
-      cursor: pointer;
-    }
-
-    .main {
-      flex: 1;
-      max-width: 1100px;
-      padding: 36px 44px 60px;
-    }
-
-    .header {
-      margin-bottom: 28px;
-      padding-bottom: 18px;
-      border-bottom: 2px solid var(--border);
-    }
-
-    .header h2 {
-      margin: 0 0 8px;
-      font-size: 30px;
-    }
-
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    section { margin-bottom: 40px; scroll-margin-top: 24px; }
-    h3 {
-      font-size: 24px;
-      margin: 0 0 14px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid var(--accent);
-    }
-
-    h4 {
-      margin: 20px 0 10px;
-      font-size: 17px;
-    }
-
-    p { margin: 0 0 12px; }
-    ul { margin: 0 0 12px; padding-left: 20px; }
-    li { margin-bottom: 6px; }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px 20px;
-      box-shadow: var(--shadow);
-      margin-bottom: 14px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 14px;
-      margin: 16px 0;
-    }
-
-    .stat {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
-      text-align: center;
-    }
-
-    .stat .value {
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--accent);
-    }
-
-    .stat .label {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--card);
-      margin-bottom: 14px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: var(--bg-soft);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--muted);
-    }
-
-    tr:last-child td { border-bottom: none; }
-
-    pre {
-      margin: 0 0 14px;
-      padding: 16px;
-      overflow-x: auto;
-      background: var(--bg-soft);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
-
-    .module, .decision, .unknown, .risk {
-      border-left: 4px solid var(--accent);
-      padding: 14px 16px;
-      border-radius: 0 12px 12px 0;
-      background: var(--card);
-      border-top: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 12px;
-    }
-
-    .risk.high { border-left-color: var(--danger); }
-    .risk.medium { border-left-color: var(--warn); }
-    .badge {
-      display: inline-block;
-      margin-right: 8px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .badge.high { background: rgba(220,38,38,0.12); color: var(--danger); }
-    .badge.medium { background: rgba(217,119,6,0.12); color: var(--warn); }
-
-    .mobile-toggle {
-      display: none;
-      position: fixed;
-      top: 14px;
-      left: 14px;
-      z-index: 20;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: var(--sidebar);
-      color: #fff;
-      cursor: pointer;
-    }
-
-    @media (max-width: 900px) {
-      .mobile-toggle { display: block; }
-      .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        transform: translateX(-100%);
-        transition: transform 0.2s ease;
-        z-index: 30;
-      }
-      .sidebar.open { transform: translateX(0); }
-      .main {
-        padding: 64px 16px 40px;
-      }
-      .header h2 { font-size: 24px; }
-    }
-
-    @media print {
-      .sidebar, .mobile-toggle { display: none !important; }
-      .main { padding: 0; max-width: none; }
-    }
-  </style>
+  @media (max-width: 480px) {
+    .card-grid { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
-  <button class="mobile-toggle" id="mobileToggle">菜单</button>
-  <div class="layout">
-    <aside class="sidebar" id="sidebar">
-      <div>
-        <h1>shrimp-universe</h1>
-        <div class="sub">源码分析报告</div>
-      </div>
-      <nav class="nav">
-        <a href="#overview">项目概览</a>
-        <a href="#shape">仓库结构</a>
-        <a href="#stack">技术栈</a>
-        <a href="#arch">架构设计</a>
-        <a href="#modules">核心模块</a>
-        <a href="#decisions">独特设计决策</a>
-        <a href="#quality">质量信号与风险</a>
-        <a href="#unknowns">待验证未知项</a>
-      </nav>
-      <div class="sidebar-footer">
+  <!-- Mobile hamburger button -->
+  <button class="mobile-menu-btn" id="menuBtn" aria-label="Toggle navigation">&#9776;</button>
+
+  <!-- Mobile overlay (tap to close) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+
+    <!-- Header -->
+    <div class="sidebar-header">
+      <h2>虾仁宇宙</h2>
+      <div class="subtitle">源码分析报告</div>
+    </div>
+
+    <!-- Nav links (scrollable) -->
+    <div class="sidebar-nav" id="sidebarNav">
+      <a class="nav-link active" href="#overview">
+        <span class="nav-icon">&#128196;</span> 项目概览
+      </a>
+      <a class="nav-link" href="#shape">
+        <span class="nav-icon">&#128450;</span> 仓库结构
+      </a>
+      <a class="nav-link" href="#tech-stack">
+        <span class="nav-icon">&#128736;</span> 技术栈
+      </a>
+      <a class="nav-link" href="#architecture">
+        <span class="nav-icon">&#127959;</span> 架构设计
+      </a>
+      <a class="nav-link" href="#modules">
+        <span class="nav-icon">&#127919;</span> 核心模块
+      </a>
+      <a class="nav-link" href="#decisions">
+        <span class="nav-icon">&#9889;</span> 独特设计决策
+      </a>
+      <a class="nav-link" href="#quality">
+        <span class="nav-icon">&#128737;</span> 质量信号与风险
+      </a>
+      <a class="nav-link" href="#unknowns">
+        <span class="nav-icon">&#10067;</span> 待验证的未知项
+      </a>
+    </div>
+
+    <!-- Footer: meta info + theme toggle -->
+    <div class="sidebar-footer">
+      <div class="sidebar-meta">
         <div>2026-06-27</div>
-        <div>Generated by Repo Analyzer</div>
-        <button class="theme-toggle" id="themeToggle">切换暗色模式</button>
+        <div style="margin-top:4px;">Generated by Repo Analyzer</div>
       </div>
-    </aside>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+        <span class="toggle-icon" id="themeIcon">&#9790;</span>
+        <span class="toggle-label" id="themeLabel">切换暗色模式</span>
+      </button>
+    </div>
+  </nav>
 
-    <main class="main">
-      <header class="header">
-        <h2>shrimp-universe 源码分析报告</h2>
-        <div class="meta">
-          <span>路径: /Users/admin/workspace/miniprogram/sha-diao-taro</span>
-          <span>主要语言: TypeScript</span>
-          <span>协议: Apache-2.0</span>
-          <span>CodeGraph: 69 files / 663 nodes / 1357 edges</span>
-        </div>
-      </header>
+  <!-- Main content -->
+  <main class="main-content">
 
-      <section id="overview">
-        <h3>项目概览</h3>
-        <div class="card">
-          <p>这个仓库的真实形态是一个围绕 <code>bvid</code> 统一业务主键、以云函数为唯一数据入口、并由客户端 service 层接管缓存与失效语义的微信小程序系统。它的核心价值不在页面数量，而在把评分、收藏、搜索、投稿、审核和用户态这些业务能力压进一套稳定的数据边界里。</p>
-          <ul>
-            <li>最强证据位于 <code>miniprogram/app.tsx</code>、<code>miniprogram/services/cloud.ts</code>、<code>miniprogram/services/business.ts</code> 与 <code>cloudfunctions/*</code>。</li>
-            <li>代码和文档都明确要求页面只能调用 service，客户端不允许直接碰数据库或业务云函数细节。</li>
-            <li>它不是模板式小程序，而是一个带有清晰读写协议和缓存失效策略的 serverless 应用。</li>
-          </ul>
-        </div>
-        <div class="grid">
-          <div class="stat"><div class="value">69</div><div class="label">源文件数</div></div>
-          <div class="stat"><div class="value">8455</div><div class="label">近似代码行数</div></div>
-          <div class="stat"><div class="value">3</div><div class="label">主要语言</div></div>
-          <div class="stat"><div class="value">20</div><div class="label">运行依赖</div></div>
-        </div>
-      </section>
+    <!-- Report Header -->
+    <header class="report-header">
+      <h1>虾仁宇宙 - 沙雕动画评分 源码分析报告</h1>
+      <div class="report-meta">
+        <span class="report-meta-item">&#128197; 分析日期: 2026-06-27</span>
+        <span class="report-meta-item">&#128193; 路径: /Users/admin/workspace/miniprogram/sha-diao-taro</span>
+        <span class="report-meta-item">&#128296; 主要语言: TypeScript / JavaScript</span>
+        <span class="report-meta-item">&#128220; 协议: 未指定</span>
+      </div>
+    </header>
 
-      <section id="shape">
-        <h3>仓库结构</h3>
-        <div class="card">
-          <p>这是一个单应用仓库，结构按前端壳层、业务 service、缓存基础设施和云函数后端组织，而不是按多个 package 切分。</p>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>层级</th><th>路径</th><th>职责</th></tr></thead>
-            <tbody>
-              <tr><td>前端界面</td><td><code>miniprogram/pages</code> + <code>miniprogram/components</code></td><td>页面、组件、交互和展示</td></tr>
-              <tr><td>业务接口</td><td><code>miniprogram/services/business.ts</code> + <code>miniprogram/services/user.ts</code></td><td>页面到云函数之间的业务 API 面</td></tr>
-              <tr><td>基础设施</td><td><code>miniprogram/services/cloud.ts</code> + <code>requestCache*</code></td><td>云函数调用、缓存、超时、日志、失效</td></tr>
-              <tr><td>后端逻辑</td><td><code>cloudfunctions/*</code></td><td>数据库读写、鉴权、审核落地和搜索排序</td></tr>
-              <tr><td>验证与文档</td><td><code>tests/</code> <code>README.md</code> <code>AGENTS.md</code></td><td>缓存回归与项目约束说明</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+    <!-- ==================== Section: Project Overview ==================== -->
+    <section class="section" id="overview">
+      <h2 class="section-title"><span class="icon">&#128196;</span> 项目概览</h2>
 
-      <section id="stack">
-        <h3>技术栈</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>类别</th><th>技术</th><th>版本</th><th>架构意义</th></tr></thead>
-            <tbody>
-              <tr><td>语言</td><td>TypeScript</td><td><code>^5.1.0</code></td><td>为页面、service 和缓存核心提供静态约束</td></tr>
-              <tr><td>框架</td><td>React + Taro</td><td><code>18</code> / <code>4.1.9</code></td><td>统一小程序页面模型与多端构建入口</td></tr>
-              <tr><td>UI</td><td>NutUI React Taro</td><td><code>^3.0.19</code></td><td>提供基础交互组件，但布局仍以自定义组件为主</td></tr>
-              <tr><td>后端</td><td>微信云函数 + 云数据库</td><td>managed</td><td>数据库访问被封装到云函数侧，客户端不直连 DB</td></tr>
-              <tr><td>缓存</td><td>自研请求缓存</td><td>in-repo</td><td>支持 TTL、LRU、Tag 精准失效和用户作用域</td></tr>
-              <tr><td>测试</td><td><code>ts-node</code> + <code>assert</code></td><td>in-repo</td><td>只覆盖缓存核心，没有扩展到主业务流</td></tr>
-              <tr><td>CI/CD</td><td>未检测到</td><td>—</td><td>构建、测试和部署主要依赖本地人工执行</td></tr>
-            </tbody>
-          </table>
+      <!-- Thesis card -->
+      <div class="card">
+        <p>这是一个基于 Taro 4 + React 18 + TypeScript 的微信小程序，配套微信云开发（云函数 + 云数据库）。核心体验是为 B 站沙雕/搞笑动画评分、收藏、标记看过，并支持社区录入、勘误、删除申请与管理员审核。</p>
+        <p>项目的核心约束是<strong>客户端严禁直接操作数据库</strong>，所有业务读写都必须通过云函数调用，并由 <code>CloudService</code> 统一封装，实现了精细的请求缓存机制与基于业务 Tag 的缓存失效策略。</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="card-grid">
+        <div class="stat-card">
+          <div class="stat-value">50+</div>
+          <div class="stat-label">源文件数</div>
         </div>
-        <div class="card">
-          <p>这个项目真正的负载型依赖不是 NutUI，而是 <code>@tarojs/*</code> 与微信云开发模型；同时它把缓存系统内建到仓库里，说明团队更看重可控的失效语义，而不是通用缓存库的抽象一致性。</p>
+        <div class="stat-card">
+          <div class="stat-value">13</div>
+          <div class="stat-label">云函数数</div>
         </div>
-      </section>
-
-      <section id="arch">
-        <h3>架构设计</h3>
-        <div class="card">
-          <p>项目采用“单仓库前端 + 云函数后端”的 serverless 风格模块化单体。真正的边界不是多个服务进程，而是页面必须经过 service 层再进入云函数这一编码纪律。</p>
+        <div class="stat-card">
+          <div class="stat-value">2</div>
+          <div class="stat-label">编程语言</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-value">10+</div>
+          <div class="stat-label">页面数量</div>
+        </div>
+      </div>
+    </section>
 
-        <h4>执行流程</h4>
-        <pre>Build:  yarn build:weapp
-Run:    yarn dev:weapp
-Test:   npx ts-node tests/request-cache.test.ts
-Deploy: 微信开发者工具手动上传并部署云函数</pre>
+    <!-- ==================== Section: Repository Shape ==================== -->
+    <section class="section" id="shape">
+      <h2 class="section-title"><span class="icon">&#128450;</span> 仓库结构</h2>
 
-        <h4>分层结构</h4>
-        <pre class="mermaid">graph TD
-    A[Pages And Components] --> B[Business Services]
-    B --> C[CloudService]
-    C --> D[Request Cache]
-    C --> E[Cloud Functions]
-    E --> F[(Cloud Database)]</pre>
+      <div class="card">
+        <p>这是一个典型的前端微信小程序 + 后端云函数的混合仓库，前端采用 TypeScript 编写，后端云函数采用 JavaScript 编写。</p>
+      </div>
 
-        <h4>数据流</h4>
-        <pre class="mermaid">sequenceDiagram
-    participant U as User
-    participant P as Page
-    participant S as Service
+      <div class="arch-diagram">
+sha-diao-taro/
+├── miniprogram/             # 小程序前端
+│   ├── pages/              # 页面组件
+│   ├── components/         # 通用组件
+│   ├── services/           # 业务服务层
+│   ├── utils/              # 工具函数
+│   └── app.tsx             # 入口文件
+├── cloudfunctions/         # 云函数（13个核心云函数）
+├── tests/                  # 测试文件
+└── docs/                   # 文档</div>
+
+      <div class="card">
+        <p>项目采用清晰的分层架构，前端严格遵循业务逻辑与数据访问分离的原则，所有云函数调用都通过 <code>services/cloud.ts</code> 统一封装。</p>
+      </div>
+    </section>
+
+    <!-- ==================== Section: Tech Stack ==================== -->
+    <section class="section" id="tech-stack">
+      <h2 class="section-title"><span class="icon">&#9881;</span> 技术栈</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>类别</th>
+              <th>技术</th>
+              <th>版本</th>
+              <th>架构意义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>语言</td>
+              <td><code>TypeScript</code></td>
+              <td>5.x</td>
+              <td>提供类型安全，提升开发体验和代码可维护性</td>
+            </tr>
+            <tr>
+              <td>跨端框架</td>
+              <td><code>Taro</code></td>
+              <td>4.1.9</td>
+              <td>支持多端开发，当前主要面向微信小程序</td>
+            </tr>
+            <tr>
+              <td>UI 框架</td>
+              <td><code>React</code></td>
+              <td>18.x</td>
+              <td>组件化开发，搭配 NutUI 组件库</td>
+            </tr>
+            <tr>
+              <td>UI 组件库</td>
+              <td><code>NutUI React Taro</code></td>
+              <td>3.x</td>
+              <td>微信小程序适配的 UI 组件库</td>
+            </tr>
+            <tr>
+              <td>状态管理</td>
+              <td><code>Zustand</code></td>
+              <td>4.5.0</td>
+              <td>轻量级状态管理，用于局部状态共享</td>
+            </tr>
+            <tr>
+              <td>后端</td>
+              <td><code>微信云开发</code></td>
+              <td>-</td>
+              <td>云函数 + 云数据库 + 云存储</td>
+            </tr>
+            <tr>
+              <td>构建工具</td>
+              <td><code>Webpack 5</code></td>
+              <td>-</td>
+              <td>Taro 内置，处理模块打包</td>
+            </tr>
+            <tr>
+              <td>测试</td>
+              <td><code>ts-node</code></td>
+              <td>-</td>
+              <td>用于运行缓存系统的回归测试</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <p><strong>依赖观察</strong>：项目依赖相对精简，没有引入重型的状态管理库，前端核心业务逻辑主要集中在服务层封装，这符合小程序应用的特点。</p>
+      </div>
+    </section>
+
+    <!-- ==================== Section: Architecture Design ==================== -->
+    <section class="section" id="architecture">
+      <h2 class="section-title"><span class="icon">&#127970;</span> 架构设计</h2>
+
+      <h3 class="subsection-title">架构模式</h3>
+      <div class="card">
+        <p>这是一个典型的<strong>分层架构 + 服务化设计</strong>的小程序项目：</p>
+        <ol>
+          <li><strong>表现层</strong>：React 组件 + NutUI，负责 UI 渲染和用户交互</li>
+          <li><strong>业务服务层</strong>：<code>services/business.ts</code> + <code>services/user.ts</code>，封装业务逻辑</li>
+          <li><strong>数据访问层</strong>：<code>services/cloud.ts</code>，统一云函数调用、缓存管理、错误处理</li>
+          <li><strong>基础设施层</strong>：微信云开发（云函数 + 云数据库 + 云存储）</li>
+        </ol>
+      </div>
+
+      <h3 class="subsection-title">执行流程</h3>
+      <div class="code-block">构建:  yarn build:weapp
+开发:  yarn dev:weapp
+测试:  npx ts-node tests/request-cache.test.ts
+部署:  微信开发者工具上传云函数</div>
+
+      <h3 class="subsection-title">分层结构</h3>
+      <pre class="mermaid">
+graph TD
+    A["小程序页面层\nminiprogram/pages/*"] --&gt; B["业务服务层\nservices/business.ts\nservices/user.ts"]
+    B --&gt; C["云函数调用层\nservices/cloud.ts\n请求缓存 + Tag失效"]
+    C --&gt; D["云函数层\ncloudfunctions/*"]
+    D --&gt; E["云数据库\nanimations/ratings/collections/users/submissions"]
+      </pre>
+
+      <div class="card">
+        <p>分层设计非常清晰，每层都有明确的职责边界，特别是 <code>CloudService</code> 层不仅封装了云函数调用，还实现了完整的请求缓存机制。</p>
+      </div>
+
+      <h3 class="subsection-title">数据流</h3>
+      <pre class="mermaid">
+sequenceDiagram
+    participant P as 页面组件
+    participant S as BusinessService
     participant C as CloudService
-    participant F as CloudFunction
-    participant DB as Cloud DB
-    participant RC as Request Cache
+    participant CF as 云函数
+    participant DB as 云数据库
+    participant Cache as 本地缓存
 
-    U->>P: 搜索/评分/收藏/投稿
-    P->>S: 调业务方法
-    S->>C: callCloud / callFunction
-    C->>RC: 命中缓存或复用 in-flight
-    C->>F: 调云函数
-    F->>DB: 读写数据
-    DB-->>F: 返回结果
-    F-->>C: success/data/error
-    C->>RC: 写缓存或按 Tag 失效
-    C-->>S: 标准化结果
-    S-->>P: 页面可消费数据</pre>
+    P-&gt;&gt;S: 请求数据
+    S-&gt;&gt;C: 调用云函数
+    C-&gt;&gt;Cache: 检查缓存
+    alt 缓存命中
+        Cache--&gt;&gt;C: 返回缓存数据
+        C--&gt;&gt;S: 直接返回
+    else 缓存未命中
+        C-&gt;&gt;CF: 发送请求
+        CF-&gt;&gt;DB: 数据库操作
+        DB--&gt;&gt;CF: 返回结果
+        CF--&gt;&gt;C: 返回结果
+        C-&gt;&gt;Cache: 写入缓存 + Tag标记
+    end
+    C--&gt;&gt;S: 返回数据
+    S--&gt;&gt;P: 渲染界面
 
-        <div class="card">
-          <p>关键证据包括 <code>miniprogram/app.tsx</code> 中的启动链路、<code>miniprogram/services/business.ts</code> 中的服务编排，以及 <code>cloudfunctions/search/index.js</code> 中的数据库候选拉取与模糊排序实现。</p>
+    Note over P,Cache: 写操作时:
+    P-&gt;&gt;S: 提交数据
+    S-&gt;&gt;C: 调用写操作
+    C-&gt;&gt;CF: 发送写请求
+    CF-&gt;&gt;DB: 更新数据
+    C-&gt;&gt;Cache: 按Tag失效相关缓存
+      </pre>
+    </section>
+
+    <!-- ==================== Section: Core Modules ==================== -->
+    <section class="section" id="modules">
+      <h2 class="section-title"><span class="icon">&#127919;</span> 核心模块</h2>
+
+      <div class="card">
+        <p>项目的架构重心在于<strong>统一的云服务封装层</strong>和<strong>精巧的缓存系统</strong>，以及<strong>围绕 bvid 主键的业务模型设计</strong>。</p>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-title">
+          CloudService - 云函数统一调用层
+          <span class="module-badge">核心</span>
         </div>
-      </section>
+        <p><strong>职责</strong>：统一封装所有云函数调用，提供请求缓存、超时控制、日志记录、in-flight 请求复用、写后缓存失效</p>
+        <p><strong>关键文件</strong>：<code>miniprogram/services/cloud.ts</code></p>
+        <p><strong>架构意义</strong>：这是整个前端的核心基础设施，所有云函数调用都必须通过这一层，实现了横切关注点的统一管理</p>
+      </div>
 
-      <section id="modules">
-        <h3>核心模块</h3>
-        <div class="card">
-          <p>这个仓库的重心在基础设施与业务边界控制模块，而不在页面 JSX 本身。</p>
+      <div class="module-card">
+        <div class="module-card-title">
+          RequestCache - 本地请求缓存核心
+          <span class="module-badge">技术深度</span>
         </div>
+        <p><strong>职责</strong>：实现 TTL 过期、LRU 淘汰、Tag 精准失效的缓存引擎</p>
+        <p><strong>关键文件</strong>：<code>miniprogram/utils/requestCacheCore.ts</code></p>
+        <p><strong>架构意义</strong>：这是项目中最具技术深度的模块，大幅降低了云函数调用频率，提升用户体验</p>
+      </div>
 
-        <div class="module">
-          <strong>CloudService</strong> <code>miniprogram/services/cloud.ts</code>
-          <p>统一承接云函数调用、超时、日志、缓存写入、in-flight 复用与 Tag 精准失效，是前后端边界和缓存边界的共同控制点。</p>
+      <div class="module-card">
+        <div class="module-card-title">
+          云函数集 - Serverless 业务逻辑
+          <span class="module-badge">后端</span>
         </div>
+        <p><strong>职责</strong>：13 个云函数分别负责不同业务域的逻辑</p>
+        <p><strong>关键文件</strong>：<code>cloudfunctions/*</code></p>
+        <p><strong>架构意义</strong>：云函数作为后端入口，承担数据读写、业务校验、权限控制的职责</p>
+      </div>
 
-        <div class="module">
-          <strong>Business Services</strong> <code>miniprogram/services/business.ts</code>
-          <p>把动画、评分、收藏、录入、审核这些动作收束成稳定 API，阻止页面依赖云函数 payload 细节。</p>
+      <div class="module-card">
+        <div class="module-card-title">
+          UserMediaList - 用户列表通用组件
+          <span class="module-badge">组件</span>
         </div>
+        <p><strong>职责</strong>：统一"我的收藏"与"我的评分"的分页列表壳子</p>
+        <p><strong>关键文件</strong>：<code>miniprogram/components/UserMediaList</code></p>
+        <p><strong>架构意义</strong>：体现了组件复用的设计思想，减少重复代码</p>
+      </div>
+    </section>
 
-        <div class="module">
-          <strong>UserService</strong> <code>miniprogram/services/user.ts</code>
-          <p>负责静默登录、手机号登录、建档兜底、资料更新和统计读取，是用户体验连续性的关键模块。</p>
+    <!-- ==================== Section: Distinctive Design Decisions ==================== -->
+    <section class="section" id="decisions">
+      <h2 class="section-title"><span class="icon">&#9889;</span> 独特设计决策</h2>
+
+      <div class="card">
+        <p>多个非显而易见的设计决策定义了这个项目的架构风格和开发约束。</p>
+      </div>
+
+      <div class="decision-item">
+        <div class="decision-item-title">
+          <span class="decision-number">01</span>
+          bvid 作为唯一业务主键
         </div>
+        <p>与传统使用数据库自增 ID 不同，项目选择 B 站视频 ID（bvid）作为全系统的业务主键。</p>
+        <p><strong>收益</strong>：数据天然与 B 站对齐，导入/导出方便，关联关系清晰</p>
+        <p><strong>代价</strong>：需要处理 bvid 唯一性校验，数据库索引需要额外设计</p>
+      </div>
 
-        <div class="module">
-          <strong>Request Cache Core</strong> <code>miniprogram/utils/requestCacheCore.ts</code>
-          <p>定义稳定序列化、哈希键、TTL、LRU 和 Tag 失效，是性能与状态一致性的基础设施。</p>
+      <div class="decision-item">
+        <div class="decision-item-title">
+          <span class="decision-number">02</span>
+          前端绝对禁止直连数据库
         </div>
+        <p>这是项目最严格的约束，所有数据访问都必须经过云函数。</p>
+        <p><strong>收益</strong>：安全性极高，所有数据访问都经过云函数权限校验</p>
+        <p><strong>代价</strong>：开发成本较高，即使简单查询也需要写云函数</p>
+      </div>
 
-        <div class="module">
-          <strong>Review Workflow</strong> <code>cloudfunctions/animationSubmit/index.js</code> + <code>cloudfunctions/animationReview/index.js</code>
-          <p>承接投稿、勘误、删除申请和审批落地，同时返回缓存失效所需元信息，是最关键的业务闭环。</p>
+      <div class="decision-item">
+        <div class="decision-item-title">
+          <span class="decision-number">03</span>
+          基于业务 Tag 的精准缓存失效
         </div>
-      </section>
+        <p>不同于常见的"写后全量清缓存，项目实现了精细的 Tag 机制。</p>
+        <p><strong>收益</strong>：缓存命中率高，用户体验好</p>
+        <p><strong>代价</strong>：需要仔细设计 Tag 规则和失效策略，容易遗漏</p>
+      </div>
 
-      <section id="decisions">
-        <h3>独特设计决策</h3>
-        <div class="card">
-          <p>这个项目最有辨识度的地方，是它对小程序最容易失控的边界做了强约束，而不是继续堆页面功能。</p>
+      <div class="decision-item">
+        <div class="decision-item-title">
+          <span class="decision-number">04</span>
+          云函数统一返回格式 + 前端双接口
         </div>
+        <p><code>callCloud</code>（抛出异常）和 <code>callCloudSafe</code>（返回 null）适应不同场景。</p>
+      </div>
 
-        <div class="decision"><strong>01. 统一以 <code>bvid</code> 作为业务主键</strong><p>这让页面跳转、缓存 Tag 和跨集合关联都共享同一套标识语义，代价是协议迁移必须全链路一致。</p></div>
-        <div class="decision"><strong>02. 页面禁止直接触达数据库或业务云函数</strong><p>这显著降低了页面复杂度，但把大量正确性责任集中到了 service 层。</p></div>
-        <div class="decision"><strong>03. 缓存被提升为正式协议的一部分</strong><p><code>buildCacheTags()</code> 和 <code>buildInvalidationTags()</code> 说明缓存不是附加优化，而是状态一致性设计。</p></div>
-        <div class="decision"><strong>04. 审核返回元信息以驱动精准失效</strong><p><code>animationReview</code> 返回 <code>submissionId</code>、<code>targetBvid</code>、<code>submitterOpenid</code> 等字段，直接服务于前端缓存体系。</p></div>
-        <div class="decision"><strong>05. 搜索算法要求前后端双实现同步</strong><p>这提升了语义一致性，但也增加了每次算法演进的维护成本。</p></div>
-      </section>
-
-      <section id="quality">
-        <h3>质量信号与风险</h3>
-        <div class="card">
-          <p>仓库在基础设施设计上已经有明显工程意识，但自动化质量链路和安全封口还没有跟上。</p>
+      <div class="decision-item">
+        <div class="decision-item-title">
+          <span class="decision-number">05</span>
+          搜索算法前后端双实现
         </div>
+        <p><strong>收益</strong>：前端可以做预搜索或离线搜索</p>
+        <p><strong>代价</strong>：需要保证算法同步，维护成本翻倍</p>
+      </div>
+    </section>
 
-        <h4>测试覆盖</h4>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>指标</th><th>状态</th><th>说明</th></tr></thead>
-            <tbody>
-              <tr><td>Test Framework</td><td>Present</td><td>用 <code>ts-node</code> + <code>assert</code> 跑缓存脚本测试</td></tr>
-              <tr><td>Unit Tests</td><td>Present</td><td>缓存命中、TTL、LRU、异常降级、Tag 失效都有覆盖</td></tr>
-              <tr><td>Integration Tests</td><td>Absent</td><td>搜索、审核、登录、收藏、评分没有集成回归</td></tr>
-              <tr><td>E2E Tests</td><td>Absent</td><td>没有小程序端到端验证</td></tr>
-              <tr><td>Test Quality</td><td>Adequate</td><td>缓存测试有价值，但覆盖范围明显偏窄</td></tr>
-            </tbody>
-          </table>
-        </div>
+    <!-- ==================== Section: Quality Signals & Risks ==================== -->
+    <section class="section" id="quality">
+      <h2 class="section-title"><span class="icon">&#128737;</span> 质量信号与风险</h2>
 
-        <h4>文档质量</h4>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>文档</th><th>状态</th><th>质量</th></tr></thead>
-            <tbody>
-              <tr><td>README</td><td>Present</td><td>Good</td></tr>
-              <tr><td>Architecture Docs</td><td>Present</td><td>Good</td></tr>
-              <tr><td>API Docs</td><td>Partial</td><td>Adequate</td></tr>
-              <tr><td>Onboarding Guide</td><td>Present</td><td>Good</td></tr>
-              <tr><td>Inline Comments</td><td>Adequate</td><td>Adequate</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="card">
+        <p>项目在架构设计和文档方面做得很好，但在测试覆盖和 CI/CD 方面有所欠缺。</p>
+      </div>
 
-        <div class="risk high">
-          <h4><span class="badge high">HIGH</span><span><code>setAdmin</code> 接口缺少管理员鉴权</span></h4>
-          <p><strong>类别:</strong> Security</p>
-          <p><strong>证据:</strong> <code>cloudfunctions/userService/index.js</code> 中 <code>setAdmin()</code> 没有校验调用者是否已经是管理员。</p>
-          <p><strong>影响:</strong> 任意已登录用户理论上都可能给自己或他人提权，直接破坏审核和后台管理边界。</p>
-        </div>
+      <h3 class="subsection-title">测试覆盖</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>指标</th><th>状态</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>测试框架</td>
+              <td>ts-node</td>
+              <td>仅用于缓存系统测试</td>
+            </tr>
+            <tr>
+              <td>单元测试</td>
+              <td>部分覆盖</td>
+              <td>仅缓存核心逻辑有测试</td>
+            </tr>
+            <tr>
+              <td>集成测试</td>
+              <td>缺失</td>
+              <td>无端到端或云函数集成测试</td>
+            </tr>
+            <tr>
+              <td>E2E 测试</td>
+              <td>缺失</td>
+              <td>无小程序 UI 自动化测试</td>
+            </tr>
+            <tr>
+              <td>测试质量</td>
+              <td>良好</td>
+              <td>缓存系统的测试覆盖了主要边界情况</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-        <div class="risk medium">
-          <h4><span class="badge medium">MEDIUM</span><span>搜索候选集被硬编码截断为 200 条</span></h4>
-          <p><strong>类别:</strong> Scalability</p>
-          <p><strong>证据:</strong> <code>cloudfunctions/search/index.js</code> 查询候选集时固定 <code>.limit(200)</code>。</p>
-          <p><strong>影响:</strong> 数据规模上来后，搜索相关性排序只在截断子集上进行，召回完整性会下降。</p>
-        </div>
+      <h3 class="subsection-title">CI/CD</h3>
+      <div class="card">
+        <p><strong>无 CI/CD 配置</strong>：项目没有 <code>.github/workflows</code> 或其他 CI 配置，依赖人工部署云函数和发布小程序。</p>
+      </div>
 
-        <div class="risk medium">
-          <h4><span class="badge medium">MEDIUM</span><span>自动化质量门禁缺失</span></h4>
-          <p><strong>类别:</strong> Operations</p>
-          <p><strong>证据:</strong> 仓库未检测到 GitHub Actions、Jenkinsfile 或其他 CI 配置。</p>
-          <p><strong>影响:</strong> 前后端协议漂移、缓存规则遗漏和云函数漏部署很难在合并前被自动发现。</p>
-        </div>
+      <h3 class="subsection-title">文档质量</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>文档</th><th>状态</th><th>质量</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>README</td>
+              <td>完整</td>
+              <td>优秀（架构、云函数、数据模型都有详细说明）</td>
+            </tr>
+            <tr>
+              <td>AGENTS.md</td>
+              <td>完整</td>
+              <td>优秀（给 AI 的开发指南非常详细）</td>
+            </tr>
+            <tr>
+              <td>架构文档</td>
+              <td>部分</td>
+              <td>README 中有架构说明，但缺少专门的架构文档</td>
+            </tr>
+            <tr>
+              <td>内联注释</td>
+              <td>适中</td>
+              <td>核心模块有注释，但部分业务代码注释较少</td>
+            </tr>
+            <tr>
+              <td>开发指南</td>
+              <td>完整</td>
+              <td>README 中有详细的开发约定</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-        <div class="risk medium">
-          <h4><span class="badge medium">MEDIUM</span><span>云环境硬编码在客户端基础设施中</span></h4>
-          <p><strong>类别:</strong> Operations</p>
-          <p><strong>证据:</strong> <code>miniprogram/services/cloud.ts</code> 直接写死 <code>CLOUD_ENV</code>。</p>
-          <p><strong>影响:</strong> 多环境切换和多人协作容易出错，不利于 staging / production 分离。</p>
-        </div>
+      <h3 class="subsection-title">风险列表</h3>
 
-        <h4>商业使用与二次开发可行性</h4>
-        <div class="card">
-          <p><strong>协议:</strong> Apache-2.0</p>
-          <p><strong>商业使用:</strong> 允许。</p>
-          <p><strong>闭源嵌入:</strong> 允许。</p>
-          <p><strong>修改与再分发:</strong> 可以，但必须保留许可证、版权声明和相关 NOTICE/归属信息。</p>
-          <p><strong>二次开发:</strong> 适合作为微信内容型小程序底座，但上线前应优先补齐安全与 CI。</p>
-          <p><strong>专利条款:</strong> 包含专利授权和专利诉讼触发的终止条款。</p>
-          <p><strong>署名要求:</strong> 分发时需保留 Apache 2.0 许可证和相关版权/NOTICE 信息。</p>
-        </div>
-      </section>
+      <div class="risk-item risk-medium">
+        <h4><span class="badge badge-medium">中</span> 搜索算法前后端同步风险</h4>
+        <p><strong>类别</strong>：可维护性</p>
+        <p><strong>证据</strong>：<code>miniprogram/utils/fuzzy.ts</code> 和 <code>cloudfunctions/search/index.js</code> 独立实现</p>
+        <p><strong>影响</strong>：搜索结果不一致，用户困惑</p>
+      </div>
 
-      <section id="unknowns">
-        <h3>待验证未知项</h3>
-        <div class="card">
-          <p>最大的未知项不在目录结构，而在微信云开发运行时和真实数据规模下，这些代码假设是否都能成立。</p>
-        </div>
-        <div class="unknown"><strong><code>setAdmin</code> 是否被外层权限再次限制</strong><p>静态代码看不到管理员鉴权，必须通过实际调用链验证，否则应按生产级漏洞处理。</p></div>
-        <div class="unknown"><strong>数据库索引是否按文档建议已落地</strong><p>仓库无法验证云数据库真实索引配置，若缺失索引，搜索、审核和统计性能都会退化。</p></div>
-        <div class="unknown"><strong>云函数部署是否总与前端版本同步</strong><p>文档多次强调手动重部署，说明线上协议错位是现实风险而不是理论风险。</p></div>
-        <div class="unknown"><strong>搜索 200 条候选上限在真实数据集中的效果</strong><p>当前实现可能适合小数据量，但需要用真实样本验证召回质量。</p></div>
-        <div class="unknown"><strong>缓存失效规则是否覆盖所有边缘写路径</strong><p>主路径设计较完整，但组合操作后的状态一致性仍应通过真实回放验证。</p></div>
-      </section>
-    </main>
-  </div>
+      <div class="risk-item risk-medium">
+        <h4><span class="badge badge-medium">中</span> 缓存 Tag 遗漏风险</h4>
+        <p><strong>类别</strong>：可靠性</p>
+        <p><strong>证据</strong>：<code>services/cloud.ts</code> 中的失效逻辑需要手动维护</p>
+        <p><strong>影响</strong>：数据不一致，用户看到过期数据</p>
+      </div>
+
+      <div class="risk-item risk-medium">
+        <h4><span class="badge badge-medium">中</span> 无自动化测试覆盖</h4>
+        <p><strong>类别</strong>：可维护性</p>
+        <p><strong>证据</strong>：除缓存外无其他测试</p>
+        <p><strong>影响</strong>：重构风险高，回归问题难发现</p>
+      </div>
+
+      <div class="risk-item risk-low">
+        <h4><span class="badge badge-low">低</span> 无 CI/CD</h4>
+        <p><strong>类别</strong>：开发效率</p>
+        <p><strong>证据</strong>：无 workflow 配置</p>
+        <p><strong>影响</strong>：依赖人工部署，容易出错</p>
+      </div>
+
+      <div class="risk-item risk-low">
+        <h4><span class="badge badge-low">低</span> 云环境配置硬编码</h4>
+        <p><strong>类别</strong>：安全性</p>
+        <p><strong>证据</strong>：<code>services/cloud.ts</code> 中 <code>CLOUD_ENV</code> 硬编码</p>
+        <p><strong>影响</strong>：切换环境需要改代码</p>
+      </div>
+
+      <h3 class="subsection-title">商业使用与二次开发可行性</h3>
+      <div class="card">
+        <p><strong>协议</strong>：未指定（仓库中无 LICENSE 文件）</p>
+        <p><strong>商业使用</strong>：不明确（需联系作者）</p>
+        <p><strong>闭源嵌入</strong>：不明确（需联系作者）</p>
+        <p><strong>修改与再分发</strong>：不明确（需联系作者）</p>
+        <p><strong>二次开发</strong>：架构设计良好，二次开发友好；但缺少许可证授权</p>
+        <p><strong>专利条款</strong>：无相关声明</p>
+        <p><strong>署名要求</strong>：无相关声明</p>
+        <p><strong>注意</strong>：由于仓库中没有明确的 LICENSE 文件，建议在使用前联系项目作者获取授权。</p>
+      </div>
+    </section>
+
+    <!-- ==================== Section: Unknowns Worth Verifying ==================== -->
+    <section class="section" id="unknowns">
+      <h2 class="section-title"><span class="icon">&#10067;</span> 待验证的未知项</h2>
+
+      <div class="card">
+        <p>以下是静态分析无法确定、需要实际运行验证的高价值问题。</p>
+      </div>
+
+      <div class="unknown-item">
+        <div class="unknown-item-title">云函数性能与冷启动</div>
+        <p class="unknown-item-desc">微信云函数的冷启动时间对用户体验影响有多大？直接影响首屏加载时间和用户留存。</p>
+      </div>
+
+      <div class="unknown-item">
+        <div class="unknown-item-title">缓存大小在实际使用中的表现</div>
+        <p class="unknown-item-desc">当前 768KB 的最大缓存限制对真实用户是否足够？LRU 策略是否合理？</p>
+      </div>
+
+      <div class="unknown-item">
+        <div class="unknown-item-title">搜索算法的相关性质量</div>
+        <p class="unknown-item-desc">当前的 fuzzy 搜索算法在真实数据上的相关性如何？搜索是核心功能，质量直接影响用户体验。</p>
+      </div>
+
+      <div class="unknown-item">
+        <div class="unknown-item-title">审核流程的用户体验</div>
+        <p class="unknown-item-desc">用户提交审核后，反馈周期多长？驳回理由是否清晰？影响用户贡献内容的积极性。</p>
+      </div>
+    </section>
+
+    <!-- ==================== Summary ==================== -->
+    <section class="section">
+      <h2 class="section-title"><span class="icon">&#128218;</span> 总结</h2>
+      <div class="card">
+        <p>这是一个<strong>架构设计非常清晰、代码质量较高</strong>的微信小程序项目。项目的亮点在于：</p>
+        <ol>
+          <li><strong>严格的分层架构</strong>，前端与后端彻底解耦</li>
+          <li><strong>精巧的缓存系统</strong>，基于 Tag 的精准失效策略</li>
+          <li><strong>完整的文档</strong>，特别是 <code>AGENTS.md</code> 给 AI 的开发指南</li>
+          <li><strong>一致的代码风格</strong>，遵循明确的开发约定</li>
+        </ol>
+        <p>主要改进空间在于<strong>测试覆盖</strong>和<strong>CI/CD 自动化</strong>，以及<strong>添加明确的开源许可证</strong>。</p>
+      </div>
+    </section>
+
+  </main>
 
   <script>
+    /* ===================== Theme Toggle ===================== */
     const html = document.documentElement;
-    const sidebar = document.getElementById('sidebar');
-    const mobileToggle = document.getElementById('mobileToggle');
     const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeLabel = document.getElementById('themeLabel');
 
-    mobileToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
+    function applyTheme(theme) {
+      html.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        themeIcon.textContent = '\u2600';
+        themeLabel.textContent = '切换亮色模式';
+      } else {
+        themeIcon.textContent = '\u263D';
+        themeLabel.textContent = '切换暗色模式';
+      }
+      try { localStorage.setItem('theme', theme); } catch(e) {}
+    }
+
+    (function() {
+      let saved;
+      try { saved = localStorage.getItem('theme'); } catch(e) {}
+      if (saved === 'dark' || saved === 'light') {
+        applyTheme(saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        applyTheme('dark');
+      } else {
+        applyTheme('light');
+      }
+    })();
 
     themeToggle.addEventListener('click', () => {
-      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
-      themeToggle.textContent = next === 'dark' ? '切换亮色模式' : '切换暗色模式';
-      try { localStorage.setItem('project-analysis-theme', next); } catch (e) {}
+      applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
     });
 
-    try {
-      const saved = localStorage.getItem('project-analysis-theme');
-      if (saved === 'dark' || saved === 'light') {
-        html.setAttribute('data-theme', saved);
-        themeToggle.textContent = saved === 'dark' ? '切换亮色模式' : '切换暗色模式';
+    /* ===================== Mobile Sidebar ===================== */
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const menuBtn = document.getElementById('menuBtn');
+
+    function openSidebar() {
+      sidebar.classList.add('open');
+      overlay.classList.add('visible');
+      menuBtn.innerHTML = '\u2715';
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('visible');
+      menuBtn.innerHTML = '\u2630';
+    }
+
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+
+    overlay.addEventListener('click', closeSidebar);
+
+    document.getElementById('sidebarNav').addEventListener('click', (e) => {
+      if (e.target.closest('.nav-link') && window.innerWidth <= 768) {
+        closeSidebar();
       }
-    } catch (e) {}
-
-    document.querySelectorAll('.nav a').forEach((link) => {
-      link.addEventListener('click', () => {
-        if (window.innerWidth <= 900) sidebar.classList.remove('open');
-      });
     });
+
+    /* ===================== Active Nav Highlight on Scroll ===================== */
+    const sections = document.querySelectorAll('.section');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(l => l.classList.remove('active'));
+          const id = entry.target.getAttribute('id');
+          const active = document.querySelector('.nav-link[href="#'+id+'"]');
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+
+    /* ===================== Mermaid.js Integration ===================== */
+    const mermaidBlocks = document.querySelectorAll('pre.mermaid');
+    const mermaidSources = [];
+    mermaidBlocks.forEach((block, i) => {
+      mermaidSources.push(block.textContent.trim());
+      block.setAttribute('data-mermaid-index', i);
+    });
+
+    function getMermaidTheme() {
+      return html.getAttribute('data-theme') === 'dark' ? 'dark' : 'default';
+    }
+
+    function initMermaid() {
+      if (typeof mermaid === 'undefined') return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: getMermaidTheme(),
+        securityLevel: 'loose',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif',
+      });
+      renderMermaidDiagrams();
+    }
+
+    async function renderMermaidDiagrams() {
+      if (typeof mermaid === 'undefined') return;
+      for (let i = 0; i < mermaidBlocks.length; i++) {
+        const block = mermaidBlocks[i];
+        const source = mermaidSources[i];
+        try {
+          const id = 'mermaid-diagram-' + i;
+          const { svg } = await mermaid.render(id, source);
+          block.innerHTML = svg;
+          block.setAttribute('data-processed', 'true');
+        } catch (e) {
+          block.textContent = source;
+          block.removeAttribute('data-processed');
+          console.warn('Mermaid render failed for block ' + i + ':', e);
+        }
+      }
+    }
+
+    const _originalApplyTheme = applyTheme;
+    applyTheme = function(theme) {
+      _originalApplyTheme(theme);
+      if (typeof mermaid !== 'undefined') {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: theme === 'dark' ? 'dark' : 'default',
+          securityLevel: 'loose',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif',
+        });
+        renderMermaidDiagrams();
+      }
+    };
+
+    (function() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+      script.onload = initMermaid;
+      script.onerror = function() {
+        console.warn('Mermaid CDN unavailable. Diagrams will display as source text.');
+      };
+      document.head.appendChild(script);
+    })();
   </script>
 </body>
 </html>
