@@ -165,7 +165,7 @@ const DetailPage: React.FC = () => {
     anim.duration ?? anim.durationText ?? null,
   );
   const playCount = anim.play_count || 0;
-  const likeCount = anim.like_count || 0;
+  const danmakuCount = anim.danmaku_count || 0;
 
   return (
     <View className={styles.pageDetail}>
@@ -207,14 +207,14 @@ const DetailPage: React.FC = () => {
                   <View className={styles.statTop}>
                     <View className={styles.statIconWrap}>
                       <AppIcon
-                        name="collection"
+                        name="danmaku"
                         size="26rpx"
                         className={styles.statIcon}
                       />
                     </View>
-                    <Text className={styles.statLabel}>点赞</Text>
+                    <Text className={styles.statLabel}>弹幕</Text>
                   </View>
-                  <Text className={styles.statValue}>{formatNumber(likeCount)}</Text>
+                  <Text className={styles.statValue}>{formatNumber(danmakuCount)}</Text>
                 </View>
               </View>
             </View>

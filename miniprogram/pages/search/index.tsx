@@ -12,7 +12,6 @@ import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import CategoryFilter from '@/components/CategoryFilter';
 import AnimCard from '@/components/AnimCard';
-import AnimCardFooter from '@/components/AnimCardFooter';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
 import styles from './index.module.scss';
 
@@ -231,7 +230,6 @@ const SearchPage: React.FC = () => {
                     key={item._id}
                     item={item}
                     onClick={goDetail}
-                    footer={<AnimCardFooter item={item} />}
                   />
                 ))}
 

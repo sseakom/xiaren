@@ -11,7 +11,6 @@ import AppIcon from '@/components/AppIcon';
 import Skeleton from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import AnimCard from '@/components/AnimCard';
-import AnimCardFooter from '@/components/AnimCardFooter';
 import LoadMoreFooter from '@/components/LoadMoreFooter';
 import CategoryFilter from '@/components/CategoryFilter';
 import styles from './index.module.scss';
@@ -19,13 +18,29 @@ import styles from './index.module.scss';
 const PAGE_SIZE = 20;
 
 /** 顶部排序 Tab 配置
- * 注意：duration_asc 和 duration_desc 共用同一个"时长" Tab，asc↔desc 状态由 sortBy 决定。
+ * 播放量 / 弹幕 / 时长 共用同一种切换逻辑：点同一按钮在 asc↔desc 间切换。
  */
 const SORT_TABS: { key: ListSort; label: string }[] = [
   { key: 'publish_time', label: '最新' },
-  { key: 'play_count', label: '播放量' },
-  { key: 'duration_asc', label: '时长' },
+  { key: 'play_count_desc', label: '播放量' },
+  { key: 'danmaku_count_desc', label: '弹幕' },
+  { key: 'duration_desc', label: '时长' },
 ];
+
+/** 播放量/弹幕/时长 三组 asc/desc 前缀，点击同一按钮时互相切换 */
+const TOGGLE_PAIRS: Record<string, [ListSort, ListSort]> = {
+  play_count: ['play_count_desc', 'play_count_asc'],
+  danmaku_count: ['danmaku_count_desc', 'danmaku_count_asc'],
+  duration: ['duration_desc', 'duration_asc'],
+};
+
+/** 取 sortBy 的分组前缀（去掉 _asc/_desc） */
+function sortGroup(key: ListSort): string | null {
+  if (key === 'play_count_asc' || key === 'play_count_desc') return 'play_count';
+  if (key === 'danmaku_count_asc' || key === 'danmaku_count_desc') return 'danmaku_count';
+  if (key === 'duration_asc' || key === 'duration_desc') return 'duration';
+  return null;
+}
 
 const IndexPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<ListSort>('publish_time');
@@ -67,18 +82,30 @@ const IndexPage: React.FC = () => {
     }
   });
 
-  /** 切换排序（特殊处理"时长"：点同一按钮切换 asc/desc） */
+  /** 切换排序：播放量/弹幕/时长的按钮点同一下在 asc↔desc 间切换 */
   const onSwitchSort = (key: ListSort) => {
-    if (key === 'duration_asc' || key === 'duration_desc') {
-      setSortBy((prev) => (prev === 'duration_asc' ? 'duration_desc' : 'duration_asc'));
+    const group = sortGroup(key);
+    if (group && TOGGLE_PAIRS[group]) {
+      const [desc, asc] = TOGGLE_PAIRS[group];
+      setSortBy((prev) => {
+        // 当前在该组内 → 切到另一个方向
+        if (sortGroup(prev) === group) return prev === desc ? asc : desc;
+        // 从其他组切过来 → 默认用该组第一项（desc）
+        return desc;
+      });
     } else {
       setSortBy(key);
     }
   };
 
-  // 时长 tab 是否激活（asc 或 desc 都算激活）
-  const isDurationActive = sortBy === 'duration_asc' || sortBy === 'duration_desc';
-  const durationArrow = sortBy === 'duration_asc' ? '↑' : sortBy === 'duration_desc' ? '↓' : '';
+  // 各组是否激活 + 箭头方向
+  const currentGroup = sortGroup(sortBy);
+  const getArrow = (group: string) => {
+    if (currentGroup !== group) return '';
+    const [, asc] = TOGGLE_PAIRS[group];
+    return sortBy === asc ? '↑' : '↓';
+  };
+  const isGroupActive = (group: string) => currentGroup === group;
 
   /** 切换分类筛选 */
   const onSwitchCategory = (cat: string) => {
@@ -91,21 +118,18 @@ const IndexPage: React.FC = () => {
       {/* 排序 Tab 栏 */}
       <View className={styles.sortBar}>
         {SORT_TABS.map((tab) => {
-          const active = tab.key === 'publish_time'
-            ? sortBy === 'publish_time'
-            : tab.key === 'play_count'
-              ? sortBy === 'play_count'
-              : isDurationActive;
-          const isDuration = tab.key === 'duration_asc' || tab.key === 'duration_desc';
+          const group = sortGroup(tab.key);
+          const active = group ? isGroupActive(group) : sortBy === tab.key;
+          const arrow = group ? getArrow(group) : '';
           return (
             <View
               key={tab.key}
               className={`${styles.sortTab} ${active ? styles.sortTabActive : ''}`}
-              onClick={() => onSwitchSort(tab.key as ListSort)}
+              onClick={() => onSwitchSort(tab.key)}
             >
               <Text>{tab.label}</Text>
-              {isDuration ? (
-                <Text className={styles.sortArrow}>{active ? durationArrow : '↑'}</Text>
+              {group ? (
+                <Text className={styles.sortArrow}>{active ? arrow : '↑'}</Text>
               ) : null}
             </View>
           );
@@ -124,7 +148,6 @@ const IndexPage: React.FC = () => {
                 item={item}
                 onClick={goDetail}
                 rank={idx}
-                footer={<AnimCardFooter item={item} />}
               />
             ))}
 

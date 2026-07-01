@@ -4,7 +4,7 @@
 // 入参：{ page, pageSize, sortBy, category }
 //   - page      页码（从 0 开始）
 //   - pageSize  每页条数（默认 20，上限 100）
-//   - sortBy    'publish_time' | 'play_count' | 'duration_asc' | 'duration_desc'
+//   - sortBy    'publish_time' | 'play_count_asc' | 'play_count_desc' | 'danmaku_count_asc' | 'danmaku_count_desc' | 'duration_asc' | 'duration_desc'
 //   - category  分类筛选（对应 tag 中的某一项，空字符串表示不筛选）
 //
 // 出参：{ success, data, total, page, pageSize }
@@ -52,8 +52,14 @@ function parseDurationToSec(d) {
 /** 排序比较器：按 sortBy 计算 key，按 key 比较 */
 function compare(a, b, sortBy) {
   switch (sortBy) {
-    case 'play_count':
+    case 'play_count_asc':
+      return (a.play_count || 0) - (b.play_count || 0);
+    case 'play_count_desc':
       return (b.play_count || 0) - (a.play_count || 0);
+    case 'danmaku_count_asc':
+      return (a.danmaku_count || 0) - (b.danmaku_count || 0);
+    case 'danmaku_count_desc':
+      return (b.danmaku_count || 0) - (a.danmaku_count || 0);
     case 'duration_asc':
       return parseDurationToSec(a.duration) - parseDurationToSec(b.duration);
     case 'duration_desc':
@@ -96,17 +102,37 @@ function matchCategory(item, category) {
 /**
  * 判断是否可以走 DB 端分页（无需全量加载）
  *  - 无 category 筛选
- *  - sortBy 为 publish_time 或 play_count（DB 能直接 orderBy）
+ *  - sortBy 为 publish_time 或 play_count_desc（DB 能直接 orderBy）
  */
 function canUseDbPagination(sortBy, category) {
-  return !category && (sortBy === 'publish_time' || sortBy === 'play_count');
+  return !category && (sortBy === 'publish_time' || sortBy === 'play_count_desc');
 }
 
-/** DB 端排序字段映射 */
-const DB_SORT_FIELD = {
-  publish_time: 'publish_time',
-  play_count: 'play_count',
+/** DB 端排序字段+方向映射 */
+const DB_SORT_CONFIG = {
+  publish_time: { field: 'publish_time', order: 'desc' },
+  play_count_desc: { field: 'play_count', order: 'desc' },
 };
+
+/**
+ * 全量拉取 animations 集合（云开发单次 get 最多返回 100 条，需分页循环）
+ * @returns 全部记录数组
+ */
+async function fetchAllAnimations() {
+  const all = [];
+  const BATCH = 100;
+  let skip = 0;
+  // 安全上限：最多拉 2000 条（本项目数据量 < 500，留余量）
+  const MAX = 2000;
+  while (skip < MAX) {
+    const res = await db.collection('animations').skip(skip).limit(BATCH).get();
+    const batch = res.data || [];
+    all.push(...batch);
+    if (batch.length < BATCH) break; // 没有更多了
+    skip += BATCH;
+  }
+  return all;
+}
 
 exports.main = async (event) => {
   const page = Math.max(Number(event.page) || 0, 0);
@@ -115,9 +141,9 @@ exports.main = async (event) => {
   const category = String(event.category || '').trim();
 
   try {
-    // ---- 快速路径：DB 端分页（无 category + publish_time/play_count 排序）----
+    // ---- 快速路径：DB 端分页（无 category + publish_time/play_count_desc 排序）----
     if (canUseDbPagination(sortBy, category)) {
-      const sortField = DB_SORT_FIELD[sortBy];
+      const { field: sortField, order: sortOrder } = DB_SORT_CONFIG[sortBy];
       const skip = page * pageSize;
 
       // 并行：count 总数 + 分页数据
@@ -125,7 +151,7 @@ exports.main = async (event) => {
         db.collection('animations').count(),
         db
           .collection('animations')
-          .orderBy(sortField, 'desc')
+          .orderBy(sortField, sortOrder)
           .skip(skip)
           .limit(pageSize)
           .get(),
@@ -140,9 +166,9 @@ exports.main = async (event) => {
       };
     }
 
-    // ---- 慢速路径：全量加载 + 内存过滤/排序（duration 排序或 category 筛选）----
-    const res = await db.collection('animations').limit(1000).get();
-    let all = res.data || [];
+    // ---- 慢速路径：全量加载 + 内存过滤/排序（duration/danmaku 排序或 category 筛选）----
+    // 注意：云开发单次 get 最多返回 100 条，limit(1000) 无效，需分页循环拉取
+    let all = await fetchAllAnimations();
 
     // 分类筛选
     if (category) {

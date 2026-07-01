@@ -27,6 +27,7 @@ export type AppIconName =
   | 'close'
   | 'collection'
   | 'collectionFilled'
+  | 'danmaku'
   | 'edit'
   | 'empty'
   | 'home'
@@ -57,6 +58,7 @@ const ICON_MAP: Record<AppIconName, IconComponent> = {
   close: Close,
   collection: Heart,
   collectionFilled: HeartF,
+  danmaku: Message,
   edit: Edit,
   empty: Message,
   home: Home,

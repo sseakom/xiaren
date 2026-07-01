@@ -1,7 +1,9 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
 import { View, Image, Text } from '@tarojs/components';
 import { Animation } from '@/types';
-import { formatDuration } from '@/utils/util';
+import { formatDuration, formatNumber, parseTags } from '@/utils/util';
+import AppIcon from '@/components/AppIcon';
+import TagRow from '@/components/TagRow';
 import styles from './index.module.scss';
 
 export interface AnimCardProps {
@@ -10,31 +12,49 @@ export interface AnimCardProps {
   /** 点击回调（不传则不响应） */
   onClick?: (bvid: string) => void;
   /**
-   * 自定义卡片底部内容（标题以下区域）
-   * - 不传：什么都不显示
-   * - 传 ReactNode：由调用方决定显示 tag / meta / stats 等
-   */
-  footer?: ReactNode;
-  /**
    * 排行榜序号（>=0 时显示在封面左上角）
-   * - 用于首页的"按播放量排序"tab 等
    */
   rank?: number;
   /** 封面占位图（CDN fallback） */
   coverFallback?: string;
 }
 
+/** footer：标签 + 作者·播放·弹幕·评分 */
+const Footer: React.FC<{ item: Animation }> = ({ item }) => (
+  <>
+    <TagRow tags={parseTags(item.tags ?? item.tag) || []} nowarp />
+    <View className={styles.animMeta}>
+      <Text className={styles.metaAuthor} numberOfLines={1}>
+        {item.up_name}
+      </Text>
+      <Text className={styles.metaDot}>·</Text>
+      <Text className={styles.metaPlay}>
+        {formatNumber(item.play_count || 0)} 播放
+      </Text>
+      <Text className={styles.metaDot}>·</Text>
+      <Text className={styles.metaDanmaku}>
+        {formatNumber(item.danmaku_count || 0)}
+        弹幕</Text>
+      {item.score != null ? (
+        <>
+          <Text className={styles.metaDot}>·</Text>
+          <View className={styles.metaScore}>
+            <AppIcon name="rating" size="20rpx" className={styles.metaScoreIcon} />
+            <Text>{item.score.toFixed(1)}</Text>
+          </View>
+        </>
+      ) : null}
+    </View>
+  </>
+);
+
 /**
  * 通用动画卡片
- *  - 公共结构：coverWrap（封面 + 可选时长） + info（标题 + 自定义 footer）
- *  - 不一样的底部由调用方通过 footer 注入：
- *      index 页：tag + 作者·播放·评分
- *      search 页：作者 + 播放/点赞统计
+ *  - 公共结构：coverWrap（封面 + 可选时长） + info（标题 + footer）
  */
 const AnimCard: React.FC<AnimCardProps> = ({
   item,
   onClick,
-  footer,
   rank,
   coverFallback,
 }) => {
@@ -76,7 +96,7 @@ const AnimCard: React.FC<AnimCardProps> = ({
         <View className={styles.animSubTitle}>
           <Text className={styles.animSubTitleText}>{item.original_title}</Text>
         </View>
-        {footer}
+        <Footer item={item} />
       </View>
     </View>
   );

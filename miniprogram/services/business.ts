@@ -20,7 +20,14 @@ import { UserService } from './user';
  */
 
 /** 列表排序方式 */
-export type ListSort = 'publish_time' | 'play_count' | 'duration_asc' | 'duration_desc';
+export type ListSort =
+  | 'publish_time'
+  | 'play_count_asc'
+  | 'play_count_desc'
+  | 'danmaku_count_asc'
+  | 'danmaku_count_desc'
+  | 'duration_asc'
+  | 'duration_desc';
 
 /** 列表分页结果（含总数） */
 export interface ListResult<T = any> {

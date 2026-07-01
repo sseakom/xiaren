@@ -11,6 +11,7 @@ export interface Animation {
   cover: string;
   duration: number; // 秒
   play_count: number;
+  danmaku_count: number;
   like_count: number;
   /** 贝叶斯综合评分（0-10） */
   score?: number;
