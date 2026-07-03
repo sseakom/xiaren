@@ -14,13 +14,6 @@ export const SUBMISSION_TYPE_LABEL: Record<SubmissionType, string> = {
   correction_delete: '申请删除',
 };
 
-/** 提交类型 → 中文标签（完整，横幅/详情用） */
-export const SUBMISSION_TYPE_LABEL_FULL: Record<SubmissionType, string> = {
-  create: '录入动画',
-  correction: '勘误',
-  correction_delete: '申请删除',
-};
-
 /** 提交类型 → 样式 class 名（对应各页 module.scss） */
 export const SUBMISSION_TYPE_COLOR: Record<SubmissionType, string> = {
   create: 'typeCreate',

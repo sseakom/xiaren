@@ -67,10 +67,6 @@ class RequestCacheServiceImpl {
     return requestCache.invalidateByTags(tags);
   }
 
-  clearAll() {
-    return requestCache.clear();
-  }
-
   cleanup(trigger = 'manual'): CacheCleanupResult {
     const result = requestCache.cleanup();
     if (result.removedExpired || result.removedLru || result.removedManual) {

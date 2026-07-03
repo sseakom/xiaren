@@ -1,5 +1,4 @@
 import Taro from '@tarojs/taro';
-import { THEME_PRIMARY_COLOR } from '@/constants/theme';
 
 /**
  * 工具函数集合 - 迁移自原生小程序 utils/util.js
@@ -83,68 +82,6 @@ export function formatDuration(input: number | string | undefined | null): strin
   const pad = (n: number) => String(n).padStart(2, '0');
 
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-}
-
-/** 评分转文字描述（10 分制） */
-export function scoreToText(score: number): string {
-  if (score >= 9) return '神作';
-  if (score >= 8) return '优秀';
-  if (score >= 7) return '良好';
-  if (score >= 6) return '一般';
-  if (score >= 5) return '及格';
-  return '较差';
-}
-
-/** 评分转颜色（10 分制） */
-export function scoreToColor(score: number): string {
-  if (score >= 9) return '#E74C3C';
-  if (score >= 8) return THEME_PRIMARY_COLOR;
-  if (score >= 7) return '#F39C12';
-  if (score >= 6) return '#27AE60';
-  if (score >= 5) return '#3498DB';
-  return '#95A5A6';
-}
-
-/** 防抖 */
-export function debounce<T extends (...args: any[]) => void>(
-  fn: T,
-  delay = 300,
-): (...args: Parameters<T>) => void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  return function (this: unknown, ...args: Parameters<T>) {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
-  };
-}
-
-/** 节流 */
-export function throttle<T extends (...args: any[]) => void>(
-  fn: T,
-  delay = 300,
-): (...args: Parameters<T>) => void {
-  let last = 0;
-  return function (this: unknown, ...args: Parameters<T>) {
-    const now = Date.now();
-    if (now - last >= delay) {
-      last = now;
-      fn.apply(this, args);
-    }
-  };
-}
-
-/** 复制 B 站视频 bvid */
-export function openBilibili(bvid: string): void {
-  if (!bvid) {
-    Taro.showToast({ title: '无效的视频ID', icon: 'none' });
-    return;
-  }
-  const url = `https://www.bilibili.com/video/${bvid}`;
-  Taro.setClipboardData({
-    data: url,
-    success: () => {
-      Taro.showToast({ title: 'bvid 已复制', icon: 'none' });
-    },
-  });
 }
 
 /** 格式化为完整日期时间 "YYYY-MM-DD HH:mm" */
