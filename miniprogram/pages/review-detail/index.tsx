@@ -8,7 +8,11 @@ import { toastError, toastOpError } from '@/utils/error';
 import {
   SUBMISSION_TYPE_COLOR,
   SUBMISSION_TYPE_LABEL,
+  getSubmissionDisplay,
 } from '@/utils/submission';
+import Skeleton from '@/components/Skeleton';
+import EmptyState from '@/components/EmptyState';
+import AppIcon from '@/components/AppIcon';
 import styles from './index.module.scss';
 
 const ReviewDetailPage: React.FC = () => {
@@ -104,40 +108,24 @@ const ReviewDetailPage: React.FC = () => {
   if (loading) {
     return (
       <View className={styles.page}>
-        <Text>加载中…</Text>
+        <Skeleton type="detail" loading={true} />
       </View>
     );
   }
   if (!item) {
     return (
       <View className={styles.page}>
-        <Text>记录不存在或已删除</Text>
+        <EmptyState
+          icon={<AppIcon name="empty" size="100rpx" />}
+          title="记录不存在或已删除"
+        />
       </View>
     );
   }
 
   const isCreate = item.type === 'create';
   const payload: any = item.payload || {};
-
-  // 展示用字段
-  const showTitle = isCreate
-    ? payload.title
-    : item.type === 'correction'
-    ? payload.title || item.target?.title
-    : item.target?.title || '（原动画）';
-  const showCover = isCreate ? payload.cover : item.target?.cover;
-  const showUp = isCreate ? payload.up_name : item.target?.up_name;
-  const showBvid = isCreate ? payload.bvid : item.target?.bvid;
-  const showDuration = isCreate ? payload.duration : item.target?.duration;
-  const showPlay = isCreate ? payload.play_count : 0;
-  const showLike = isCreate ? payload.like_count : 0;
-  const showTag = isCreate ? payload.tag : item.type === 'correction' ? payload.tag : item.target?.cover ? '' : '';
-  const showUrl = isCreate
-    ? payload.url || (payload.bvid ? `https://www.bilibili.com/video/${payload.bvid}` : '')
-    : item.target?.bvid
-    ? `https://www.bilibili.com/video/${item.target.bvid}`
-    : '';
-  const showPublishTime = isCreate ? payload.publish_time : null;
+  const disp = getSubmissionDisplay(item);
 
   return (
     <View className={styles.page}>
@@ -159,8 +147,8 @@ const ReviewDetailPage: React.FC = () => {
           </Text>
         </View>
         <View className={styles.body}>
-          <Text className={styles.title}>{showTitle || '未命名'}</Text>
-          <Text className={styles.meta}>{showUp || '未知 UP'} · {showBvid || ''}</Text>
+          <Text className={styles.title}>{disp.title || '未命名'}</Text>
+          <Text className={styles.meta}>{disp.upName || '未知 UP'} · {disp.bvid || ''}</Text>
           {item.submitted_at && (
             <Text className={styles.meta}>提交时间：{formatDateTime(item.submitted_at)}</Text>
           )}
@@ -171,26 +159,26 @@ const ReviewDetailPage: React.FC = () => {
       {isCreate && (
         <View className={styles.card}>
           <View className={styles.coverWrap}>
-            {showCover ? (
-              <TaroImage className={styles.cover} src={showCover} mode="aspectFill" />
+            {disp.cover ? (
+              <TaroImage className={styles.cover} src={disp.cover} mode="aspectFill" />
             ) : (
               <View className={styles.coverPlaceholder}>无封面</View>
             )}
           </View>
           <View className={styles.body}>
-            <Text className={styles.title}>{showTitle || '未命名'}</Text>
-            <Text className={styles.meta}>{showUp || '未知 UP'} · {showBvid || ''}</Text>
+            <Text className={styles.title}>{disp.title || '未命名'}</Text>
+            <Text className={styles.meta}>{disp.upName || '未知 UP'} · {disp.bvid || ''}</Text>
             <Text className={styles.meta}>
-              时长 {formatDuration(Number(showDuration) || 0)} · 播放 {showPlay || 0} · 赞 {showLike || 0}
+              时长 {formatDuration(disp.duration || 0)} · 播放 {disp.playCount || 0} · 赞 {disp.likeCount || 0}
             </Text>
-            {showTag && <Text className={styles.tags}>标签：{showTag}</Text>}
-            {showUrl && (
-              <Text className={styles.link} onClick={() => Taro.setClipboardData({ data: showUrl })}>
-                {showUrl}
+            {disp.tag && <Text className={styles.tags}>标签：{disp.tag}</Text>}
+            {disp.url && (
+              <Text className={styles.link} onClick={() => Taro.setClipboardData({ data: disp.url || '' })}>
+                {disp.url}
               </Text>
             )}
-            {showPublishTime && (
-              <Text className={styles.meta}>发布时间：{formatDateTime(showPublishTime)}</Text>
+            {disp.publishTime && (
+              <Text className={styles.meta}>发布时间：{formatDateTime(disp.publishTime)}</Text>
             )}
           </View>
         </View>

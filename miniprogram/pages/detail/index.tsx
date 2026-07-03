@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Animation, ScoreDistribution } from '@/types';
@@ -13,9 +13,10 @@ import { consumeDetailPreview } from '@/utils/nav';
 import {
   formatNumber,
   formatDuration,
+  parseTags,
   copyText,
 } from '@/utils/util';
-import { toastError } from '@/utils/error';
+import { toastError, getErrMsg } from '@/utils/error';
 import AppIcon from '@/components/AppIcon';
 import RatingRow from '@/components/RatingRow';
 import ScoreChart from '@/components/ScoreChart';
@@ -131,7 +132,7 @@ const DetailPage: React.FC = () => {
       setV(sc.v);
       setDistribution(sc.distribution || {});
     } catch (err) {
-      Taro.showToast({ title: '评分失败', icon: 'none' });
+      Taro.showToast({ title: getErrMsg(err, '评分失败'), icon: 'none' });
     }
   };
 
@@ -153,7 +154,7 @@ const DetailPage: React.FC = () => {
       });
     } catch (err) {
       setIsCollected(!next);
-      Taro.showToast({ title: '操作失败', icon: 'none' });
+      Taro.showToast({ title: getErrMsg(err, '操作失败'), icon: 'none' });
     }
   };
 
@@ -165,13 +166,9 @@ const DetailPage: React.FC = () => {
       await CollectionService.toggle(bvid, 'watched', next);
     } catch (err) {
       setIsWatched(!next);
+      Taro.showToast({ title: getErrMsg(err, '操作失败'), icon: 'none' });
     }
   };
-
-  // const onOpenBili = () => {
-  //   if (!ensureLogin()) return;
-  //   if (anim?.bvid) openBilibili(anim.bvid);
-  // };
 
   const onCorrect = () => {
     if (!ensureLogin()) return;
@@ -199,17 +196,16 @@ const DetailPage: React.FC = () => {
     );
   }
 
-  const tagList = (anim.tags && anim.tags.length > 0
-    ? anim.tags
-    : (anim.tag || '').split(',')
-  )
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const displayDuration = formatDuration(
-    anim.duration ?? anim.durationText ?? null,
+  const tagList = useMemo(
+    () => parseTags(anim.tags ?? anim.tag),
+    [anim?.tags, anim?.tag],
   );
-  const playCount = anim.play_count || 0;
-  const danmakuCount = anim.danmaku_count || 0;
+  const displayDuration = useMemo(
+    () => formatDuration(anim?.duration ?? anim?.durationText ?? null),
+    [anim?.duration, anim?.durationText],
+  );
+  const playCount = anim?.play_count || 0;
+  const danmakuCount = anim?.danmaku_count || 0;
 
   return (
     <View className={styles.pageDetail}>
@@ -233,7 +229,7 @@ const DetailPage: React.FC = () => {
               ) : null}
               <View className={styles.metaRow}>
                 <Text className={styles.metaBadge} onClick={() => copyText(anim.up_name)}>{anim.up_name}</Text>
-                <Text className={styles.metaBadge} onClick={() => copyText(anim.bvid, true)}>{anim.bvid}</Text>
+                <Text className={styles.metaBadge} onClick={() => copyText(anim.bvid)}>{anim.bvid}</Text>
               </View>
               <TagRow tags={tagList} />
 

@@ -11,7 +11,7 @@ import {
 import { SubmissionService, BilibiliService, BilibiliVideoInfo } from '@/services/business';
 import { Animation } from '@/types';
 import { CATEGORY_GROUPS } from '@/constants/categories';
-import { formatNumber } from '@/utils/util';
+import { formatNumber, parseTags } from '@/utils/util';
 import { getErrMsg, toastOpError } from '@/utils/error';
 import styles from './index.module.scss';
 
@@ -30,25 +30,14 @@ export interface AnimationFormProps {
   onSuccess?: (_id: string) => void;
 }
 
-/** 把秒数格式化为 "mm:ss" / "h:mm:ss"（空值返回空串，区别于 utils.formatDuration） */
+/** 把秒数格式化为 "m:ss" / "h:mm:ss"（空值/0 返回空串，区别于 utils.formatDuration 的 '--:--'） */
 function formatDurationText(sec: number): string {
   if (!sec || sec <= 0) return '';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-/** 解析逗号分隔的标签字符串 */
-function parseTags(str: string | undefined | null): string[] {
-  if (!str) return [];
-  return String(str)
-    .split(/[,，;；\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
 // ============== 内部子组件（消除 correction / create / delete 模式间的 JSX 重复） ==============

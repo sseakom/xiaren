@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Image, Button, Input } from '@tarojs/components';
 import Taro, { usePageScroll, useShareAppMessage } from '@tarojs/taro';
 import { Cell, PullToRefresh } from '@nutui/nutui-react-taro';
@@ -8,31 +8,8 @@ import { UserService } from '@/services/user';
 import { User, UserStats } from '@/types';
 import AppIcon from '@/components/AppIcon';
 import { THEME_PRIMARY_COLOR } from '@/constants/theme';
+import { withAlpha, mixWithWhite } from '@/utils/color';
 import styles from './index.module.scss';
-
-const hexToRgb = (hex: string) => {
-  const normalized = hex.replace('#', '');
-  const safeHex = normalized.length === 3
-    ? normalized.split('').map((char) => char + char).join('')
-    : normalized;
-
-  return {
-    r: parseInt(safeHex.slice(0, 2), 16),
-    g: parseInt(safeHex.slice(2, 4), 16),
-    b: parseInt(safeHex.slice(4, 6), 16),
-  };
-};
-
-const withAlpha = (hex: string, alpha: number) => {
-  const { r, g, b } = hexToRgb(hex);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const mixWithWhite = (hex: string, weight: number) => {
-  const { r, g, b } = hexToRgb(hex);
-  const mix = (channel: number) => Math.round(channel + (255 - channel) * weight);
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
-};
 
 const UserPage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -43,7 +20,7 @@ const UserPage: React.FC = () => {
     watchCount: 0,
   });
   const [scrollTop, setScrollTop] = useState(0);
-  const themeStyle = {
+  const themeStyle = useMemo(() => ({
     '--user-theme-primary': THEME_PRIMARY_COLOR,
     '--user-theme-primary-light': mixWithWhite(THEME_PRIMARY_COLOR, 0.2),
     '--user-theme-primary-soft': withAlpha(THEME_PRIMARY_COLOR, 0.12),
@@ -51,7 +28,7 @@ const UserPage: React.FC = () => {
     '--user-theme-primary-glass': withAlpha(THEME_PRIMARY_COLOR, 0.16),
     '--user-theme-primary-glass-strong': withAlpha(THEME_PRIMARY_COLOR, 0.24),
     '--user-theme-primary-border': withAlpha(THEME_PRIMARY_COLOR, 0.18),
-  } as React.CSSProperties;
+  }) as React.CSSProperties, []);
 
   useShareAppMessage(() => ({
     title: '我在玩「虾仁宇宙」，一起来吧',
@@ -132,7 +109,6 @@ const UserPage: React.FC = () => {
     const detail = e?.detail || {};
     if (detail.errMsg && !detail.errMsg.includes('ok')) {
       // 用户点了"不允许"或"使用其它号码" → 静默回退到微信登录
-      console.log('[User] 用户取消手机号授权，回退到微信登录');
       await onLogin();
       return;
     }

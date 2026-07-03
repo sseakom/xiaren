@@ -156,29 +156,27 @@ export function formatDateTime(input: string | Date | number | undefined | null)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** 统一处理逗号分隔的标签字符串，返回去空格、去空值后的数组 */
+/** 统一处理标签字符串/数组，返回去空格、去空值后的数组
+ *  支持中英文逗号、分号、空白符作为分隔符（向后兼容纯英文逗号输入）
+ */
 export function parseTags(tag: string | string[] | undefined | null): string[] {
   if (Array.isArray(tag)) {
     return tag.map((item) => String(item).trim()).filter(Boolean);
   }
   if (!tag) return [];
   return String(tag)
-    .split(',')
+    .split(/[,，;；\s]+/)
     .map((item) => item.trim())
     .filter(Boolean);
 }
 
 /** 复制文本到剪贴板 */
-export function copyText(text?: string , toUrl: boolean = false): void {
-  console.log('🚀 - copyText - toUrl:', toUrl)
+export function copyText(text?: string): void {
   if (!text) return;
-  // if (toUrl) {
-  //   text = `https://www.bilibili.com/video/${text}`;
-  // }
   Taro.setClipboardData({
     data: text,
     success: () => {
-      Taro.showToast({ title:  '复制成功',  icon: 'none' });
+      Taro.showToast({ title: '复制成功', icon: 'none' });
     },
   });
 }

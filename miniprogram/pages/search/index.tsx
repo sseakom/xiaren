@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro, { useShareAppMessage, useReachBottom } from '@tarojs/taro';
 import { SearchBar } from '@nutui/nutui-react-taro';
@@ -19,6 +19,26 @@ const PAGE_SIZE = 20;
 const STORAGE_KEY = 'search_history';
 const HOT_KEYWORDS = ['沙雕', '虾仁', '搞笑', '修仙', '末日'];
 
+function readHistory(): string[] {
+  try {
+    const raw = Taro.getStorageSync(STORAGE_KEY);
+    if (Array.isArray(raw)) {
+      return raw.filter((x): x is string => typeof x === 'string').slice(0, 10);
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+function writeHistory(kw: string): string[] {
+  const h = readHistory().filter((x) => x !== kw);
+  h.unshift(kw);
+  const next = h.slice(0, 10);
+  Taro.setStorageSync(STORAGE_KEY, next);
+  return next;
+}
+
 const SearchPage: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -28,81 +48,69 @@ const SearchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(0);
   const [category, setCategory] = useState('');
+
+  // 用 ref 保存最新 keyword/category，避免 doSearch 把它们写进依赖导致频繁重建
+  const keywordRef = useRef(keyword);
+  const categoryRef = useRef(category);
+  const pageRef = useRef(0);
+  const loadingRef = useRef(false);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const hasSearchedRef = useRef(false);
+  keywordRef.current = keyword;
+  categoryRef.current = category;
+  loadingRef.current = loading;
+  loadingMoreRef.current = loadingMore;
+  hasMoreRef.current = hasMore;
+  hasSearchedRef.current = hasSearched;
 
   useShareAppMessage(() => ({
     title: '来虾仁宇宙搜点好玩的',
     path: '/pages/search/index',
   }));
 
-
   useEffect(() => {
-    let h: string[] = [];
-    try {
-      const raw = Taro.getStorageSync(STORAGE_KEY);
-      if (Array.isArray(raw)) {
-        h = raw.filter((x): x is string => typeof x === 'string');
-      }
-    } catch {
-      h = [];
-    }
-    setHistory(h.slice(0, 10));
+    setHistory(readHistory());
   }, []);
 
-  const saveHistory = (kw: string) => {
-    if (!kw.trim()) return;
-    let h: string[] = [];
+  const doSearch = useCallback(async (p: number, opts: { kw?: string; cat?: string; reset?: boolean } = {}) => {
+    const kw = (opts.kw ?? keywordRef.current).trim();
+    const cat = opts.cat ?? categoryRef.current;
+    if (!kw) return;
     try {
-      const raw = Taro.getStorageSync(STORAGE_KEY);
-      if (Array.isArray(raw)) {
-        h = raw.filter((x): x is string => typeof x === 'string');
-      }
-    } catch {
-      h = [];
+      if (p === 0) setLoading(true);
+      else setLoadingMore(true);
+      const { list, total } = await AnimationService.search(kw, p, PAGE_SIZE, cat);
+      const safeList = Array.isArray(list) ? list : [];
+      setTotal(total || 0);
+      setResults((prev) => (p === 0 || opts.reset ? safeList : [...prev, ...safeList]));
+      setHasMore(safeList.length >= PAGE_SIZE);
+      pageRef.current = p + 1;
+    } catch (err) {
+      toastError('[Search]', err, '搜索失败');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
-    h = h.filter((x) => x !== kw);
-    h.unshift(kw);
-    h = h.slice(0, 10);
-    Taro.setStorageSync(STORAGE_KEY, h);
-    setHistory(h);
-  };
+  }, []);
 
-  const doSearch = useCallback(
-    async (p: number, isNew = false, kw: string = keyword, cat: string = category) => {
-      const q = kw.trim();
-      if (!q) return;
-      try {
-        if (p === 0) setLoading(true);
-        setLoadingMore(p > 0);
-        // 走 AnimationService.search（读取本地全量快照并在前端搜索）
-        const { list, total } = await AnimationService.search(q, p, PAGE_SIZE, cat);
-        setTotal(total || 0);
-        const safeList = Array.isArray(list) ? list : [];
-        setResults((prev) => (p === 0 || isNew ? safeList : [...(Array.isArray(prev) ? prev : []), ...safeList]));
-        setHasMore(safeList.length >= PAGE_SIZE);
-        setPage(p + 1);
-      } catch (err) {
-        toastError('[Search]', err, '搜索失败');
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [keyword, category],
-  );
+  const triggerSearch = useCallback((kw: string, cat?: string) => {
+    setHasSearched(true);
+    setTotal(0);
+    setResults([]);
+    pageRef.current = 0;
+    doSearch(0, { kw, cat, reset: true });
+  }, [doSearch]);
 
   const onSearch = () => {
-    if (!keyword.trim()) {
+    const q = keyword.trim();
+    if (!q) {
       Taro.showToast({ title: '请输入搜索关键词', icon: 'none' });
       return;
     }
-    saveHistory(keyword.trim());
-    setHasSearched(true);
-    setTotal(0);
-    setPage(0);
-    setResults([]);
-    doSearch(0, true);
+    setHistory(writeHistory(q));
+    triggerSearch(q);
   };
 
   const onClear = () => {
@@ -113,24 +121,16 @@ const SearchPage: React.FC = () => {
   };
 
   useReachBottom(() => {
-    if (loading || loadingMore || !hasMore || !hasSearched) return;
-    doSearch(page);
+    if (loadingRef.current || loadingMoreRef.current || !hasMoreRef.current || !hasSearchedRef.current) return;
+    doSearch(pageRef.current);
   });
 
-  /**
-   * 点击历史/热门关键词：先回填输入框，再立即用最新值触发搜索
-   * 直接传 kw 给 doSearch，避免 setTimeout/onChange 竞态
-   */
   const onPickKeyword = (kw: string) => {
     const q = kw.trim();
     if (!q) return;
     setKeyword(q);
-    saveHistory(q);
-    setHasSearched(true);
-    setTotal(0);
-    setPage(0);
-    setResults([]);
-    doSearch(0, true, q);
+    setHistory(writeHistory(q));
+    triggerSearch(q);
   };
 
   const clearHistory = () => {
@@ -138,7 +138,6 @@ const SearchPage: React.FC = () => {
     setHistory([]);
   };
 
-  /** 切换分类筛选：用当前关键词重新搜索 */
   const onSwitchCategory = (cat: string) => {
     setCategory(cat);
     const q = keyword.trim();
@@ -146,11 +145,7 @@ const SearchPage: React.FC = () => {
       Taro.showToast({ title: '请先输入搜索关键词', icon: 'none' });
       return;
     }
-    setHasSearched(true);
-    setTotal(0);
-    setPage(0);
-    setResults([]);
-    doSearch(0, true, q, cat);
+    triggerSearch(q, cat);
   };
 
   return (
