@@ -155,11 +155,10 @@ sequenceDiagram
 
 ### 云函数集 - Serverless 业务逻辑 `cloudfunctions/*`
 
-- **职责**：13 个云函数分别负责不同业务域的逻辑
+- **职责**：12 个云函数分别负责不同业务域的逻辑
 - **核心云函数**：
   - `listAnimations`：首页列表、排序、筛选
-  - `getAnimationById`：动画详情
-  - `search`：模糊搜索
+  - `animationsVersion`：动画全量快照版本号
   - `rating`：评分提交与查询
   - `collection`：收藏/看过
   - `animationSubmit`：录入/勘误/删除申请
@@ -203,11 +202,11 @@ sequenceDiagram
 - **收益**：`callCloud`（抛出异常）和 `callCloudSafe`（返回 null）适应不同场景
 - **证据**：`services/cloud.ts` 中的两个方法
 
-### 5. **搜索算法前后端双实现**
+### 5. **搜索完全前置到本地快照**
 
-- **收益**：前端可以做预搜索或离线搜索
-- **代价**：需要保证算法同步，维护成本翻倍
-- **证据**：`miniprogram/utils/fuzzy.ts` 和 `cloudfunctions/search/index.js`
+- **收益**：前端可以直接做离线搜索，避免额外云函数调用
+- **代价**：需要同时维护 `fuzzy.ts`、数据集编排和搜索页调用链
+- **证据**：`miniprogram/utils/fuzzy.ts`、`miniprogram/services/animationDataset.ts`
 
 ---
 
@@ -243,7 +242,7 @@ sequenceDiagram
 
 | 风险 | 严重程度 | 类别 | 证据 | 影响 |
 |------|----------|------|------|------|
-| 搜索算法前后端同步风险 | 中 | 可维护性 | `miniprogram/utils/fuzzy.ts` 和 `cloudfunctions/search/index.js` 独立实现 | 搜索结果不一致，用户困惑 |
+| 搜索调用链同步风险 | 中 | 可维护性 | `miniprogram/utils/fuzzy.ts` 与 `animationDataset.ts` 共同决定搜索结果 | 搜索结果与筛选行为可能不一致 |
 | 缓存 Tag 遗漏风险 | 中 | 可靠性 | `services/cloud.ts` 中的失效逻辑需要手动维护 | 数据不一致，用户看到过期数据 |
 | 无自动化测试覆盖 | 中 | 可维护性 | 除缓存外无其他测试 | 重构风险高，回归问题难发现 |
 | 无 CI/CD | 低 | 开发效率 | 无 workflow 配置 | 依赖人工部署，容易出错 |
@@ -305,4 +304,3 @@ sequenceDiagram
 4. **一致的代码风格**，遵循明确的开发约定
 
 主要改进空间在于**测试覆盖**和**CI/CD 自动化**，以及**添加明确的开源许可证**。
-

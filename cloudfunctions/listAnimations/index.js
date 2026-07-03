@@ -18,6 +18,49 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+function toSafeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeString(value) {
+  return String(value || '').trim();
+}
+
+function normalizeTagList(tag) {
+  if (Array.isArray(tag)) {
+    return tag.map((item) => normalizeString(item)).filter(Boolean);
+  }
+  return normalizeString(tag)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/**
+ * 首页/搜索只需要列表卡片字段；快照模式裁掉详情页和 DB 内部无关字段，
+ * 以减少前端持久化体积。
+ */
+function toSnapshotItem(item) {
+  const tags = normalizeTagList(item.tag);
+  const score = Number(item.score);
+  return {
+    bvid: normalizeString(item.bvid),
+    title: normalizeString(item.title),
+    original_title: normalizeString(item.original_title),
+    up_name: normalizeString(item.up_name),
+    cover: normalizeString(item.cover),
+    duration: parseDurationToSec(item.duration),
+    play_count: toSafeNumber(item.play_count),
+    danmaku_count: toSafeNumber(item.danmaku_count),
+    like_count: toSafeNumber(item.like_count),
+    publish_time: item.publish_time || '',
+    tag: tags.join(','),
+    tags,
+    ...(Number.isFinite(score) ? { score } : {}),
+  };
+}
+
 /**
  * 把 duration 字段统一解析成秒数
  *   - number         → 原值
@@ -135,12 +178,28 @@ async function fetchAllAnimations() {
 }
 
 exports.main = async (event) => {
+  const action = String(event.action || '');
   const page = Math.max(Number(event.page) || 0, 0);
   const pageSize = Math.min(Math.max(Number(event.pageSize) || 20, 1), 100);
   const sortBy = String(event.sortBy || 'publish_time');
   const category = String(event.category || '').trim();
 
   try {
+    // ---- 快照模式：返回精简后的全量列表，供前端本地缓存 / 排序 / 搜索 ----
+    if (action === 'snapshot') {
+      const all = await fetchAllAnimations();
+      const data = all
+        .map((item) => toSnapshotItem(item))
+        .filter((item) => item.bvid);
+      return {
+        success: true,
+        data,
+        total: data.length,
+        page: 0,
+        pageSize: data.length,
+      };
+    }
+
     // ---- 快速路径：DB 端分页（无 category + publish_time/play_count_desc 排序）----
     if (canUseDbPagination(sortBy, category)) {
       const { field: sortField, order: sortOrder } = DB_SORT_CONFIG[sortBy];

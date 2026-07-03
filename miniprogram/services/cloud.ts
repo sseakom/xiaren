@@ -119,16 +119,6 @@ function buildCacheTags(
       appendScopedTag(tags, 'animations:list', userScoped, scopeToken);
       tags.push(...collectResultAnimationTags(result));
       break;
-    case 'getAnimationById': {
-      const id = normalizeTagValue(data?.bvid || result?.data?.bvid);
-      appendScopedTag(tags, 'animations:detail', userScoped, scopeToken);
-      appendAnimationTag(tags, id);
-      break;
-    }
-    case 'search':
-      appendScopedTag(tags, 'animations:search', userScoped, scopeToken);
-      tags.push(...collectResultAnimationTags(result));
-      break;
     case 'calcScore': {
       const id = normalizeTagValue(data?.animation_bvid);
       if (id) {
@@ -293,17 +283,17 @@ function buildInvalidationTags(
         break;
       }
       if (meta?.type === 'create') {
-        tags.push('animations:list', 'animations:search');
+        tags.push('animations:list');
         appendLowercaseTag(tags, 'submission:bvid', bvid);
       }
       if (meta?.type === 'correction') {
-        tags.push('animations:list', 'animations:search');
+        tags.push('animations:list');
         if (targetBvid) {
           appendAnimationTag(tags, targetBvid);
         }
       }
       if (meta?.type === 'correction_delete') {
-        tags.push('animations:list', 'animations:search');
+        tags.push('animations:list');
         if (targetBvid) {
           appendAnimationTag(tags, targetBvid);
           tags.push(`animation:${targetBvid}:score`);
@@ -322,11 +312,10 @@ function getCloudRequestPolicy(name: string, data?: CloudFunctionData): CloudReq
   const action = getAction(data);
   switch (name) {
     case 'listAnimations':
+      if (action === 'snapshot') {
+        return { mode: 'never' };
+      }
       return buildReadPolicy(3 * 60 * 1000);
-    case 'getAnimationById':
-      return buildReadPolicy(10 * 60 * 1000);
-    case 'search':
-      return buildReadPolicy(2 * 60 * 1000);
     case 'calcScore':
       return buildReadPolicy(3 * 60 * 1000);
     case 'bilibiliFetch':
@@ -543,7 +532,7 @@ class CloudServiceImpl {
   /**
    * 调用云函数，成功返回 result，失败/异常返回 null（不抛错）
    * 适用于"读/查询"类调用：失败时降级返回空，由调用方兜底。
-   *   const r = await CloudService.callCloudSafe('getAnimationById', { id });
+   *   const r = await CloudService.callCloudSafe('calcScore', { animation_bvid });
    *   return r?.data ?? null;
    */
   async callCloudSafe(

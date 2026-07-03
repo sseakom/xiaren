@@ -39,7 +39,11 @@ const MyRatingsPage: React.FC = () => {
           title: r.animTitle || '已删除的动画',
           extra: <StarRating value={r.score} disabled showScore={false} size={24} />,
           meta: formatTime(r.updated_at),
-          onClick: () => goDetail(r.animation_bvid || r.animBvid || ''),
+          onClick: () => goDetail({
+            bvid: r.animation_bvid || r.animBvid || '',
+            title: r.animTitle || '',
+            cover: r.animCover || '',
+          }),
         }))}
         hasMore={hasMore}
         loadingMore={loadingMore}

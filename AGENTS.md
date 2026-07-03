@@ -26,12 +26,13 @@
 | 全局配置 | `miniprogram/app.config.ts` | 页面注册、原生 tabBar |
 | 云函数调用层 | `miniprogram/services/cloud.ts` | 只有 `callFunction` / `callCloud` / `callCloudSafe`，无 DB 入口 |
 | 业务服务层 | `miniprogram/services/business.ts` | 动画、评分、收藏、投稿、审核、B 站元信息拉取 |
+| 动画快照层 | `miniprogram/services/animationDataset.ts` | 启动时对比 `animationsVersion`，同步/读取本地全量快照 |
 | 用户服务 | `miniprogram/services/user.ts` | 静默登录、手机号登录、资料同步、统计 |
 | 类型定义 | `miniprogram/types/index.ts` | `Animation` / `Submission` / `Rating` / `Collection` / `User` |
 | 缓存适配 | `miniprogram/services/requestCache.ts` | Taro 存储封装 |
 | 缓存核心 | `miniprogram/utils/requestCacheCore.ts` | TTL、LRU、Tag 精准失效 |
 | 提交展示工具 | `miniprogram/utils/submission.ts` | 审核/提交页面共用展示逻辑 |
-| 云函数目录 | `cloudfunctions/*` | 当前共有 13 个核心云函数 |
+| 云函数目录 | `cloudfunctions/*` | 当前共有 14 个核心云函数 |
 
 ---
 
@@ -60,7 +61,8 @@ page / component
 - ✅ 新增业务接口先补云函数，再补 service，再接页面
 - ✅ 所有动画关联统一使用 `bvid` / `animation_bvid` / `target_bvid`
 - ✅ 写操作后维护好缓存 Tag 失效
-- ✅ 搜索算法改动必须前后端同步
+- ✅ 搜索算法改动必须同步检查 `fuzzy.ts`、`animationDataset.ts` 和搜索页调用链
+- ✅ 除 `listAnimations` 的快照/初始化读取外，其它云函数不要再直接读取 `animations`
 
 ---
 
@@ -98,9 +100,8 @@ page / component
 
 | 云函数 | 作用 |
 |---|---|
-| `listAnimations` | 首页列表、排序、分类筛选 |
-| `getAnimationById` | 按 `bvid` 读取详情 |
-| `search` | 模糊搜索 |
+| `listAnimations` | 动画全量快照来源；保留对 `animations` 的唯一读入口 |
+| `animationsVersion` | 返回动画全量快照版本号 |
 | `rating` | 查询/提交评分、我的评分 |
 | `collection` | 收藏/看过状态与列表 |
 | `calcScore` | WR 综合评分 |
@@ -116,7 +117,7 @@ page / component
 
 - `cloudfunctions/<name>/index.js`
 - `cloudfunctions/<name>/package.json`
-- `miniprogram/services/business.ts` 或 `miniprogram/services/user.ts`
+- `miniprogram/services/business.ts` / `miniprogram/services/user.ts` / `miniprogram/services/animationDataset.ts`
 - 相关文档说明
 
 ---
@@ -184,7 +185,8 @@ page / component
 必须同时检查：
 
 - `miniprogram/utils/fuzzy.ts`
-- `cloudfunctions/search/index.js`
+- `miniprogram/services/animationDataset.ts`
+- `miniprogram/services/business.ts`
 - `miniprogram/pages/search/index.tsx`
 
 ### 6.5 改评分 / 收藏 / 详情
@@ -217,7 +219,7 @@ page / component
 |---|---|
 | 在页面里直接查库 | 改成 service -> 云函数 |
 | 新逻辑继续用 `_id` 跳转详情 | 改成传 `bvid` |
-| 改搜索只改前端 | 前后端一起改 |
+| 改搜索只改 `fuzzy.ts` | 还要同步检查 `animationDataset.ts`、`business.ts` 和搜索页行为 |
 | 写完操作直接 `clearAll()` | 改成按 Tag 精准失效 |
 | 新增用户字段只改前端类型 | 云函数写入逻辑和数据库结构一起改 |
 | 误以为 `my-submissions` 是全量历史 | 当前默认仅审核中 / 驳回 |

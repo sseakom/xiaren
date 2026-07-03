@@ -79,7 +79,12 @@ const MyCollectionsPage: React.FC = () => {
           title: c.title || '已删除',
           subtitle: c.up_name,
           meta: c.timeText,
-          onClick: () => goDetail(c.animation_bvid || c.bvid || ''),
+          onClick: () => goDetail({
+            bvid: c.animation_bvid || c.bvid || '',
+            title: c.title || '',
+            cover: c.cover || '',
+            up_name: c.up_name || '',
+          }),
         }))}
         hasMore={hasMore}
         loadingMore={loadingMore}

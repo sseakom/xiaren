@@ -1,5 +1,6 @@
 import { PropsWithChildren } from 'react';
 import Taro, { useDidHide, useDidShow, useLaunch } from '@tarojs/taro';
+import { AnimationDatasetService } from './services/animationDataset';
 import { CloudService } from './services/cloud';
 import { RequestCacheService } from './services/requestCache';
 import { UserService } from './services/user';
@@ -22,6 +23,8 @@ function App({ children }: PropsWithChildren) {
     CloudService.init();
     RequestCacheService.runScheduledCleanup('launch');
     RequestCacheService.startPeriodicCleanup();
+    // 启动时预热动画全量快照；首页/搜索也会在首次访问时兜底等待
+    void AnimationDatasetService.bootstrap();
     // 异步获取 openid 并拉取用户信息
     UserService.bootstrap();
   });

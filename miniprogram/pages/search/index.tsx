@@ -75,7 +75,7 @@ const SearchPage: React.FC = () => {
       try {
         if (p === 0) setLoading(true);
         setLoadingMore(p > 0);
-        // 走 AnimationService.search（内部 callFunction 'search' + 超时/日志）
+        // 走 AnimationService.search（读取本地全量快照并在前端搜索）
         const { list, total } = await AnimationService.search(q, p, PAGE_SIZE, cat);
         setTotal(total || 0);
         const safeList = Array.isArray(list) ? list : [];
@@ -227,7 +227,7 @@ const SearchPage: React.FC = () => {
                 </View>
                 {results.map((item) => (
                   <AnimCard
-                    key={item._id}
+                    key={item.bvid}
                     item={item}
                     onClick={goDetail}
                   />

@@ -1,7 +1,7 @@
 {
-  "name": "search",
+  "name": "animationsVersion",
   "version": "1.0.0",
-  "description": "",
+  "description": "动画全量快照版本号",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

@@ -144,9 +144,9 @@ async function testLruEvictionWorks() {
     maxEntrySize: 90,
     cleanupIntervalMs: 100,
   });
-  const keyA = buildRequestKey('getAnimationById', { id: 'A' });
-  const keyB = buildRequestKey('getAnimationById', { id: 'B' });
-  const keyC = buildRequestKey('getAnimationById', { id: 'C' });
+  const keyA = buildRequestKey('listAnimations', { page: 0, pageSize: 20, category: 'A' });
+  const keyB = buildRequestKey('listAnimations', { page: 0, pageSize: 20, category: 'B' });
+  const keyC = buildRequestKey('listAnimations', { page: 0, pageSize: 20, category: 'C' });
 
   cache.set(keyA, { payload: 'aaaaa' }, { ttlMs: 10_000, now: 1_000 });
   cache.set(keyB, { payload: 'bbbbb' }, { ttlMs: 10_000, now: 1_100 });

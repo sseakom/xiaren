@@ -31,7 +31,7 @@
 | UI | React 18 + NutUI React Taro + Sass + CSS Modules |
 | 语言 | TypeScript 5 |
 | 云开发 | 微信云开发（Cloud Functions + Cloud Database） |
-| 业务层 | `services/business.ts` + `services/user.ts` |
+| 业务层 | `services/business.ts` + `services/user.ts` + `services/animationDataset.ts` |
 | 云函数调用 | `services/cloud.ts` 统一封装 |
 | 本地缓存 | `services/requestCache.ts` + `utils/requestCacheCore.ts` |
 | 测试 | `tests/request-cache.test.ts` |
@@ -103,6 +103,7 @@ sha-diao-taro/
 │   │   └── usePagination.ts       # 首页分页逻辑
 │   ├── services/
 │   │   ├── cloud.ts               # 云函数调用 + 请求缓存 + 超时 + 日志
+│   │   ├── animationDataset.ts    # 动画全量快照：版本比对 / 本地持久化 / 前端排序搜索
 │   │   ├── business.ts            # Animation / Rating / Collection / Submission / Review / Bilibili 服务
 │   │   ├── requestCache.ts        # Taro 存储适配层
 │   │   └── user.ts                # 用户登录、资料、统计
@@ -115,8 +116,6 @@ sha-diao-taro/
 │       └── util.ts                # 格式化工具
 ├── cloudfunctions/
 │   ├── listAnimations/
-│   ├── getAnimationById/
-│   ├── search/
 │   ├── rating/
 │   ├── collection/
 │   ├── calcScore/
@@ -145,13 +144,12 @@ sha-diao-taro/
 
 ## 云函数清单
 
-当前仓库包含 13 个核心云函数：
+当前仓库包含 12 个核心云函数：
 
 | 云函数 | 用途 |
 |---|---|
-| `listAnimations` | 首页列表、排序、分类筛选 |
-| `getAnimationById` | 按 `bvid` 读取动画详情 |
-| `search` | 模糊搜索 + 分类筛选 |
+| `listAnimations` | 动画全量快照来源；保留对 `animations` 的唯一读入口 |
+| `animationsVersion` | 返回动画全量快照版本号 |
 | `rating` | 查询 / 提交评分、我的评分列表 |
 | `collection` | 收藏 / 看过状态与列表 |
 | `calcScore` | 计算 WR 综合评分与评分分布 |
@@ -200,9 +198,10 @@ sha-diao-taro/
 
 ### 1. 首页与搜索
 
-- 首页通过 `listAnimations` 拉取数据，支持 `publish_time`、`play_count`、`duration_asc`、`duration_desc` 四种排序。
-- `publish_time` / `play_count` 且无分类时走 DB 端分页；时长排序或分类筛选时走全量拉取后内存处理。
-- 搜索通过 `search` 云函数完成，流程是「DB 端 RegExp 拉候选集 -> 服务端 fuzzyScore 打分排序 -> 分页返回」。
+- `app.tsx` 启动后会先调用 `animationsVersion`，与本地版本比对；不一致时再走 `listAnimations(action='snapshot')` 拉取精简全量快照并持久化到本地。
+- 首页直接基于本地快照做排序、分类筛选和分页，支持 `publish_time`、`play_count`、`danmaku_count`、`duration` 的升降序。
+- 搜索页直接基于本地快照做模糊搜索、分类筛选和分页；评分逻辑复用前端 `fuzzy.ts`。
+- 详情页、我的评分、我的收藏、我的提交、审核列表/详情中的动画摘要，也都优先由前端本地快照补齐。
 - 首页和搜索共用 `CategoryFilter`，按 `tag` 精确类别筛选。
 
 ### 2. 详情页
@@ -264,8 +263,6 @@ sha-diao-taro/
 ### 已接入缓存策略的典型函数
 
 - `listAnimations`
-- `getAnimationById`
-- `search`
 - `calcScore`
 - `bilibiliFetch`
 - `rating.get / rating.listMy`
@@ -278,7 +275,7 @@ sha-diao-taro/
 
 - 评分提交：失效 `user:ratings`、`user:stats`、`animation:<bvid>:rating`、`animation:<bvid>:score`
 - 收藏切换：失效用户收藏列表、看过列表、统计、详情态缓存
-- 审核通过：按 `submission` 元信息精准失效列表、详情、搜索、用户提交等缓存
+- 审核通过：按 `submission` 元信息精准失效列表、详情、用户提交等缓存
 
 ---
 
@@ -301,7 +298,7 @@ C = 全局平均分（config.global_avg_score，默认 3.5）
 实现位置：
 
 - 前端：`miniprogram/utils/fuzzy.ts`
-- 云函数：`cloudfunctions/search/index.js`
+- 数据集编排：`miniprogram/services/animationDataset.ts`
 
 评分梯度：
 
@@ -314,7 +311,7 @@ C = 全局平均分（config.global_avg_score，默认 3.5）
 | token 全出现（任意顺序） | 30 |
 | 不匹配 | 0 |
 
-注意：算法改动必须前后端同步。
+注意：搜索算法或筛选行为改动时，至少同步检查 `miniprogram/utils/fuzzy.ts`、`miniprogram/services/animationDataset.ts` 和 `miniprogram/pages/search/index.tsx`。
 
 ---
 
@@ -359,8 +356,7 @@ yarn build:h5
 
 ```text
 listAnimations
-getAnimationById
-search
+animationsVersion
 rating
 collection
 calcScore
@@ -396,7 +392,6 @@ phoneLogin
 ### 云函数约束
 
 - 云函数统一返回 `{ success, data?, error? }` 风格；`login` 例外，直接返回微信上下文
-- 改搜索算法时必须同步更新 `miniprogram/utils/fuzzy.ts` 和 `cloudfunctions/search/index.js`
 - 审核相关逻辑必须维护好返回元信息，避免前端缓存无法精准失效
 
 ---
@@ -424,6 +419,6 @@ npx ts-node tests/request-cache.test.ts
 | 页面想直接查库 | 不允许，必须走 `CloudService` -> 云函数 |
 | 详情 / 评分 / 收藏状态不刷新 | 先检查写操作后的缓存 Tag 是否失效到位 |
 | 新增字段前端有、后端没有 | 需要同时改 `types/index.ts`、云函数写入逻辑、数据库实际结构 |
-| 搜索改了一端不生效 | `fuzzy.ts` 和 `search/index.js` 必须同步 |
+| 搜索改了一处不生效 | 同步检查 `fuzzy.ts`、`animationDataset.ts` 和搜索页调用链 |
 | 我的提交看不到已通过记录 | 当前实现默认只返回审核中 / 已驳回 |
 | 业务跳转还在传 `_id` | 当前实现统一按 `bvid` 跳转和查询 |

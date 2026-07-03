@@ -144,7 +144,7 @@ const IndexPage: React.FC = () => {
           <View className={styles.animList}>
             {list.map((item, idx) => (
               <AnimCard
-                key={item._id}
+                key={item.bvid}
                 item={item}
                 onClick={goDetail}
                 rank={idx}
@@ -160,8 +160,8 @@ const IndexPage: React.FC = () => {
           !loading && (
             <EmptyState
               icon={<AppIcon name="movie" size="100rpx" />}
-              title="暂无动画片源"
-              description="采集器正在努力收录中..."
+              title="暂无片源"
+              description="正在努力收录中..."
             />
           )
         )}

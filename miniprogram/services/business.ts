@@ -1,4 +1,20 @@
 import { CloudService } from './cloud';
+import { AnimationDatasetService } from './animationDataset';
+import {
+  enrichCollectionsWithAnimations,
+  enrichRatingsWithAnimations,
+  enrichSubmissionsWithTargets,
+} from './animationJoinAdapter';
+import {
+  adaptCloudListResult,
+  createEmptyListResult,
+  ListResult,
+} from './cloudListAdapter';
+import {
+  normalizeOptionalNote,
+  requireTrimmedText,
+  trimText,
+} from './serviceHelpers';
 import {
   Rating,
   Collection,
@@ -29,27 +45,11 @@ export type ListSort =
   | 'duration_asc'
   | 'duration_desc';
 
-/** 列表分页结果（含总数） */
-export interface ListResult<T = any> {
-  list: T[];
-  total: number;
-}
-
 // 向后兼容：保留 AnimationFormPayload 的 re-export
 export type { AnimationFormPayload };
 
-function createEmptyListResult<T>(): ListResult<T> {
-  return { list: [], total: 0 };
-}
-
-function toListResult<T>(result?: { data?: T[]; total?: number } | null): ListResult<T> {
-  if (!result) {
-    return createEmptyListResult<T>();
-  }
-  return {
-    list: Array.isArray(result.data) ? result.data : [],
-    total: typeof result.total === 'number' ? result.total : 0,
-  };
+async function loadAnimationMapByBvids(bvids: string[]) {
+  return AnimationDatasetService.getMapByBvids(bvids);
 }
 
 function requireLogin() {
@@ -58,27 +58,11 @@ function requireLogin() {
   }
 }
 
-function trimText(value?: string) {
-  return (value || '').trim();
-}
-
-function requireTrimmedText(value: string | undefined, errorMessage: string) {
-  const trimmed = trimText(value);
-  if (!trimmed) {
-    throw new Error(errorMessage);
-  }
-  return trimmed;
-}
-
-function normalizeOptionalNote(note?: string) {
-  return trimText(note).slice(0, 200);
-}
-
 /**
  * 动画业务服务
- *  - list       → 云函数 listAnimations
- *  - getByBvid  → 云函数 getAnimationById
- *  - search     → 云函数 search
+ *  - list       → 本地全量快照 + 前端分页/排序
+ *  - getByBvid  → 本地全量快照按 bvid 读取
+ *  - search     → 本地全量快照 + 前端模糊搜索
  */
 export const AnimationService = {
   /**
@@ -93,26 +77,23 @@ export const AnimationService = {
     sortBy: ListSort = 'publish_time',
     category = '',
   ): Promise<ListResult> {
-    return toListResult(
-      await CloudService.callCloudSafe('listAnimations', {
+    return AnimationDatasetService.listPage(
       page,
       pageSize,
       sortBy,
       category,
-      }),
     );
   },
 
   /** 获取单个动画详情（按 bvid） */
   async getByBvid(bvid: string) {
-    const r = await CloudService.callCloudSafe('getAnimationById', { bvid });
-    return r?.data ?? null;
+    return AnimationDatasetService.getByBvid(bvid);
   },
 
   /**
    * 模糊搜索（按标题、UP主、tag）
-   *  - 服务端负责 RegExp 候选集 + fuzzyScore 排序 + 分页
-   *  - 客户端只传 keyword / page / pageSize
+   *  - 启动时同步一份精简全量快照到前端
+   *  - 搜索页直接在本地做 fuzzyScore 排序 + 分页
    */
   async search(
     keyword: string,
@@ -124,19 +105,12 @@ export const AnimationService = {
     if (!trimmedKeyword) {
       return createEmptyListResult();
     }
-    const res = await CloudService.callFunction('search', {
-      keyword: trimmedKeyword,
+    return AnimationDatasetService.searchPage(
+      trimmedKeyword,
       page,
       pageSize,
       category,
-    });
-    const result = (res as any)?.result as
-      | { data?: any[]; total?: number; error?: string }
-      | undefined;
-    if (result?.error) {
-      console.warn('[Animation] search 失败', result.error);
-    }
-    return toListResult(result);
+    );
   },
 };
 
@@ -173,14 +147,16 @@ export const RatingService = {
     includeAnim = false,
   ): Promise<{ list: Rating[]; total: number }> {
     if (!UserService.openid) return createEmptyListResult();
-    return toListResult<Rating>(
+    const result = adaptCloudListResult<Rating>(
       await CloudService.callCloudSafe('rating', {
       action: 'listMy',
       limit: pageSize,
       offset: page * pageSize,
-      include_anim: includeAnim,
+      include_anim: false,
       }),
     );
+    result.list = await enrichRatingsWithAnimations(result.list, includeAnim, loadAnimationMapByBvids);
+    return result;
   },
 };
 
@@ -221,15 +197,17 @@ export const CollectionService = {
     includeAnim = false,
   ): Promise<{ list: Collection[]; total: number }> {
     if (!UserService.openid) return createEmptyListResult();
-    return toListResult<Collection>(
+    const result = adaptCloudListResult<Collection>(
       await CloudService.callCloudSafe('collection', {
       action: 'listMy',
       type,
       limit: pageSize,
       offset: page * pageSize,
-      include_anim: includeAnim,
+      include_anim: false,
       }),
     );
+    result.list = await enrichCollectionsWithAnimations(result.list, includeAnim, loadAnimationMapByBvids);
+    return result;
   },
 };
 
@@ -308,6 +286,8 @@ export const SubmissionService = {
   async checkBvidUnique(bvid: string): Promise<boolean> {
     const trimmedBvid = trimText(bvid);
     if (!trimmedBvid) return true;
+    const existing = await AnimationDatasetService.getByBvid(trimmedBvid);
+    if (existing) return false;
     const r = await CloudService.callCloudSafe('animationSubmit', {
       action: 'checkBvidUnique',
       bvid: trimmedBvid,
@@ -338,6 +318,8 @@ export const SubmissionService = {
   ) {
     requireLogin();
     const nextTargetBvid = requireTrimmedText(targetBvid, '缺少原动画 bvid');
+    const targetAnim = await AnimationDatasetService.getByBvid(nextTargetBvid);
+    if (!targetAnim) throw new Error('原动画不存在');
     const title = requireTrimmedText(payload.title, '标题不能为空');
     const tag = requireTrimmedText(payload.tag, '标签不能为空');
     const note = normalizeOptionalNote(payload.note);
@@ -363,6 +345,8 @@ export const SubmissionService = {
   async remove(targetBvid: string, reason: string, note?: string) {
     requireLogin();
     const nextTargetBvid = requireTrimmedText(targetBvid, '缺少原动画 bvid');
+    const targetAnim = await AnimationDatasetService.getByBvid(nextTargetBvid);
+    if (!targetAnim) throw new Error('原动画不存在');
     const trimmedReason = trimText(reason);
     if (trimmedReason.length < 4) throw new Error('请填写删除理由（至少 4 个字）');
     const noteTrim = normalizeOptionalNote(note);
@@ -381,7 +365,7 @@ export const SubmissionService = {
   async listMySubmissions(): Promise<Submission[]> {
     if (!UserService.openid) return [];
     const r = await CloudService.callCloudSafe('animationMySubmissions', {});
-    return (r?.data as Submission[]) || [];
+    return enrichSubmissionsWithTargets((r?.data as Submission[]) || [], loadAnimationMapByBvids);
   },
 
   /**
@@ -414,7 +398,7 @@ export const ReviewService = {
       statusFilter,
       ...(typeFilter ? { typeFilter } : {}),
     });
-    return (r?.data as Submission[]) || [];
+    return enrichSubmissionsWithTargets((r?.data as Submission[]) || [], loadAnimationMapByBvids);
   },
 
   /** 单条详情 */
@@ -424,7 +408,10 @@ export const ReviewService = {
       action: 'get',
       _id: id,
     });
-    return (r?.data as Submission) || null;
+    const item = (r?.data as Submission) || null;
+    if (!item) return null;
+    const [enriched] = await enrichSubmissionsWithTargets([item], loadAnimationMapByBvids);
+    return enriched || item;
   },
 
   /** 通过 */

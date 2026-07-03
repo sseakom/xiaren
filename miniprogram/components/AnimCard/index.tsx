@@ -10,7 +10,7 @@ export interface AnimCardProps {
   /** 动画数据 */
   item: Animation;
   /** 点击回调（不传则不响应） */
-  onClick?: (bvid: string) => void;
+  onClick?: (item: Animation) => void;
   /**
    * 排行榜序号（>=0 时显示在封面左上角）
    */
@@ -59,8 +59,7 @@ const AnimCard: React.FC<AnimCardProps> = ({
   coverFallback,
 }) => {
   const handleClick = () => {
-    const target = item.bvid || item._id;
-    if (onClick && target) onClick(target);
+    if (onClick && item.bvid) onClick(item);
   };
 
   return (

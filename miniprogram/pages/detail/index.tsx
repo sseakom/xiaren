@@ -9,6 +9,7 @@ import {
   ScoreService,
 } from '@/services/business';
 import { UserService } from '@/services/user';
+import { consumeDetailPreview } from '@/utils/nav';
 import {
   formatNumber,
   formatDuration,
@@ -22,11 +23,41 @@ import Skeleton from '@/components/Skeleton';
 import TagRow from '@/components/TagRow';
 import styles from './index.module.scss';
 
+function createPreviewAnimation(
+  bvid: string,
+  preview: Partial<Animation> | null,
+): Animation | null {
+  if (!preview || !bvid) return null;
+  return {
+    _id: preview._id || bvid,
+    title: preview.title || '',
+    original_title: preview.original_title || '',
+    bvid,
+    url: preview.url || '',
+    up_name: preview.up_name || '',
+    cover: preview.cover || '',
+    duration: preview.duration || 0,
+    play_count: preview.play_count || 0,
+    danmaku_count: preview.danmaku_count || 0,
+    like_count: preview.like_count || 0,
+    score: preview.score,
+    publish_time: preview.publish_time || '',
+    update_time: preview.update_time || '',
+    durationText: preview.durationText,
+    tag: preview.tag || '',
+    tags: preview.tags,
+    status: preview.status,
+  };
+}
+
 const DetailPage: React.FC = () => {
   const routerParams = (Taro.getCurrentInstance().router?.params as any) || {};
   const bvid = routerParams.bvid || '';
-  const [anim, setAnim] = useState<Animation | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [anim, setAnim] = useState<Animation | null>(() => {
+    const preview = consumeDetailPreview(bvid);
+    return createPreviewAnimation(bvid, preview);
+  });
+  const [animLoading, setAnimLoading] = useState(true);
   const [myScore, setMyScore] = useState(0);
   const [isCollected, setIsCollected] = useState(false);
   const [isWatched, setIsWatched] = useState(false);
@@ -34,18 +65,32 @@ const DetailPage: React.FC = () => {
   const [v, setV] = useState(0);
   const [distribution, setDistribution] = useState<ScoreDistribution>({});
 
-  const loadAll = useCallback(async () => {
-    if (!bvid) return;
-    setLoading(true);
+  const loadAnimation = useCallback(async () => {
+    if (!bvid) {
+      setAnim(null);
+      setAnimLoading(false);
+      return;
+    }
+    setAnimLoading(true);
     try {
-      // 4 个独立云函数，并行拉取：getByBvid / getMyRating / getStatus / calcScore
-      const [a, ms, status, sc] = await Promise.all([
-        AnimationService.getByBvid(bvid),
+      const a = await AnimationService.getByBvid(bvid);
+      setAnim((a as Animation) || null);
+    } catch (err) {
+      toastError('[Detail]', err);
+    } finally {
+      setAnimLoading(false);
+    }
+  }, [bvid]);
+
+  const loadCloudMeta = useCallback(async () => {
+    if (!bvid) return;
+    try {
+      // 页面先落地展示本地动画信息，再并行补充云端状态。
+      const [ms, status, sc] = await Promise.all([
         RatingService.getMyRating(bvid),
         CollectionService.getStatus(bvid),
         ScoreService.calc(bvid),
       ]);
-      setAnim(a as Animation);
       setMyScore(ms);
       setIsCollected(status.isCollected);
       setIsWatched(status.isWatched);
@@ -54,14 +99,13 @@ const DetailPage: React.FC = () => {
       setDistribution(sc.distribution || {});
     } catch (err) {
       toastError('[Detail]', err);
-    } finally {
-      setLoading(false);
     }
   }, [bvid]);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    void loadAnimation();
+    void loadCloudMeta();
+  }, [loadAnimation, loadCloudMeta]);
 
   useShareAppMessage(() => ({
     title: anim?.title ? `《${anim.title}》- 来看看评分` : '沙雕动画',
@@ -137,7 +181,7 @@ const DetailPage: React.FC = () => {
     });
   };
 
-  if (loading) {
+  if (animLoading && !anim) {
     return (
       <View className={styles.pageDetail}>
         <Skeleton type="detail" loading={true} />

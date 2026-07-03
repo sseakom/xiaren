@@ -49,30 +49,17 @@ function validateDeletePayload(p) {
 
 /**
  * bvid 唯一性校验（仅 create 模式）
- *  - 查 animations 集合是否已有该 bvid
- *  - 查 submissions 集合是否有 pending 的 create 提交
- *
- * 优化：原代码拉取最多 100 条 pending submissions 后在 JS 端 some() 过滤；
- *       现直接用 DB where 'payload.bvid' 精确查询，避免全量拉取和 JS 遍历。
+ *  - animations 主表占用由前端本地全量快照校验
+ *  - 云端只校验 submissions 集合中是否已有 pending 的 create 提交
  */
 async function checkBvidUnique(bvid) {
-  // 1. 查 animations 集合
-  const animRes = await db.collection('animations').where({ bvid }).limit(1).get();
-  if ((animRes.data || []).length > 0) return false;
-
-  // 2. 查 submissions 集合 pending 的 create 提交（直接 DB 精确匹配）
+  // 查 submissions 集合 pending 的 create 提交（直接 DB 精确匹配）
   const subRes = await db
     .collection('submissions')
     .where({ type: 'create', status: 2, 'payload.bvid': bvid })
     .limit(1)
     .get();
   return (subRes.data || []).length === 0;
-}
-
-async function getAnimationByTarget(targetBvid) {
-  if (!targetBvid) return null;
-  const byBvid = await db.collection('animations').where({ bvid: String(targetBvid) }).limit(1).get();
-  return (byBvid.data && byBvid.data[0]) || null;
 }
 
 async function checkBvidUniqueAction(bvid) {
@@ -106,18 +93,15 @@ async function submit(event) {
     return { success: false, error: '不支持的 type' };
   }
 
-  // correction / correction_delete 需校验原动画存在
+  // correction / correction_delete 仅校验 target_bvid 非空；
+  // 原动画存在性由前端本地快照预校验，管理员审批时再用写路径结果兜底。
   let targetBvid = null;
   if (type === 'correction' || type === 'correction_delete') {
     targetBvid = event.target_bvid || event.correction_of || null;
     if (!targetBvid) {
       return { success: false, error: '缺少原动画 bvid（target_bvid）' };
     }
-    const orig = await getAnimationByTarget(targetBvid);
-    if (!orig) {
-      return { success: false, error: '原动画不存在' };
-    }
-    targetBvid = String(orig.bvid || targetBvid || '');
+    targetBvid = String(targetBvid || '');
   }
 
   // create 模式做 bvid 唯一性校验
