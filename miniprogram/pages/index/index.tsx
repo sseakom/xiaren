@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
 import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
@@ -83,61 +83,55 @@ const IndexPage: React.FC = () => {
   });
 
   /** 切换排序：播放量/弹幕/时长的按钮点同一下在 asc↔desc 间切换 */
-  const onSwitchSort = (key: ListSort) => {
-    const group = sortGroup(key);
-    if (group && TOGGLE_PAIRS[group]) {
-      const [desc, asc] = TOGGLE_PAIRS[group];
-      setSortBy((prev) => {
+  const onSwitchSort = useCallback((key: ListSort) => {
+    setSortBy((prev) => {
+      const group = sortGroup(key);
+      if (group && TOGGLE_PAIRS[group]) {
+        const [desc, asc] = TOGGLE_PAIRS[group];
         // 当前在该组内 → 切到另一个方向
         if (sortGroup(prev) === group) return prev === desc ? asc : desc;
         // 从其他组切过来 → 默认用该组第一项（desc）
         return desc;
-      });
-    } else {
-      setSortBy(key);
-    }
-  };
+      }
+      return key;
+    });
+  }, []);
+
+  /** 切换分类筛选 */
+  const onSwitchCategory = useCallback((cat: string) => {
+    setCategory(cat);
+  }, []);
 
   // 各组是否激活 + 箭头方向
   const currentGroup = sortGroup(sortBy);
-  const getArrow = (group: string) => {
-    if (currentGroup !== group) return '';
-    const [, asc] = TOGGLE_PAIRS[group];
-    return sortBy === asc ? '↑' : '↓';
-  };
-  const isGroupActive = (group: string) => currentGroup === group;
 
-  /** 切换分类筛选 */
-  const onSwitchCategory = (cat: string) => {
-    setCategory(cat);
-  };
+  // 排序 Tab 栏渲染（sortBy/category 变化时重建，与列表渲染分离）
+  const sortBar = useMemo(() => (
+    <View className={styles.sortBar}>
+      {SORT_TABS.map((tab) => {
+        const g = sortGroup(tab.key);
+        const active = g ? g === currentGroup : sortBy === tab.key;
+        const arrow = g ? (sortBy === (TOGGLE_PAIRS[g]?.[1]) ? '↑' : '↓') : null;
+        return (
+          <View
+            key={tab.key}
+            className={`${styles.sortTab} ${active ? styles.sortTabActive : ''}`}
+            onClick={() => onSwitchSort(tab.key)}
+          >
+            <Text>{tab.label}</Text>
+            {g ? <Text className={styles.sortArrow}>{arrow}</Text> : null}
+          </View>
+        );
+      })}
+      <View className={styles.sortBarRight}>
+        <CategoryFilter value={category} onChange={onSwitchCategory} />
+      </View>
+    </View>
+  ), [sortBy, category, currentGroup, onSwitchSort, onSwitchCategory]);
 
   return (
     <View className={styles.pageIndex}>
-
-      {/* 排序 Tab 栏 */}
-      <View className={styles.sortBar}>
-        {SORT_TABS.map((tab) => {
-          const group = sortGroup(tab.key);
-          const active = group ? isGroupActive(group) : sortBy === tab.key;
-          const arrow = group ? getArrow(group) : '';
-          return (
-            <View
-              key={tab.key}
-              className={`${styles.sortTab} ${active ? styles.sortTabActive : ''}`}
-              onClick={() => onSwitchSort(tab.key)}
-            >
-              <Text>{tab.label}</Text>
-              {group ? (
-                <Text className={styles.sortArrow}>{active ? arrow : '↑'}</Text>
-              ) : null}
-            </View>
-          );
-        })}
-        <View className={styles.sortBarRight}>
-          <CategoryFilter value={category} onChange={onSwitchCategory} />
-        </View>
-      </View>
+      {sortBar}
 
       <Skeleton type="card" loading={loading}>
         {list.length > 0 ? (

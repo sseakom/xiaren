@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro, { useShareAppMessage, useReachBottom } from '@tarojs/taro';
 import { SearchBar } from '@nutui/nutui-react-taro';
@@ -103,7 +103,7 @@ const SearchPage: React.FC = () => {
     doSearch(0, { kw, cat, reset: true });
   }, [doSearch]);
 
-  const onSearch = () => {
+  const onSearch = useCallback(() => {
     const q = keyword.trim();
     if (!q) {
       Taro.showToast({ title: '请输入搜索关键词', icon: 'none' });
@@ -111,34 +111,34 @@ const SearchPage: React.FC = () => {
     }
     setHistory(writeHistory(q));
     triggerSearch(q);
-  };
+  }, [keyword, triggerSearch]);
 
-  const onClear = () => {
+  const onClear = useCallback(() => {
     setKeyword('');
     setHasSearched(false);
     setTotal(0);
     setResults([]);
-  };
+  }, []);
 
   useReachBottom(() => {
     if (loadingRef.current || loadingMoreRef.current || !hasMoreRef.current || !hasSearchedRef.current) return;
     doSearch(pageRef.current);
   });
 
-  const onPickKeyword = (kw: string) => {
+  const onPickKeyword = useCallback((kw: string) => {
     const q = kw.trim();
     if (!q) return;
     setKeyword(q);
     setHistory(writeHistory(q));
     triggerSearch(q);
-  };
+  }, [triggerSearch]);
 
-  const clearHistory = () => {
+  const clearHistory = useCallback(() => {
     Taro.removeStorageSync(STORAGE_KEY);
     setHistory([]);
-  };
+  }, []);
 
-  const onSwitchCategory = (cat: string) => {
+  const onSwitchCategory = useCallback((cat: string) => {
     setCategory(cat);
     const q = keyword.trim();
     if (!q) {
@@ -146,7 +146,49 @@ const SearchPage: React.FC = () => {
       return;
     }
     triggerSearch(q, cat);
-  };
+  }, [keyword, triggerSearch]);
+
+  // 搜索前区域（搜索历史 + 热门）：hasSearched/history 不变时不重建
+  const preSearchSection = useMemo(() => (
+    <>
+      {history.length > 0 ? (
+        <View className={styles.searchHistory}>
+          <View className={styles.historyHeader}>
+            <Text className={styles.historyTitle}>搜索历史</Text>
+            <Text className={styles.historyClear} onClick={clearHistory}>
+              清除
+            </Text>
+          </View>
+          <View className={styles.historytag}>
+            {history.map((h) => (
+              <Text
+                key={h}
+                className={styles.historyTag}
+                onClick={() => onPickKeyword(h)}
+              >
+                {h}
+              </Text>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      <View className={styles.searchHot}>
+        <Text className={styles.hotTitle}>🔥 热门搜索</Text>
+        <View className={styles.hottag}>
+          {HOT_KEYWORDS.map((kw) => (
+            <Text
+              key={kw}
+              className={styles.hotTag}
+              onClick={() => onPickKeyword(kw)}
+            >
+              {kw}
+            </Text>
+          ))}
+        </View>
+      </View>
+    </>
+  ), [history, onPickKeyword, clearHistory]);
 
   return (
     <View className={styles.pageSearch}>
@@ -174,44 +216,7 @@ const SearchPage: React.FC = () => {
       </View>
 
       {!hasSearched ? (
-        <>
-          {history.length > 0 ? (
-            <View className={styles.searchHistory}>
-              <View className={styles.historyHeader}>
-                <Text className={styles.historyTitle}>搜索历史</Text>
-                <Text className={styles.historyClear} onClick={clearHistory}>
-                  清除
-                </Text>
-              </View>
-              <View className={styles.historytag}>
-                {history.map((h) => (
-                  <Text
-                    key={h}
-                    className={styles.historyTag}
-                    onClick={() => onPickKeyword(h)}
-                  >
-                    {h}
-                  </Text>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
-          <View className={styles.searchHot}>
-            <Text className={styles.hotTitle}>🔥 热门搜索</Text>
-            <View className={styles.hottag}>
-              {HOT_KEYWORDS.map((kw) => (
-                <Text
-                  key={kw}
-                  className={styles.hotTag}
-                  onClick={() => onPickKeyword(kw)}
-                >
-                  {kw}
-                </Text>
-              ))}
-            </View>
-          </View>
-        </>
+        preSearchSection
       ) : (
         <View className={styles.searchResults}>
           <Skeleton type="card" loading={loading}>

@@ -4,14 +4,37 @@ export default defineAppConfig({
   pages: [
     'pages/index/index',
     'pages/search/index',
-    'pages/detail/index',
     'pages/user/index',
-    'pages/my-ratings/index',
-    'pages/my-collections/index',
-    'pages/animation-form/index',
-    'pages/my-submissions/index',
-    'pages/review-list/index',
-    'pages/review-detail/index',
+  ],
+  subPackages: [
+    {
+      root: 'sub-pages/detail',
+      pages: ['index'],
+    },
+    {
+      root: 'sub-pages/my-ratings',
+      pages: ['index'],
+    },
+    {
+      root: 'sub-pages/my-collections',
+      pages: ['index'],
+    },
+    {
+      root: 'sub-pages/animation-form',
+      pages: ['index'],
+    },
+    {
+      root: 'sub-pages/my-submissions',
+      pages: ['index'],
+    },
+    {
+      root: 'sub-pages/review-list',
+      pages: ['index'],
+    },
+    {
+      root: 'sub-pages/review-detail',
+      pages: ['index'],
+    },
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -19,6 +42,8 @@ export default defineAppConfig({
     navigationBarTitleText: '虾仁宇宙',
     navigationBarTextStyle: 'white',
     backgroundColor: '#f5f5f5',
+    // 微信小程序启动时优先展示上一次渲染的静态骨架，加快白屏→首屏过渡
+    initialRenderingCache: 'static',
   },
   tabBar: {
     color: '#999999',

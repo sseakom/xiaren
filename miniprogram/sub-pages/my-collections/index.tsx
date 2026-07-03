@@ -50,7 +50,7 @@ const MyCollectionsPage: React.FC = () => {
 
   useShareAppMessage(() => ({
     title: type === 'watched' ? '我看过的沙雕动画' : '我收藏的沙雕动画',
-    path: `/pages/my-collections/index?type=${type}`,
+    path: `/sub-pages/my-collections/index?type=${type}`,
   }));
 
   return (

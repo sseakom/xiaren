@@ -26,7 +26,7 @@ const MyRatingsPage: React.FC = () => {
 
   useShareAppMessage(() => ({
     title: '我评过的沙雕动画',
-    path: '/pages/my-ratings/index',
+    path: '/sub-pages/my-ratings/index',
   }));
 
   return (

@@ -11,7 +11,6 @@ function App({ children }: PropsWithChildren) {
     console.log('[App] launched');
 
     // 全局未捕获错误 + 未处理 Promise 拒绝，统一打日志
-    // bootstrap 链路里 catch 之外的部分（如 Taro.login / 云函数调用的底层错误）会冒泡到这里
     Taro.onError((err) => {
       console.warn('[App] onError', err);
     });
@@ -19,14 +18,27 @@ function App({ children }: PropsWithChildren) {
       console.warn('[App] onUnhandledRejection', res?.reason);
     });
 
-    // 初始化云开发
+    // 初始化云开发（同步操作，放最前面）
     CloudService.init();
-    RequestCacheService.runScheduledCleanup('launch');
-    RequestCacheService.startPeriodicCleanup();
-    // 启动时预热动画全量快照；首页/搜索也会在首次访问时兜底等待
-    void AnimationDatasetService.bootstrap();
-    // 异步获取 openid 并拉取用户信息
+
+    // 异步获取 openid 并拉取用户信息（关键路径）
     UserService.bootstrap();
+
+    // 非关键路径：延迟到首帧渲染后执行，减少冷启动 TTI
+    const defer = (fn: () => void) => {
+      if (typeof Taro.nextTick === 'function') {
+        Taro.nextTick(fn);
+      } else {
+        setTimeout(fn, 50);
+      }
+    };
+    defer(() => {
+      // 缓存清理（异步，不阻塞首屏）
+      RequestCacheService.runScheduledCleanup('launch');
+      RequestCacheService.startPeriodicCleanup();
+    });
+    // 动画全量快照预热（后台拉取，首页/搜索会在首次访问时兜底等待）
+    AnimationDatasetService.bootstrap();
   });
 
   useDidShow(() => {

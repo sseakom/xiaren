@@ -46,7 +46,7 @@ const ReviewListPage: React.FC = () => {
   });
 
   const onTap = (item: Submission) => {
-    Taro.navigateTo({ url: `/pages/review-detail/index?id=${item._id}` });
+    Taro.navigateTo({ url: `/sub-pages/review-detail/index?id=${item._id}` });
   };
 
   if (denied) {

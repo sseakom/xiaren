@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Image, Text } from '@tarojs/components';
 import { Animation } from '@/types';
 import { formatDuration, formatNumber, parseTags } from '@/utils/util';
@@ -18,6 +18,50 @@ export interface AnimCardProps {
   /** 封面占位图（CDN fallback） */
   coverFallback?: string;
 }
+
+/** 封面区域：lazyLoad + error 降级 + 加载占位 */
+const Cover: React.FC<{
+  src: string;
+  duration?: number | string | null;
+  rank?: number;
+}> = ({ src, duration, rank }) => {
+  const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  return (
+    <View className={styles.animCoverWrap}>
+      {src && !imgError ? (
+        <Image
+          className={styles.animCover}
+          src={src}
+          mode="aspectFill"
+          lazyLoad
+          onError={() => setImgError(true)}
+          onLoad={() => setImgLoaded(true)}
+          style={imgLoaded ? undefined : { opacity: 0 }}
+        />
+      ) : null}
+      {/* 加载中 / 加载失败 占位 */}
+      {(!imgLoaded || imgError) && (
+        <View className={styles.animCoverPlaceholder}>
+          <AppIcon name={imgError ? 'movie' : 'movie'} size="48rpx" className={styles.coverPlaceholderIcon} />
+        </View>
+      )}
+      {duration ? (
+        <View className={styles.animDuration}>
+          {formatDuration(duration)}
+        </View>
+      ) : null}
+      {typeof rank === 'number' ? (
+        <View className={styles.animRank}>
+          <Text className={rank < 3 ? styles.rankTop : styles.rankNormal}>
+            {rank + 1}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+};
 
 /** footer：标签 + 作者·播放·弹幕·评分 */
 const Footer: React.FC<{ item: Animation }> = ({ item }) => (
@@ -62,32 +106,15 @@ const AnimCard: React.FC<AnimCardProps> = ({
     if (onClick && item.bvid) onClick(item);
   };
 
+  const coverSrc = item.cover || coverFallback || '';
+
   return (
     <View
       className={styles.animCard}
       onClick={onClick ? handleClick : undefined}
       hoverClass={onClick ? styles.hover : undefined}
     >
-      <View className={styles.animCoverWrap}>
-        <Image
-          className={styles.animCover}
-          src={item.cover || coverFallback || ''}
-          mode="aspectFill"
-          lazyLoad
-        />
-        {item.duration ? (
-          <View className={styles.animDuration}>
-            {formatDuration(item.duration)}
-          </View>
-        ) : null}
-        {typeof rank === 'number' ? (
-          <View className={styles.animRank}>
-            <Text className={rank < 3 ? styles.rankTop : styles.rankNormal}>
-              {rank + 1}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+      <Cover src={coverSrc} duration={item.duration} rank={rank} />
       <View className={styles.animInfo}>
         <View className={styles.animTitle}>
           <Text className={styles.animTitleText}>{item.title}</Text>

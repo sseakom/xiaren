@@ -75,9 +75,9 @@ const UserPage: React.FC = () => {
     await load();
   }, [load]);
 
-  const goMyRatings = () => Taro.navigateTo({ url: '/pages/my-ratings/index' });
-  const goMyCollections = () => Taro.navigateTo({ url: '/pages/my-collections/index' });
-  const goWatched = () => Taro.navigateTo({ url: '/pages/my-collections/index?type=watched' });
+  const goMyRatings = () => Taro.navigateTo({ url: '/sub-pages/my-ratings/index' });
+  const goMyCollections = () => Taro.navigateTo({ url: '/sub-pages/my-collections/index' });
+  const goWatched = () => Taro.navigateTo({ url: '/sub-pages/my-collections/index?type=watched' });
 
   /** 微信一键登录：复用缓存 + 校验会话，未登录时才会真正走云函数 */
   const onLogin = async () => {
@@ -292,7 +292,7 @@ const UserPage: React.FC = () => {
             <>
               <Cell
                 className={styles.menuCell}
-                onClick={() => Taro.navigateTo({ url: '/pages/animation-form/index?mode=create' })}
+                onClick={() => Taro.navigateTo({ url: '/sub-pages/animation-form/index?mode=create' })}
               >
                 <View className={styles.menuCellContent}>
                   <View className={styles.menuIconWrap}>
@@ -304,7 +304,7 @@ const UserPage: React.FC = () => {
               </Cell>
               <Cell
                 className={styles.menuCell}
-                onClick={() => Taro.navigateTo({ url: '/pages/my-submissions/index' })}
+                onClick={() => Taro.navigateTo({ url: '/sub-pages/my-submissions/index' })}
               >
                 <View className={styles.menuCellContent}>
                   <View className={styles.menuIconWrap}>
@@ -317,7 +317,7 @@ const UserPage: React.FC = () => {
               {UserService.isAdmin() && (
                 <Cell
                   className={styles.menuCell}
-                  onClick={() => Taro.navigateTo({ url: '/pages/review-list/index' })}
+                  onClick={() => Taro.navigateTo({ url: '/sub-pages/review-list/index' })}
                 >
                   <View className={styles.menuCellContent}>
                     <View className={styles.menuIconWrap}>

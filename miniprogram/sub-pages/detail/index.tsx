@@ -110,7 +110,7 @@ const DetailPage: React.FC = () => {
 
   useShareAppMessage(() => ({
     title: anim?.title ? `《${anim.title}》- 来看看评分` : '沙雕动画',
-    path: `/pages/detail/index?bvid=${encodeURIComponent(bvid)}`,
+    path: `/sub-pages/detail/index?bvid=${encodeURIComponent(bvid)}`,
     imageUrl: anim?.cover || '',
   }));
 
@@ -174,7 +174,7 @@ const DetailPage: React.FC = () => {
     if (!ensureLogin()) return;
     if (!bvid) return;
     Taro.navigateTo({
-      url: `/pages/animation-form/index?mode=correction&correction_of=${encodeURIComponent(bvid)}`,
+      url: `/sub-pages/animation-form/index?mode=correction&correction_of=${encodeURIComponent(bvid)}`,
     });
   };
 

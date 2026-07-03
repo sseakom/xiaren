@@ -16,7 +16,7 @@ export function goDetail(target: string | DetailPreviewAnimation) {
   if (typeof target !== 'string') {
     detailPreviewMap.set(bvid, target);
   }
-  Taro.navigateTo({ url: `/pages/detail/index?bvid=${encodeURIComponent(bvid)}` });
+  Taro.navigateTo({ url: `/sub-pages/detail/index?bvid=${encodeURIComponent(bvid)}` });
 }
 
 export function consumeDetailPreview(bvid: string) {
