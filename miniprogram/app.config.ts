@@ -39,7 +39,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: THEME_PRIMARY_COLOR,
-    navigationBarTitleText: '虾仁宇宙',
+    navigationBarTitleText: '虾仁世界',
     navigationBarTextStyle: 'white',
     backgroundColor: '#f5f5f5',
     // 微信小程序启动时优先展示上一次渲染的静态骨架，加快白屏→首屏过渡

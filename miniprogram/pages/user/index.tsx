@@ -31,7 +31,7 @@ const UserPage: React.FC = () => {
   }) as React.CSSProperties, []);
 
   useShareAppMessage(() => ({
-    title: '我在玩「虾仁宇宙」，一起来吧',
+    title: '我在玩「虾仁世界」，一起来吧',
     path: '/pages/user/index',
   }));
 

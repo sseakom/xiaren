@@ -62,7 +62,7 @@ const IndexPage: React.FC = () => {
 
   // 分享给朋友
   useShareAppMessage(() => ({
-    title: '虾仁宇宙',
+    title: '虾仁世界',
     path: '/pages/index/index',
   }));
 

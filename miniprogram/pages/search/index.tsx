@@ -66,7 +66,7 @@ const SearchPage: React.FC = () => {
   hasSearchedRef.current = hasSearched;
 
   useShareAppMessage(() => ({
-    title: '来虾仁宇宙搜点好玩的',
+    title: '来虾仁世界搜点好玩的',
     path: '/pages/search/index',
   }));
 
