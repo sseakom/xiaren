@@ -16,8 +16,7 @@ const db = cloud.database();
 const M_THRESHOLD = 10;
 // 默认全局平均分（5 分制的中间值）
 const DEFAULT_C = 3.5;
-// 单次查询上限（云开发默认 1000，显式拉高避免静默截断）
-const MAX_RATINGS = 10000;
+// aggregate 管道在 DB 端完成分组聚合，不再需要全量拉取评分文档
 
 exports.main = async (event /*, context*/) => {
   const animationBvid = String(event.animation_bvid || '').trim();
@@ -27,26 +26,39 @@ exports.main = async (event /*, context*/) => {
   }
 
   try {
-    const ratingsRes = await db
+    // 用 aggregate 管道在 DB 端按 score 分组，只返回分组结果（≤ 11 个）
+    // 替代原来全量拉取（最多 10000 条）再 JS 遍历的方式
+    const $ = db.command.aggregate;
+    const aggRes = await db
       .collection('ratings')
-      .where({ animation_bvid: animationBvid })
-      .limit(MAX_RATINGS)
-      .get();
-    const ratings = ratingsRes.data || [];
-    const v = ratings.length; // 评分人数
+      .aggregate()
+      .match({ animation_bvid: animationBvid })
+      .group({ _id: '$score', count: $.sum(1) })
+      .end();
+    const groups = aggRes.list || [];
 
-    if (v === 0) {
+    // 无评分时直接返回默认值
+    if (groups.length === 0) {
       return { success: true, WR: 0, v: 0, R: 0, C: DEFAULT_C, distribution: {} };
     }
 
-    // 2. 单次遍历：算术平均分 R + 评分分布
+    // 由分组结果计算 v（总人数）、R（算术平均）、distribution
+    let v = 0;
     let totalScore = 0;
     const distribution = {};
-    for (let i = 0; i < ratings.length; i++) {
-      const score = ratings[i].score;
-      totalScore += score;
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      const score = Number(g._id);
+      const count = g.count || 0;
+      if (!isFinite(score)) continue;
+      v += count;
+      totalScore += score * count;
       const key = score.toFixed(1);
-      distribution[key] = (distribution[key] || 0) + 1;
+      distribution[key] = (distribution[key] || 0) + count;
+    }
+
+    if (v === 0) {
+      return { success: true, WR: 0, v: 0, R: 0, C: DEFAULT_C, distribution: {} };
     }
     const R = totalScore / v;
 

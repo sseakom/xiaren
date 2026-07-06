@@ -178,6 +178,19 @@ const DetailPage: React.FC = () => {
     });
   };
 
+  // useMemo 必须在所有 early return 之前调用，否则 anim 从 null 变有值时
+  // hook 数量变化会触发 "Rendered more hooks than during the previous render"
+  const tagList = useMemo(
+    () => parseTags(anim?.tags ?? anim?.tag),
+    [anim?.tags, anim?.tag],
+  );
+  const displayDuration = useMemo(
+    () => formatDuration(anim?.duration ?? anim?.durationText ?? null),
+    [anim?.duration, anim?.durationText],
+  );
+  const playCount = anim?.play_count || 0;
+  const danmakuCount = anim?.danmaku_count || 0;
+
   if (animLoading && !anim) {
     return (
       <View className={styles.pageDetail}>
@@ -195,17 +208,6 @@ const DetailPage: React.FC = () => {
       </View>
     );
   }
-
-  const tagList = useMemo(
-    () => parseTags(anim.tags ?? anim.tag),
-    [anim?.tags, anim?.tag],
-  );
-  const displayDuration = useMemo(
-    () => formatDuration(anim?.duration ?? anim?.durationText ?? null),
-    [anim?.duration, anim?.durationText],
-  );
-  const playCount = anim?.play_count || 0;
-  const danmakuCount = anim?.danmaku_count || 0;
 
   return (
     <View className={styles.pageDetail}>

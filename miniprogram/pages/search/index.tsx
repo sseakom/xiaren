@@ -85,7 +85,9 @@ const SearchPage: React.FC = () => {
       const safeList = Array.isArray(list) ? list : [];
       setTotal(total || 0);
       setResults((prev) => (p === 0 || opts.reset ? safeList : [...prev, ...safeList]));
-      setHasMore(safeList.length >= PAGE_SIZE);
+      // 用 total 精确判断是否到底，避免结果数恰好是 PAGE_SIZE 整数倍时多一次空加载
+      const accumulated = (p === 0 || opts.reset ? 0 : p * PAGE_SIZE) + safeList.length;
+      setHasMore(accumulated < (total || 0));
       pageRef.current = p + 1;
     } catch (err) {
       toastError('[Search]', err, '搜索失败');
