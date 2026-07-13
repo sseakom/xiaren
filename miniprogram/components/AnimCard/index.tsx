@@ -73,15 +73,6 @@ const Footer: React.FC<{ item: Animation }> = ({ item }) => (
       <Text className={styles.metaDanmaku}>
         {formatNumber(item.danmaku_count || 0)}
         弹幕</Text>
-      {item.score != null ? (
-        <>
-          <Text className={styles.metaDot}>·</Text>
-          <View className={styles.metaScore}>
-            <AppIcon name="rating" size="20rpx" className={styles.metaScoreIcon} />
-            <Text>{item.score.toFixed(1)}</Text>
-          </View>
-        </>
-      ) : null}
     </View>
   </>
 );
