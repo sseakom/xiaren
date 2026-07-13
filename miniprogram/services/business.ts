@@ -43,7 +43,9 @@ export type ListSort =
   | 'danmaku_count_asc'
   | 'danmaku_count_desc'
   | 'duration_asc'
-  | 'duration_desc';
+  | 'duration_desc'
+  | 'score_asc'
+  | 'score_desc';
 
 // 向后兼容：保留 AnimationFormPayload 的 re-export
 export type { AnimationFormPayload };
@@ -94,12 +96,14 @@ export const AnimationService = {
    * 模糊搜索（按标题、UP主、tag）
    *  - 启动时同步一份精简全量快照到前端
    *  - 搜索页直接在本地做 fuzzyScore 排序 + 分页
+   *  - 传 sortBy 时按指定字段排序（先 fuzzy 过滤再排序），否则按相关度
    */
   async search(
     keyword: string,
     page = 0,
     pageSize = 20,
     category = '',
+    sortBy?: ListSort,
   ): Promise<ListResult> {
     const trimmedKeyword = trimText(keyword);
     if (!trimmedKeyword) {
@@ -110,6 +114,7 @@ export const AnimationService = {
       page,
       pageSize,
       category,
+      sortBy,
     );
   },
 };

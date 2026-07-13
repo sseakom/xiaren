@@ -18,20 +18,22 @@ import styles from './index.module.scss';
 const PAGE_SIZE = 20;
 
 /** 顶部排序 Tab 配置
- * 播放量 / 弹幕 / 时长 共用同一种切换逻辑：点同一按钮在 asc↔desc 间切换。
+ * 最新 / 播放量 / 弹幕 / 时长 / 评分 共用同一种切换逻辑：点同一按钮在 asc↔desc 间切换。
  */
 const SORT_TABS: { key: ListSort; label: string }[] = [
   { key: 'publish_time', label: '最新' },
   { key: 'play_count_desc', label: '播放量' },
   { key: 'danmaku_count_desc', label: '弹幕' },
   { key: 'duration_desc', label: '时长' },
+  { key: 'score_desc', label: '评分' },
 ];
 
-/** 播放量/弹幕/时长 三组 asc/desc 前缀，点击同一按钮时互相切换 */
+/** 播放量/弹幕/时长/评分 四组 asc/desc 前缀，点击同一按钮时互相切换 */
 const TOGGLE_PAIRS: Record<string, [ListSort, ListSort]> = {
   play_count: ['play_count_desc', 'play_count_asc'],
   danmaku_count: ['danmaku_count_desc', 'danmaku_count_asc'],
   duration: ['duration_desc', 'duration_asc'],
+  score: ['score_desc', 'score_asc'],
 };
 
 /** 取 sortBy 的分组前缀（去掉 _asc/_desc） */
@@ -39,6 +41,7 @@ function sortGroup(key: ListSort): string | null {
   if (key === 'play_count_asc' || key === 'play_count_desc') return 'play_count';
   if (key === 'danmaku_count_asc' || key === 'danmaku_count_desc') return 'danmaku_count';
   if (key === 'duration_asc' || key === 'duration_desc') return 'duration';
+  if (key === 'score_asc' || key === 'score_desc') return 'score';
   return null;
 }
 
@@ -82,7 +85,7 @@ const IndexPage: React.FC = () => {
     }
   });
 
-  /** 切换排序：播放量/弹幕/时长的按钮点同一下在 asc↔desc 间切换 */
+  /** 切换排序：播放量/弹幕/时长/评分的按钮点同一下在 asc↔desc 间切换 */
   const onSwitchSort = useCallback((key: ListSort) => {
     setSortBy((prev) => {
       const group = sortGroup(key);

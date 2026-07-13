@@ -31,7 +31,9 @@ type DatasetListSort =
   | 'danmaku_count_asc'
   | 'danmaku_count_desc'
   | 'duration_asc'
-  | 'duration_desc';
+  | 'duration_desc'
+  | 'score_asc'
+  | 'score_desc';
 
 function normalizeString(value: unknown) {
   return String(value || '').trim();
@@ -110,6 +112,10 @@ function compareBySort(a: AnimationSnapshot, b: AnimationSnapshot, sortBy: Datas
       return a.duration - b.duration;
     case 'duration_desc':
       return b.duration - a.duration;
+    case 'score_asc':
+      return (a.score ?? 0) - (b.score ?? 0);
+    case 'score_desc':
+      return (b.score ?? 0) - (a.score ?? 0);
     case 'publish_time':
     default:
       return new Date(b.publish_time).getTime() - new Date(a.publish_time).getTime();
@@ -263,6 +269,7 @@ class AnimationDatasetServiceImpl {
     page = 0,
     pageSize = 20,
     category = '',
+    sortBy?: DatasetListSort,
   ): Promise<ListResult<Animation>> {
     const trimmedKeyword = normalizeString(keyword);
     if (!trimmedKeyword) {
@@ -273,8 +280,14 @@ class AnimationDatasetServiceImpl {
     const scored = this.list
       .filter((item) => hasSearchCategory(item, category))
       .map((item) => ({ item, score: buildSearchScore(item, trimmedKeyword) }))
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score);
+      .filter((entry) => entry.score > 0);
+
+    // 有 sortBy 时按指定字段排序，否则保持 fuzzyScore 相关度排序
+    if (sortBy) {
+      scored.sort((a, b) => compareBySort(a.item, b.item, sortBy));
+    } else {
+      scored.sort((a, b) => b.score - a.score);
+    }
 
     const start = page * pageSize;
     const list = scored.slice(start, start + pageSize).map((entry) => toAnimation(entry.item));
