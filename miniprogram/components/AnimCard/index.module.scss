@@ -61,27 +61,26 @@
   line-height: 1.2;
 }
 
-.animRank {
+.coverScore {
   position: absolute;
   top: 0;
   left: 0;
-  padding: 4rpx 12rpx 4rpx 10rpx;
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 10rpx 4rpx 8rpx;
   background: rgba(0, 0, 0, 0.55);
   border-bottom-right-radius: $radius-sm;
-  color: $color-text-white;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
   line-height: 1;
 }
 
-.rankTop {
+.coverScoreText {
   color: $color-primary;
-  font-size: $font-size-md;
-  font-weight: $font-weight-bold;
-}
-
-.rankNormal {
-  color: $color-text-white;
-  font-size: $font-size-sm;
+  font-size: $font-size-lg;
   font-weight: $font-weight-semibold;
+  line-height: 1;
 }
 
 .animInfo {

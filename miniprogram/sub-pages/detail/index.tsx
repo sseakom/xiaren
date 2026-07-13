@@ -220,6 +220,12 @@ const DetailPage: React.FC = () => {
               <View className={styles.coverMask}>
                 <Text className={styles.coverDuration}>{displayDuration}</Text>
               </View>
+              {/* 综合评分区隐藏时（v < 10），在头图左上角展示 anim.score */}
+              {v < 10 && typeof anim.score === 'number' && !Number.isNaN(anim.score) ? (
+                <View className={styles.coverScore}>
+                  <Text className={styles.coverScoreText}>{anim.score.toFixed(1)}</Text>
+                </View>
+              ) : null}
             </View>
 
             <View className={styles.summaryCard}>
@@ -262,33 +268,35 @@ const DetailPage: React.FC = () => {
             </View>
           </View>
 
-          {/* 评分区 */}
-          <View className={styles.scoreSection}>
-            <View className={styles.sectionHeader}>
-              <View className={styles.sectionHeaderMain}>
-                <Text className={styles.sectionTitle}>综合评分</Text>
-                <Text className={styles.sectionDesc}>
-                  基于全部用户评分计算的 WR 综合分
-                </Text>
-              </View>
-              <Text className={styles.sectionAside}>{v} 人参与</Text>
-            </View>
-
-            <View className={styles.scoreLayout}>
-              {/* 左：WR 综合分 */}
-              <View className={styles.scoreColLeft}>
-                <View className={styles.scoreMain}>
-                  <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
+          {/* 评分区：参与评分人数不足 10 人时（v < M_THRESHOLD）不展示 */}
+          {v >= 10 ? (
+            <View className={styles.scoreSection}>
+              <View className={styles.sectionHeader}>
+                <View className={styles.sectionHeaderMain}>
+                  <Text className={styles.sectionTitle}>综合评分</Text>
+                  <Text className={styles.sectionDesc}>
+                    基于全部用户评分计算的 WR 综合分
+                  </Text>
                 </View>
-                <Text className={styles.scoreMeta}>综合评分</Text>
+                <Text className={styles.sectionAside}>{v} 人参与</Text>
               </View>
 
-              {/* 右：评分分布 */}
-              <View className={styles.scoreColRight}>
-                <ScoreChart distribution={distribution} compact />
+              <View className={styles.scoreLayout}>
+                {/* 左：WR 综合分 */}
+                <View className={styles.scoreColLeft}>
+                  <View className={styles.scoreMain}>
+                    <Text className={styles.scoreBig}>{WR.toFixed(1)}</Text>
+                  </View>
+                  <Text className={styles.scoreMeta}>综合评分</Text>
+                </View>
+
+                {/* 右：评分分布 */}
+                <View className={styles.scoreColRight}>
+                  <ScoreChart distribution={distribution} compact />
+                </View>
               </View>
             </View>
-          </View>
+          ) : null}
 
           {/* 我的评分 */}
           <View className={styles.myRatingSection}>

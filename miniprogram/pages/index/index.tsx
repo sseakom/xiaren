@@ -136,12 +136,11 @@ const IndexPage: React.FC = () => {
       <Skeleton type="card" loading={loading}>
         {list.length > 0 ? (
           <View className={styles.animList}>
-            {list.map((item, idx) => (
+            {list.map((item) => (
               <AnimCard
                 key={item.bvid}
                 item={item}
                 onClick={goDetail}
-                rank={idx}
               />
             ))}
 

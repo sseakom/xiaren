@@ -61,6 +61,30 @@
   line-height: 1;
 }
 
+/* 头图左上角评分角标（综合评分区隐藏时展示 anim.score），样式与 AnimCard 保持一致 */
+.coverScore {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 10rpx 4rpx 8rpx;
+  background: rgba(0, 0, 0, 0.55);
+  border-bottom-right-radius: $radius-sm;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+}
+
+.coverScoreText {
+  color: $color-primary;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+}
+
 .summaryCard,
 .scoreSection,
 .myRatingSection,

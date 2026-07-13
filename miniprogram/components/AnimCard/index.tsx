@@ -11,10 +11,6 @@ export interface AnimCardProps {
   item: Animation;
   /** 点击回调（不传则不响应） */
   onClick?: (item: Animation) => void;
-  /**
-   * 排行榜序号（>=0 时显示在封面左上角）
-   */
-  rank?: number;
   /** 封面占位图（CDN fallback） */
   coverFallback?: string;
 }
@@ -23,8 +19,8 @@ export interface AnimCardProps {
 const Cover: React.FC<{
   src: string;
   duration?: number | string | null;
-  rank?: number;
-}> = ({ src, duration, rank }) => {
+  score?: number | null;
+}> = ({ src, duration, score }) => {
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -52,11 +48,9 @@ const Cover: React.FC<{
           {formatDuration(duration)}
         </View>
       ) : null}
-      {typeof rank === 'number' ? (
-        <View className={styles.animRank}>
-          <Text className={rank < 3 ? styles.rankTop : styles.rankNormal}>
-            {rank + 1}
-          </Text>
+      {typeof score === 'number' && !Number.isNaN(score) ? (
+        <View className={styles.coverScore}>
+          <Text className={styles.coverScoreText}>{score.toFixed(1)}</Text>
         </View>
       ) : null}
     </View>
@@ -99,7 +93,6 @@ const Footer: React.FC<{ item: Animation }> = ({ item }) => (
 const AnimCard: React.FC<AnimCardProps> = ({
   item,
   onClick,
-  rank,
   coverFallback,
 }) => {
   const handleClick = () => {
@@ -114,7 +107,7 @@ const AnimCard: React.FC<AnimCardProps> = ({
       onClick={onClick ? handleClick : undefined}
       hoverClass={onClick ? styles.hover : undefined}
     >
-      <Cover src={coverSrc} duration={item.duration} rank={rank} />
+      <Cover src={coverSrc} duration={item.duration} score={item.score} />
       <View className={styles.animInfo}>
         <View className={styles.animTitle}>
           <Text className={styles.animTitleText}>{item.title}</Text>
