@@ -1,0 +1,58 @@
+classDiagram
+    class CloudService {
+        +callFunction(name, data, options)
+        +callCloud(name, data, options)
+        +callCloudSafe(name, data, options)
+        -getCloudRequestPolicy(name, data) CloudRequestPolicy
+    }
+
+    class CacheTagBuilder {
+        <<pure, exported in T05>>
+        +buildCacheTags(name, data, result, userScoped) string[]
+        +buildInvalidationTags(name, data, result) string[]
+    }
+
+    class AnimationSubmitValidation {
+        <<pure module: validation.js>>
+        +BV_REGEX: RegExp
+        +validateCreatePayload(p) string|null
+        +validateCorrectionPayload(p) string|null
+        +validateDeletePayload(p) string|null
+    }
+
+    class CalcScoreMath {
+        <<pure module: score.js>>
+        +computeBayesianScore(groups, opts) ScoreResult
+    }
+
+    class UserServiceProfile {
+        <<pure module: profile.js>>
+        +sanitizeProfileInput(profile) SanitizedProfile
+        +normalizeUser(openid, profile, existing) UserDoc
+    }
+
+    class ListAnimations {
+        <<cloud fn index.js, T04 收敛>>
+        +main(event) SnapshotResult
+        -toSnapshotItem(item) SnapshotItem
+        -buildSnapshotList(all) SnapshotItem[]
+        -fetchAllAnimations() item[]
+    }
+
+    class VitestTests {
+        <<tests/*.test.ts>>
+        +run() report
+    }
+
+    CloudService ..> CacheTagBuilder : 调用纯函数
+    AnimationSubmitValidation ..> CloudService : 复用于 animationSubmit 校验
+    CalcScoreMath ..> CloudService : 复用于 calcScore
+    UserServiceProfile ..> CloudService : 复用于 userService
+    VitestTests ..> CacheTagBuilder : 单测（mock @tarojs/taro）
+    VitestTests ..> AnimationSubmitValidation : 单测
+    VitestTests ..> CalcScoreMath : 单测
+    VitestTests ..> UserServiceProfile : 单测
+    VitestTests ..> ListAnimations : 单测（mock wx-server-sdk）
+
+    note for CacheTagBuilder "S0-19: 删除 getAction；listAnimations case 统一返回 {mode:'never'}"
+    note for ListAnimations "S0-17/18: 删除非 snapshot 分支与 compare/matchCategory/canUseDbPagination/DB_SORT_CONFIG"

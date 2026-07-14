@@ -6,16 +6,17 @@
     "types": [],
     "typeRoots": [],
     "strict": false,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["miniprogram/*"]
-    },
-    "include": [
-      "miniprogram/**/*.ts",
-      "miniprogram/**/*.tsx"
-    ]
-  }
+    }
+  },
+  "include": [
+    "miniprogram/**/*.ts",
+    "miniprogram/**/*.tsx",
+    "types/**/*.d.ts"
+  ]
 }

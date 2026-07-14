@@ -18,6 +18,9 @@ const M_THRESHOLD = 10;
 const DEFAULT_C = 3.5;
 // aggregate 管道在 DB 端完成分组聚合，不再需要全量拉取评分文档
 
+// 贝叶斯计算抽离到无 wx-server-sdk 依赖的纯模块（行为不变，供单测直接 import）
+const { computeBayesianScore } = require('./score');
+
 exports.main = async (event /*, context*/) => {
   const animationBvid = String(event.animation_bvid || '').trim();
 
@@ -37,30 +40,10 @@ exports.main = async (event /*, context*/) => {
       .end();
     const groups = aggRes.list || [];
 
-    // 无评分时直接返回默认值
+    // 无评分时直接返回默认值（与原行为一致，不触发全局平均分查询）
     if (groups.length === 0) {
       return { success: true, WR: 0, v: 0, R: 0, C: DEFAULT_C, distribution: {} };
     }
-
-    // 由分组结果计算 v（总人数）、R（算术平均）、distribution
-    let v = 0;
-    let totalScore = 0;
-    const distribution = {};
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i];
-      const score = Number(g._id);
-      const count = g.count || 0;
-      if (!isFinite(score)) continue;
-      v += count;
-      totalScore += score * count;
-      const key = score.toFixed(1);
-      distribution[key] = (distribution[key] || 0) + count;
-    }
-
-    if (v === 0) {
-      return { success: true, WR: 0, v: 0, R: 0, C: DEFAULT_C, distribution: {} };
-    }
-    const R = totalScore / v;
 
     // 3. 获取全局平均分 C（失败时降级用默认值，不阻塞主流程）
     let C = DEFAULT_C;
@@ -77,18 +60,10 @@ exports.main = async (event /*, context*/) => {
       console.warn('[calcScore] 获取全局平均分配置失败，使用默认值', e);
     }
 
-    // 4. 贝叶斯加权公式
-    const denominator = v + M_THRESHOLD;
-    const WR = (v / denominator) * R + (M_THRESHOLD / denominator) * C;
+    // 4. 贝叶斯加权公式（委托纯函数，行为不变）
+    const result = computeBayesianScore(groups, { m: M_THRESHOLD, C });
 
-    return {
-      success: true,
-      WR: parseFloat(WR.toFixed(2)),
-      R: parseFloat(R.toFixed(2)),
-      v,
-      C,
-      distribution,
-    };
+    return { success: true, ...result };
   } catch (err) {
     console.error('[calcScore] 失败', err);
     return { success: false, error: err.message };

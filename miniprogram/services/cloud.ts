@@ -83,10 +83,6 @@ function finalizeTags(tags: string[]) {
   return [...new Set(tags.filter(Boolean))];
 }
 
-function getAction(data?: CloudFunctionData) {
-  return typeof data?.action === 'string' ? data.action : '';
-}
-
 function buildReadPolicy(ttlMs: number, userScoped = false): CloudRequestPolicy {
   return { mode: 'read', ttlMs, userScoped };
 }
@@ -105,7 +101,7 @@ function buildCallError(name: string, callId: string, cost: number, err: any) {
   return wrapped;
 }
 
-function buildCacheTags(
+export function buildCacheTags(
   name: string,
   data: CloudFunctionData,
   result: CloudFunctionResultData,
@@ -201,7 +197,7 @@ function buildCacheTags(
   return [...new Set(tags.filter(Boolean))];
 }
 
-function buildInvalidationTags(
+export function buildInvalidationTags(
   name: string,
   data: CloudFunctionData,
   result: CloudFunctionResultData,
@@ -309,13 +305,11 @@ function buildInvalidationTags(
 }
 
 function getCloudRequestPolicy(name: string, data?: CloudFunctionData): CloudRequestPolicy {
-  const action = getAction(data);
+  const action = typeof data?.action === 'string' ? data.action : '';
   switch (name) {
     case 'listAnimations':
-      if (action === 'snapshot') {
-        return { mode: 'never' };
-      }
-      return buildReadPolicy(3 * 60 * 1000);
+      // 前端仅以 action:'snapshot' 调用，快照不缓存（S0-16 已核对无其它调用方）
+      return { mode: 'never' };
     case 'calcScore':
       return buildReadPolicy(3 * 60 * 1000);
     case 'bilibiliFetch':

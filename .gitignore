@@ -143,3 +143,4 @@ vite.config.ts.timestamp-*
 .genie-flow
 .genie-flow/chore/
 .superpowers/
+.github/

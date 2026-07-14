@@ -10,42 +10,8 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-const BV_REGEX = /^BV1[A-Za-z0-9]{8,}$/;
-
-/** create 模式必填字段统一校验 */
-function validateCreatePayload(p) {
-  if (!p) return '表单为空';
-  const required = ['title', 'bvid', 'up_name', 'cover', 'duration', 'publish_time', 'tag'];
-  for (const k of required) {
-    if (p[k] === undefined || p[k] === null || p[k] === '') {
-      return `缺少必填字段：${k}`;
-    }
-  }
-  if (typeof p.duration !== 'number' || p.duration <= 0) {
-    return 'duration 必须为正数（秒）';
-  }
-  if (typeof p.bvid !== 'string' || !BV_REGEX.test(p.bvid)) {
-    return 'bvid 格式不正确（应为 BV 开头 10+ 位的 B 站视频 ID）';
-  }
-  return null;
-}
-
-/** correction 模式只校验 title + tag */
-function validateCorrectionPayload(p) {
-  if (!p) return '表单为空';
-  if (!p.title || !String(p.title).trim()) return '标题不能为空';
-  if (!p.tag || !String(p.tag).trim()) return '标签不能为空';
-  return null;
-}
-
-/** correction_delete 模式只校验 reason */
-function validateDeletePayload(p) {
-  if (!p) return '请填写删除理由';
-  const reason = String(p.reason || '').trim();
-  if (!reason) return '请填写删除理由';
-  if (reason.length < 4) return '删除理由至少 4 个字';
-  return null;
-}
+// 校验逻辑抽离到无 wx-server-sdk 依赖的纯模块（行为不变，供单测直接 import）
+const { validateCreatePayload, validateCorrectionPayload, validateDeletePayload } = require('./validation');
 
 /**
  * bvid 唯一性校验（仅 create 模式）

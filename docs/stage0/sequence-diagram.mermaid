@@ -1,0 +1,62 @@
+sequenceDiagram
+    participant Dev as 开发者
+    participant Git as Git(pre-commit)
+    participant CI as CI(lint/typecheck/test)
+    participant TSC as tsc --noEmit
+    participant VT as vitest run
+
+    Dev->>Dev: 改代码（含开 noImplicitAny 后的修复）
+    Dev->>Git: git commit
+    Git->>TSC: 运行 scripts/pre-commit.sh → npm run typecheck
+    Git->>VT: npm test
+    alt typecheck / test 失败
+        Git-->>Dev: 阻断提交，输出错误
+    else 通过
+        Git->>CI: 推送后触发 CI
+        CI->>TSC: npm run typecheck
+        CI->>VT: npm test
+        alt CI 失败
+            CI-->>Dev: 标记流水线红，阻断合并
+        else CI 通过
+            CI-->>Dev: 允许合并到 main
+        end
+    end
+
+---
+
+sequenceDiagram
+    participant Npm as npm test
+    participant Vitest as vitest runner
+    participant Cfg as vitest.config.ts
+    participant Pure as 纯模块(validation/score/profile/cloud tags)
+    participant Mock as vi.mock
+
+    Npm->>Vitest: vitest run（非 watch）
+    Vitest->>Cfg: 读取 environment=node, globals, include, @别名
+    loop 每个 tests/*.test.ts
+        alt 云函数纯模块用例
+            Vitest->>Pure: import('./validation' 等) — 无 wx-server-sdk
+            Vitest->>Pure: 调用纯函数断言
+        else cloud.ts 缓存标签用例
+            Vitest->>Mock: vi.mock('@tarojs/taro') 固定 getStorageSync
+            Vitest->>Pure: import buildCacheTags/buildInvalidationTags
+            Vitest->>Pure: 断言 tag 生成 / userScoped
+        end
+        Pure-->>Vitest: 结果
+    end
+    Vitest-->>Npm: 汇总报告（pass/fail）
+
+---
+
+sequenceDiagram
+    participant DS as AnimationDatasetService
+    participant CS as CloudService
+    participant Policy as getCloudRequestPolicy
+    participant CF as listAnimations 云函数
+
+    DS->>CS: callCloudSafe('listAnimations', {action:'snapshot'})
+    CS->>Policy: getCloudRequestPolicy('listAnimations', data)
+    Note over Policy: 改前: if(action==='snapshot')→{mode:'never'} else buildReadPolicy(3min)<br/>改后: 一律 {mode:'never'}
+    Policy-->>CS: {mode:'never'}（无读缓存 / 无失效副作用）
+    CS->>CF: callFunction（不走缓存）
+    CF-->>CS: snapshot 数据（字段裁剪 + bvid 过滤 + total）

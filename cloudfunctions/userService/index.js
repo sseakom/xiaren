@@ -13,6 +13,9 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+// 档案 sanitize / normalize 抽离到无 wx-server-sdk 依赖的纯模块（行为不变，供单测直接 import）
+const { sanitizeProfileInput, normalizeUser } = require('./profile');
+
 /** 获取当前调用方 openid */
 function getOpenid() {
   return cloud.getWXContext().OPENID || null;
@@ -20,28 +23,6 @@ function getOpenid() {
 
 /** 未登录错误响应 */
 const NOT_LOGIN = { success: false, error: '未登录' };
-
-function sanitizeProfileInput(profile = {}) {
-  return {
-    nickName: profile.nickName,
-    avatarUrl: profile.avatarUrl,
-    phoneNumber: profile.phoneNumber,
-  };
-}
-
-function normalizeUser(openid, profile = {}, existing = {}) {
-  const now = new Date();
-  return {
-    _id: openid,
-    nickName: profile.nickName != null ? profile.nickName : (existing.nickName || ''),
-    avatarUrl: profile.avatarUrl != null ? profile.avatarUrl : (existing.avatarUrl || ''),
-    phoneNumber: profile.phoneNumber != null ? profile.phoneNumber : (existing.phoneNumber || ''),
-    // 仅控制台可修改 is_admin，云函数不会从 profile 读取/覆盖
-    is_admin: existing.is_admin === undefined ? false : !!existing.is_admin,
-    created_at: existing.created_at || now,
-    updated_at: now,
-  };
-}
 
 function toUserWriteData(user) {
   return {

@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { test } from 'vitest';
 import {
   CacheStorageAdapter,
   RequestCacheCore,
@@ -140,7 +141,7 @@ async function testExpiredCacheGetsReclaimed() {
 async function testLruEvictionWorks() {
   const cache = new RequestCacheCore(new MemoryStorage(), {
     storageKey: 'lru-cache',
-    maxSize: 90,
+    maxSize: 40,
     maxEntrySize: 90,
     cleanupIntervalMs: 100,
   });
@@ -231,7 +232,6 @@ async function run() {
   console.log('request-cache tests passed');
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
+test('request-cache', async () => {
+  await run();
 });
