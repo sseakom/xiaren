@@ -243,7 +243,7 @@ npx ts-node tests/request-cache.test.ts
 
 ### 云函数改动后
 
-- 微信开发者工具重新部署对应云函数
+- 重新部署对应云函数：CLI 用 `node scripts/deploy.js cloud <name>`（见文末「部署与上传（CLI）」），或微信开发者工具
 - 至少手动验证一条主路径
 
 ---
@@ -258,3 +258,44 @@ npx ts-node tests/request-cache.test.ts
 - [ ] 写操作的缓存失效 Tag 已补齐
 - [ ] `yarn build:weapp` 通过
 - [ ] 如改了云函数，已提醒重新部署
+
+---
+
+## 11. 部署与上传（CLI）
+
+> 用 `scripts/deploy.js`（基于 `miniprogram-ci`）在命令行上传体验版与云函数，无需微信开发者工具 GUI。
+
+### 前提（首次配置）
+
+- 项目根放代码上传密钥 `private.wx29eab22ac6c0cfe7.key`（公众平台 → 开发管理 → 开发设置 → 小程序代码上传密钥；已加入 `.gitignore`）
+- 公众平台「IP 白名单」加入本机公网 IP（换网络需更新）
+- 云环境 ID 已内置为脚本常量 `CLOUD_ENV`（取自 `miniprogram/services/cloud.ts`，勿随意改）
+
+### 命令速查
+
+| 场景 | 命令 |
+|---|---|
+| 构建前端（上传体验版前必做） | `yarn build:weapp` |
+| 上传体验版（版本取 package.json） | `yarn upload:code` |
+| 上传体验版 + 指定版本 | `node scripts/deploy.js code 0.8.3` |
+| 上传全部云函数 | `yarn upload:cloud` |
+| 上传单个云函数 | `node scripts/deploy.js cloud <name>` |
+| 全量（体验版 + 云函数） | `yarn upload:all` |
+
+> 云函数走 `remoteNpmInstall`，云端装依赖，本地 `cloudfunctions/<name>/node_modules` 无需预装。新增云函数无需改脚本（`upload:cloud` 自动遍历 `cloudfunctions/` 所有子目录）。
+
+### 改 `scripts/deploy.js` 时注意
+
+- 云函数上传 API 是 `ci.cloud.uploadFunction({ project, env, name, path, remoteNpmInstall })`，**不是** `ci.uploadCloudFunction`（旧名，`miniprogram-ci@2.1.3+` 已不存在）
+- `env`（云环境 ID）必填，漏传会报错
+- `code` 第二参数为可选版本号，不传则回退 `package.json` 的 `version`
+- `projectPath` 必须是项目根（含 `project.config.json`），miniprogram-ci 会自动解析 `miniprogramRoot=dist` / `cloudfunctionRoot`
+
+### 常见报错
+
+| 现象 | 处理 |
+|---|---|
+| `... is not a function` | 用了旧 API 名，改用 `ci.cloud.uploadFunction` |
+| `40001` / `ip not in whitelist` | 当前公网 IP 没加白名单 |
+| 体验版是旧代码 | 上传前漏了 `yarn build:weapp` |
+| 云函数调用报模块缺失 | 该函数没传成功，重传 `node scripts/deploy.js cloud <name>` |

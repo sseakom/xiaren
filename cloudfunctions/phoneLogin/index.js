@@ -1,7 +1,7 @@
 // cloudfunctions/phoneLogin/index.js
-// 入参：{ cloudID?, encryptedData?, iv?, code?, sessionKey? }
-//  - 优先用 cloudID（云开发自动解密，免 session_key）
-//  - 兜底用 encryptedData + iv（需自行解密）
+// 入参：{ cloudID }
+//  - 仅支持 cloudID（微信云开发自动解密，免 session_key、无第三方依赖）
+//  - 已移除 encryptedData + iv 兜底路径（缺失解密模块，属死代码，见架构评审 2026-07-16）
 // 出参：{ success, phoneNumber, openid } 或 { success:false, error }
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -14,9 +14,8 @@ exports.main = async (event /*, context*/) => {
     return { success: false, error: '未获取到 openid' };
   }
 
+  // 仅支持 cloudID 路径（微信云开发自动解密，零依赖）
   let phoneNumber = '';
-
-  // 方式 1：cloudID（推荐，零依赖解密）
   if (event && event.cloudID) {
     try {
       const res = await cloud.getOpenData({ list: [{ cloudID: event.cloudID }] });
@@ -24,17 +23,6 @@ exports.main = async (event /*, context*/) => {
         (res && res.list && res.list[0] && res.list[0].data && res.list[0].data.phoneNumber) || '';
     } catch (e) {
       console.error('[phoneLogin] cloudID 解密失败', e);
-    }
-  }
-
-  // 方式 2：兜底 encryptedData + iv
-  if (!phoneNumber && event && event.encryptedData && event.iv) {
-    try {
-      const WXBizDataCrypt = require('./WXBizDataCrypt');
-      const pc = new WXBizDataCrypt(wxContext.APPID, event.sessionKey || '');
-      phoneNumber = pc.decryptData(event.encryptedData, event.iv).phoneNumber || '';
-    } catch (e) {
-      console.error('[phoneLogin] encryptedData 解密失败', e);
     }
   }
 

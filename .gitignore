@@ -144,3 +144,8 @@ vite.config.ts.timestamp-*
 .genie-flow/chore/
 .superpowers/
 .github/
+.workbuddy/
+
+# 微信小程序代码上传密钥（miniprogram-ci）
+private.wx29eab22ac6c0cfe7.key
+private.*.key

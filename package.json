@@ -29,7 +29,10 @@
     "dev:jd": "npm run build:jd -- --watch",
     "dev:quickapp": "npm run build:quickapp -- --watch",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "upload:code": "node scripts/deploy.js code",
+    "upload:cloud": "node scripts/deploy.js cloud",
+    "upload:all": "node scripts/deploy.js"
   },
   "browserslist": [
     "last 3 versions",

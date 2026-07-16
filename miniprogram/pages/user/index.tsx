@@ -105,14 +105,14 @@ const UserPage: React.FC = () => {
    * 用户允许后回调到这里，用 cloudID 交给 phoneLogin 云函数解密手机号
    */
   const onGetPhoneNumber = async (e: any) => {
-    // 微信回调 detail: { errMsg, encryptedData, iv, cloudID, code }
+    // 微信回调 detail: { errMsg, cloudID }（仅需 cloudID，encryptedData/iv 兜底已移除，见架构评审 2026-07-16）
     const detail = e?.detail || {};
     if (detail.errMsg && !detail.errMsg.includes('ok')) {
       // 用户点了"不允许"或"使用其它号码" → 静默回退到微信登录
       await onLogin();
       return;
     }
-    if (!detail.cloudID && !detail.encryptedData) {
+    if (!detail.cloudID) {
       Taro.showToast({ title: '未获取到授权信息', icon: 'none' });
       return;
     }

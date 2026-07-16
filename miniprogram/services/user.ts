@@ -126,18 +126,16 @@ class UserServiceImpl {
   /**
    * 手机号一键登录
    * 入参是 <Button open-type="getPhoneNumber"> 的回调 detail
-   *   { encryptedData, iv, cloudID, code? }
+   *   { cloudID }
+   * 仅支持 cloudID 路径（微信云开发自动解密）。encryptedData/iv 兜底已移除（死代码）。
    * 云函数 phoneLogin 用 cloudID 解出真实手机号，作为用户主键 upsert
    * 返回值：{ phoneNumber, openid }，写入本地状态与缓存
    */
   async phoneLogin(detail: {
-    encryptedData?: string;
-    iv?: string;
     cloudID?: string;
-    code?: string;
   }): Promise<{ phoneNumber: string; openid: string }> {
-    if (!detail || (!detail.cloudID && !detail.encryptedData)) {
-      throw new Error('未获取到手机号授权信息');
+    if (!detail || !detail.cloudID) {
+      throw new Error('未获取到手机号授权信息（cloudID）');
     }
     const res = await CloudService.callFunction('phoneLogin', detail);
     const result = (res.result || {}) as { phoneNumber?: string; openid?: string };

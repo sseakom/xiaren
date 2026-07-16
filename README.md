@@ -350,9 +350,37 @@ yarn build:h5
 
 ---
 
-## 云函数部署
+## 云函数部署与体验版上传
 
-微信开发者工具中按需上传并部署以下云函数：
+### 方式一：命令行（推荐，可进 CI）
+
+项目内置 `miniprogram-ci` 部署脚本 `scripts/deploy.js`，用代码上传密钥认证，无需微信开发者工具 GUI。
+
+**前提准备（一次性）**
+
+1. 下载代码上传密钥：微信公众平台 → 开发管理 → 开发设置 → 小程序代码上传密钥，保存为项目根目录 `private.wx29eab22ac6c0cfe7.key`（已加入 `.gitignore`，禁止提交）。
+2. 配置 IP 白名单：同一页「IP 白名单」加入本机公网 IP。
+
+**上传命令**
+
+```bash
+yarn build:weapp                        # 上传体验版前先构建前端产物
+yarn upload:code                        # 只上传体验版
+yarn upload:cloud                       # 上传全部云函数（串行，逐个打印进度）
+node scripts/deploy.js cloud rating     # 只上传单个云函数
+yarn upload:all                         # 体验版 + 全部云函数
+```
+
+说明：
+- `projectPath` 指向项目根，miniprogram-ci 自动读 `project.config.json` 解析 `miniprogramRoot=dist` 和 `cloudfunctionRoot`。
+- 云函数用 `remoteNpmInstall: true`，云端装依赖，本地无需预装。
+- 体验版 `version` 取自 `package.json`，`desc` 带时间戳；上传后在公众平台「版本管理 → 体验版」可见。
+
+### 方式二：微信开发者工具
+
+在开发者工具中对 `cloudfunctions/` 下各云函数右键「上传并部署：云端安装依赖」。
+
+### 云函数清单
 
 ```text
 listAnimations
