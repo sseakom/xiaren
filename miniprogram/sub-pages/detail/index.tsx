@@ -346,7 +346,7 @@ const DetailPage: React.FC = () => {
               </View>
             </View>
           </View>
-          <Text onClick={onCorrect} className={styles.correctBtn}>勘误</Text>
+          {/* <Text onClick={onCorrect} className={styles.correctBtn}>勘误</Text> */}
           <View className={styles.bottomSafe} />
         </View>
       </ScrollView>

@@ -290,7 +290,34 @@ const UserPage: React.FC = () => {
         <View className={styles.menuList}>
           {user ? (
             <>
-              <Cell
+              <Cell className={styles.menuCell} onClick={goMyRatings}>
+                <View className={styles.menuCellContent}>
+                  <View className={styles.menuIconWrap}>
+                    <AppIcon name="rating" size="36rpx" className={styles.menuIcon} />
+                  </View>
+                  <Text className={styles.menuText}>我的评分</Text>
+                  <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+                </View>
+              </Cell>
+              <Cell className={styles.menuCell} onClick={goMyCollections}>
+                <View className={styles.menuCellContent}>
+                  <View className={styles.menuIconWrap}>
+                    <AppIcon name="collection" size="36rpx" className={styles.menuIcon} />
+                  </View>
+                  <Text className={styles.menuText}>我的收藏</Text>
+                  <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+                </View>
+              </Cell>
+              <Cell className={styles.menuCell} onClick={goWatched}>
+                <View className={styles.menuCellContent}>
+                  <View className={styles.menuIconWrap}>
+                    <AppIcon name="watched" size="36rpx" className={styles.menuIcon} />
+                  </View>
+                  <Text className={styles.menuText}>我看过的</Text>
+                  <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
+                </View>
+              </Cell>
+              {/* <Cell
                 className={styles.menuCell}
                 onClick={() => Taro.navigateTo({ url: '/sub-pages/animation-form/index?mode=create' })}
               >
@@ -313,7 +340,7 @@ const UserPage: React.FC = () => {
                   <Text className={styles.menuText}>我的提交</Text>
                   <AppIcon name="arrowRight" size="20rpx" className={styles.menuArrow} />
                 </View>
-              </Cell>
+              </Cell> */}
               {UserService.isAdmin() && (
                 <Cell
                   className={styles.menuCell}
