@@ -8,6 +8,9 @@ const DATASET_STORAGE_KEY = 'animations_dataset_payload_v1';
 const DATASET_VERSION_STORAGE_KEY = 'animations_dataset_version_v1';
 const DATASET_UPDATED_AT_STORAGE_KEY = 'animations_dataset_updated_at_v1';
 
+/** 后台静默同步发现数据更新时触发，页面订阅后刷新 */
+export const EVENT_DATASET_UPDATED = 'animation_dataset_updated';
+
 export interface AnimationSnapshot {
   bvid: string;
   title: string;
@@ -151,6 +154,8 @@ class AnimationDatasetServiceImpl {
   private version = '';
   private ready = false;
   private bootstrapPromise: Promise<void> | null = null;
+  /** 后台静默同步串行锁，防止并发多次同步 */
+  private syncing = false;
 
   private readLocalList() {
     try {
@@ -206,28 +211,57 @@ class AnimationDatasetServiceImpl {
       this.version = localVersion;
     }
 
+    // 有本地缓存 → 立即就绪，首屏直接用本地数据；后台静默同步
+    if (localList.length > 0) {
+      this.ready = true;
+      void this.backgroundSync();
+      return;
+    }
+
+    // 无本地缓存 → 必须等远程，保持原逻辑
     try {
       const remoteVersion = await this.fetchRemoteVersion();
-      if (remoteVersion && localList.length > 0 && localVersion === remoteVersion) {
-        this.ready = true;
-        return;
-      }
-
       const remoteList = await this.fetchRemoteSnapshot();
       if (remoteList) {
-        this.persist(remoteList, remoteVersion || localVersion || '');
-      } else if (!localList.length) {
+        this.persist(remoteList, remoteVersion || '');
+      } else {
         this.list = [];
         this.version = remoteVersion || '';
       }
     } catch (err) {
       console.warn('[AnimationDataset] 启动同步失败，回退本地缓存', err);
-      if (!localList.length) {
-        this.list = [];
-        this.version = '';
-      }
+      this.list = [];
+      this.version = '';
     } finally {
       this.ready = true;
+    }
+  }
+
+  /**
+   * 后台静默同步：对比远程版本号，不一致则拉取新快照并通知页面刷新。
+   * 仅在有本地缓存提前 ready 后由 doBootstrap 启动，不阻塞首屏。
+   * 串行锁：syncing 防止并发多次同步。
+   */
+  private async backgroundSync() {
+    if (this.syncing) return;
+    this.syncing = true;
+    try {
+      const localVersion = this.version;
+      const remoteVersion = await this.fetchRemoteVersion();
+      // 版本为空或一致 → 无需更新，静默结束（不通知）
+      if (!remoteVersion || remoteVersion === localVersion) {
+        return;
+      }
+      const remoteList = await this.fetchRemoteSnapshot();
+      if (remoteList) {
+        this.persist(remoteList, remoteVersion);
+        // 通知页面：数据已更新，需要刷新
+        Taro.eventCenter.trigger(EVENT_DATASET_UPDATED);
+      }
+    } catch (err) {
+      console.warn('[AnimationDataset] 后台静默同步失败', err);
+    } finally {
+      this.syncing = false;
     }
   }
 

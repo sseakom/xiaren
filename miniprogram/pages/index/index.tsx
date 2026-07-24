@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro, { useShareAppMessage, useDidShow, useReachBottom } from '@tarojs/taro';
 import '@nutui/nutui-react-taro/dist/es/packages/searchbar/style/style.css';
 import { Animation } from '@/types';
 import { AnimationService, ListSort } from '@/services/business';
+import { EVENT_DATASET_UPDATED } from '@/services/animationDataset';
 import { goDetail } from '@/utils/nav';
 import { usePagination } from '@/hooks/usePagination';
 import { toastError } from '@/utils/error';
@@ -84,6 +85,21 @@ const IndexPage: React.FC = () => {
       load(0, true);
     }
   });
+
+  // 订阅动画数据集后台静默更新：版本变化时刷新列表
+  useEffect(() => {
+    const handler = () => {
+      // 仅在非加载态且已有数据时刷新，避免打断首屏骨架屏或上拉加载
+      if (!loading && list.length > 0) {
+        void load(0, true);
+      }
+    };
+    Taro.eventCenter.on(EVENT_DATASET_UPDATED, handler);
+    return () => {
+      Taro.eventCenter.off(EVENT_DATASET_UPDATED, handler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, list.length]);
 
   /** 切换排序：播放量/弹幕/时长/评分的按钮点同一下在 asc↔desc 间切换 */
   const onSwitchSort = useCallback((key: ListSort) => {

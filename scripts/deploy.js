@@ -11,10 +11,10 @@
  *   3) 上传体验版前先 yarn build:weapp 产出 dist/
  *
  * 用法：
- *   node scripts/deploy.js              # 上传体验版 + 全部云函数
- *   node scripts/deploy.js code [版本号]  # 只上传体验版（版本号可选，默认取 package.json）
- *   node scripts/deploy.js cloud        # 上传全部云函数
- *   node scripts/deploy.js cloud rating # 只上传指定云函数
+ *   node scripts/deploy.js                          # 上传体验版 + 全部云函数
+ *   node scripts/deploy.js code [版本号] [robot]     # 只上传体验版（版本号/robot 可选，默认取 package.json / robot=1）
+ *   node scripts/deploy.js cloud                    # 上传全部云函数
+ *   node scripts/deploy.js cloud rating             # 只上传指定云函数
  *
  * 等价 npm script：
  *   yarn upload:all / yarn upload:code / yarn upload:cloud
@@ -23,6 +23,7 @@
 const ci = require('miniprogram-ci')
 const fs = require('fs')
 const path = require('path')
+const { execSync } = require('child_process')
 
 const APPID = 'wx29eab22ac6c0cfe7'
 const ROOT = path.resolve(__dirname, '..')
@@ -54,11 +55,29 @@ function listCloudFunctions() {
     .map((d) => d.name)
 }
 
-async function uploadCode(project, ver) {
+/**
+ * 获取当前 git 分支与短 commit hash，用于上传 desc 提升版本辨识度。
+ * git 不可用时返回空串，不影响上传。
+ */
+function gitInfo() {
+  try {
+    const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim()
+    const hash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    return { branch, hash }
+  } catch {
+    return { branch: '', hash: '' }
+  }
+}
+
+async function uploadCode(project, ver, robot) {
   const version = ver || require(path.resolve(ROOT, 'package.json')).version
-  const desc = `CLI 上传 ${new Date().toLocaleString('zh-CN')}`
-  await ci.upload({ project, version, desc, setting: { es6: false, minify: true } })
-  console.log(`✅ 体验版上传完成（v${version}）`)
+  const { branch, hash } = gitInfo()
+  const gitPart = branch || hash ? `${branch ? branch + '@' : ''}${hash}` : ''
+  const desc = `v${version}${gitPart ? ' ' + gitPart : ''} ${new Date().toLocaleString('zh-CN')}`
+  const uploadOpts = { project, version, desc, setting: { es6: false, minify: true } }
+  if (robot) uploadOpts.robot = Number(robot)
+  await ci.upload(uploadOpts)
+  console.log(`✅ 体验版上传完成（v${version}${robot ? ', robot=' + robot : ''}）`)
 }
 
 async function uploadCloud(project, name) {
@@ -81,11 +100,11 @@ async function uploadAllCloud(project) {
 }
 
 ;(async () => {
-  const [action, name] = process.argv.slice(2)
+  const [action, name, robot] = process.argv.slice(2)
   const project = createProject()
   try {
     if (action === 'code') {
-      await uploadCode(project, name)
+      await uploadCode(project, name, robot)
     } else if (action === 'cloud') {
       name ? await uploadCloud(project, name) : await uploadAllCloud(project)
     } else {
